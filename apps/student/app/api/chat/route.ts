@@ -15,6 +15,8 @@ import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
+import { loadReferenceSolution } from "@/lib/seed-private";
+
 // /api/chat 기본 제한: 학생당 분당 20건. Anthropic 비용 폭발 방지.
 const CHAT_RATE = { name: "chat", capacity: 20, refillPerSec: 20 / 60 };
 
@@ -32,6 +34,8 @@ interface ChatRequestBody {
   sessionState: Partial<SessionState> & { studentId: string };
   editorHasCode: boolean;
   editorCode?: string;
+  /** 현재 과제의 code(예: "A03_arrays_basic"). Safety Guard reference_solution 로드에 사용. */
+  assignmentCode?: string;
   requestedLevel?: 1 | 2 | 3 | 4;
 }
 
@@ -107,6 +111,12 @@ export async function POST(request: Request) {
   });
   const safeUtterance = inbound.sanitizedPayload || body.utterance;
 
+  // 현재 과제의 reference_solution 로드 (outbound 유사도 검사에 사용).
+  // seed-private 파일 없거나 assignmentCode 미제공 시 undefined → 유사도 검사 스킵.
+  const referenceSolution = body.assignmentCode
+    ? (await loadReferenceSolution(body.assignmentCode)) ?? undefined
+    : undefined;
+
   if (route.route === "pedagogy-coach") {
     const { hint, gating, usedModel, mocked } = await requestHint({
       utterance: safeUtterance,
@@ -120,6 +130,7 @@ export async function POST(request: Request) {
       direction: "outbound",
       agent: "pedagogy-coach",
       payload: hint.message,
+      referenceSolution,
       mode: sessionState.mode,
     });
     const finalHint: Hint =

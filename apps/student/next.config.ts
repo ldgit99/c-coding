@@ -11,6 +11,13 @@ const config: NextConfig = {
     "@cvibe/wasm-runtime",
     "@cvibe/xapi",
   ],
+  // /api/submit과 /api/chat이 `supabase/seed-private/*`를 런타임에 fs.readFile로
+  // 읽으므로 Vercel 서버리스 번들에 반드시 포함되어야 한다. 프로덕션에서 이
+  // 디렉토리를 제거할 때는 Vercel Blob fetch 로 교체 + 여기 include 제거.
+  outputFileTracingIncludes: {
+    "/api/submit": ["../../supabase/seed-private/**/*"],
+    "/api/chat": ["../../supabase/seed-private/**/*"],
+  },
   experimental: {
     // Monaco는 CSR만 안전 — 동적 import로만 사용
     serverActions: { allowedOrigins: ["localhost:3000"] },

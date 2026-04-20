@@ -48,13 +48,14 @@ interface AIPanelProps {
   editorCode: string;
   studentId: string;
   mode: Mode;
+  assignmentCode?: string | null;
 }
 
 type HistoryEntry =
   | { kind: "text"; role: "student" | "ai"; text: string; meta?: string; level?: 1 | 2 | 3 | 4; requiresSelfExplanation?: boolean; accepted?: boolean }
   | { kind: "review"; review: ReviewPayload; meta?: string };
 
-export function AIPanel({ editorCode, studentId, mode }: AIPanelProps) {
+export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -90,6 +91,7 @@ export function AIPanel({ editorCode, studentId, mode }: AIPanelProps) {
             },
             editorHasCode: editorCode.length > 20,
             editorCode,
+            assignmentCode,
             requestedLevel: opts.requestedLevel,
           }),
         });
@@ -102,7 +104,7 @@ export function AIPanel({ editorCode, studentId, mode }: AIPanelProps) {
         setInput("");
       }
     },
-    [editorCode, history, mode, studentId, supportLevel],
+    [assignmentCode, editorCode, history, mode, studentId, supportLevel],
   );
 
   const applyChatResponse = useCallback((data: ChatResponse) => {

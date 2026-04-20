@@ -8,17 +8,21 @@ import {
   type ReflectionInput,
 } from "@cvibe/agents";
 import { getAssignmentByCode, resolveUserFromRequest } from "@cvibe/db";
-import { lintC } from "@cvibe/wasm-runtime";
+import { Judge0Backend, lintC, runHiddenTests } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
+
+import { loadHiddenTests } from "@/lib/seed-private";
 
 /**
  * POST /api/submit — 학생 제출물을 채점 파이프라인으로 처리.
  *
- * 순서: lintC → Code Reviewer findings → gradeSubmission
+ * 순서: hidden tests 실행 → Code Reviewer → gradeSubmission
  *
- * Week 7 MVP 제약:
- * - hiddenTestResults는 클라이언트가 보내거나(교사 도구), 미제공 시 correctness null.
- * - Supabase 저장·Student Modeler 연쇄 호출은 Week 7 후반에 추가.
+ * hidden tests 실행 전략:
+ * - body.hiddenTestResults가 있으면 그대로 사용 (교사 도구·E2E 테스트용).
+ * - 없으면 Judge0 env + seed-private의 `{code}_hidden.json` 있을 때 서버가
+ *   runHiddenTests로 실제 실행.
+ * - 둘 다 없으면 hiddenTestResults=undefined → Assessment의 correctness=null.
  */
 
 interface SubmitRequestBody {
@@ -56,6 +60,26 @@ export async function POST(request: Request) {
     kcTags: body.assignment?.kcTags ?? catalog?.kcTags,
   };
 
+  // 1) Hidden tests 실행
+  let hiddenTestResults = body.hiddenTestResults;
+  let hiddenTestsSource: "client" | "judge0" | "none" = hiddenTestResults ? "client" : "none";
+  if (!hiddenTestResults && body.assignment?.id && process.env.JUDGE0_API_URL) {
+    const tests = await loadHiddenTests(body.assignment.id);
+    if (tests && tests.length > 0) {
+      const backend = new Judge0Backend({
+        baseUrl: process.env.JUDGE0_API_URL,
+        apiKey: process.env.JUDGE0_API_KEY,
+      });
+      const run = await runHiddenTests({ backend, code: body.code, tests });
+      hiddenTestResults = run.results.map((r): HiddenTestResult => ({
+        id: r.id,
+        passed: r.passed,
+      }));
+      hiddenTestsSource = "judge0";
+    }
+  }
+
+  // 2) 정적 분석 + LLM 리뷰
   const lintResult = await lintC(body.code);
   const { review } = await reviewCode({
     code: body.code,
@@ -68,6 +92,7 @@ export async function POST(request: Request) {
     lintResult,
   });
 
+  // 3) 루브릭 채점
   const grade = await gradeSubmission({
     submission: {
       code: body.code,
@@ -75,7 +100,7 @@ export async function POST(request: Request) {
       submittedAt: new Date().toISOString(),
     },
     assignment: effectiveAssignment,
-    hiddenTestResults: body.hiddenTestResults,
+    hiddenTestResults,
     codeReviewerFindings: review.findings,
     styleWarnings: lintResult.warnings.filter((w) => w.severity === "warning").length,
     dependencyLog: body.dependencyLog,
@@ -91,6 +116,7 @@ export async function POST(request: Request) {
       result: {
         finalScore: grade.assessment.finalScore,
         rubricScores: grade.assessment.rubricScores,
+        hiddenTestsSource,
       },
     }),
   );
@@ -115,5 +141,6 @@ export async function POST(request: Request) {
     ...grade,
     assessment: studentFacing,
     review,
+    hiddenTestsSource,
   });
 }

@@ -5,6 +5,7 @@ import type { Backend, RunCInput, RunCResult } from "./types";
 
 export * from "./types";
 export * from "./lint";
+export * from "./run-hidden-tests";
 export { ClangWasmBackend } from "./clang-wasm";
 export { Judge0Backend } from "./judge0";
 export { TwrWasmBackend } from "./twr";
