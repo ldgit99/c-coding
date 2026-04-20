@@ -7,7 +7,7 @@ import {
   type HiddenTestResult,
   type ReflectionInput,
 } from "@cvibe/agents";
-import { getAssignmentByCode } from "@cvibe/db";
+import { getAssignmentByCode, resolveUserFromRequest } from "@cvibe/db";
 import { lintC } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   });
 
   // xAPI: submission 결과 + reflection 제출 이벤트
-  const sid = "demo-student-001";
+  const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
   recordEvent(
     buildStatement({
       actor: { type: "student", id: sid },

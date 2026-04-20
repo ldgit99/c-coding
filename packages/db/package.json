@@ -21,6 +21,7 @@
     "clean": "rm -rf .turbo"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9"

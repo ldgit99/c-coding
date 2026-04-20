@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveUserFromRequest } from "@cvibe/db";
 import { Judge0Backend, type RunCInput, type RunCResult } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const result = await backend.runC(input);
 
   // xAPI — compile/runtime error 발생 시 로깅
-  const sid = "demo-student-001"; // Week 10 auth 붙으면 실제 학생 ID 대체
+  const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
   if (result.errorType === "compile") {
     recordEvent(
       buildStatement({
