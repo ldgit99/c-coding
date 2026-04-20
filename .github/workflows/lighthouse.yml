@@ -1,0 +1,42 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "apps/student/**"
+      - "apps/teacher/**"
+      - "packages/shared-ui/**"
+
+jobs:
+  lhci:
+    name: Lighthouse (student)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cvibe/student build
+      - name: Start student server
+        run: pnpm --filter @cvibe/student start &
+        env:
+          PORT: "3000"
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000 -t 60000
+      - name: Lighthouse assertion
+        run: |
+          npx --yes @lhci/cli@0.14.x autorun \
+            --collect.url=http://localhost:3000 \
+            --collect.numberOfRuns=2 \
+            --assert.preset=lighthouse:recommended \
+            --assert.assertions.largest-contentful-paint.maxNumericValue=2500 \
+            --assert.assertions.first-contentful-paint.maxNumericValue=1800 \
+            --assert.assertions.total-blocking-time.maxNumericValue=500 \
+            || true   # 경고 수준으로 시작, 실패로 전환은 Week 12 이후

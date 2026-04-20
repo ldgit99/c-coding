@@ -5,5 +5,7 @@ export * from "./gating";
 export * from "./pedagogy-coach";
 export * from "./problem-architect";
 export * from "./runtime-debugger";
+export * from "./safety-guard";
 export * from "./student-modeler";
 export * from "./supervisor";
+export * from "./teacher-copilot";

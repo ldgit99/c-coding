@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  checkSafety,
   classify,
   requestHint,
   reviewCode,
@@ -72,22 +73,47 @@ export async function POST(request: Request) {
     editorHasCode: body.editorHasCode,
   });
 
+  // inbound Safety Guard — 학생 발화에 PII·프롬프트 인젝션 사전 처리
+  const inbound = checkSafety({
+    direction: "inbound",
+    agent: "supervisor",
+    payload: body.utterance,
+    mode: sessionState.mode,
+  });
+  const safeUtterance = inbound.sanitizedPayload || body.utterance;
+
   if (route.route === "pedagogy-coach") {
     const { hint, gating, usedModel, mocked } = await requestHint({
-      utterance: body.utterance,
+      utterance: safeUtterance,
       sessionState,
       requestedLevel: body.requestedLevel,
-      restatedProblem: detectRestatement(body.utterance),
-      namedStuckPoint: detectStuckPoint(body.utterance),
+      restatedProblem: detectRestatement(safeUtterance),
+      namedStuckPoint: detectStuckPoint(safeUtterance),
     });
+    // outbound Safety Guard — AI 응답에 정답 유출·코드 블록 과다·욕설 검사
+    const outbound = checkSafety({
+      direction: "outbound",
+      agent: "pedagogy-coach",
+      payload: hint.message,
+      mode: sessionState.mode,
+    });
+    const finalHint: Hint =
+      outbound.verdict === "block"
+        ? { ...hint, message: "잠시 후 다시 시도해줘 — 응답이 안전 검사에서 막혔어." }
+        : { ...hint, message: outbound.sanitizedPayload };
     return NextResponse.json({
       intent: route.intent satisfies Intent,
       route: route.route,
       reason: route.reason,
-      hint: hint satisfies Hint,
+      hint: finalHint,
       gating,
       usedModel,
       mocked,
+      safety: {
+        inboundReasons: inbound.reasons,
+        outboundVerdict: outbound.verdict,
+        outboundReasons: outbound.reasons,
+      },
     });
   }
 

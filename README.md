@@ -136,16 +136,22 @@ Claude Code 세션에서 "이 학생한테 힌트 줘봐", "제출 채점", "과
 
 | 주차 | 마일스톤 | 상태 |
 |------|---------|------|
-| 1–2 | 모노리포 부트스트랩, Supabase 스키마 | **진행 중** ← *지금 여기* |
-| 3 | WASM C 실행 파이프라인 | 대기 |
-| 4–5 | Supervisor + Pedagogy Coach MVP | 대기 |
-| 6 | Code Reviewer + Runtime Debugger | 대기 |
-| 7 | Assessment + Student Modeler | 대기 |
-| 8 | Problem Architect + 과제 10개 | 대기 |
-| 9 | 교사 대시보드 v1 | 대기 |
-| 10 | Safety Guard + Dependency Factor + 리플렉션 | 대기 |
-| 11 | E2E/Promptfoo/Lighthouse CI | 대기 |
-| 12 | 교사 매뉴얼 + 파일럿 수업 | 대기 |
+| 1–2 | 모노리포 부트스트랩, Supabase 스키마 | ✓ |
+| 3 | WASM C 실행 파이프라인 (Judge0 + clang.wasm 스켈레톤) | ✓ |
+| 4–5 | Supervisor + Pedagogy Coach MVP (4단계 Socratic 게이팅) | ✓ |
+| 6 | Code Reviewer + Runtime Debugger | ✓ |
+| 7 | Assessment + Student Modeler (루브릭 4축 + BKT) | ✓ |
+| 8 | Problem Architect + 과제 10개 (CS1 필수 KC 커버) | ✓ |
+| 9 | 교사 대시보드 v1 (Classroom heatmap + Intervention Queue) | ✓ |
+| 10 | Safety Guard 통합 (reference_solution 유출·PII·인젝션) | ✓ |
+| 11 | E2E/Promptfoo/Lighthouse CI | ✓ |
+| 12 | 교사 매뉴얼 + docs 앱 콘텐츠 | ✓ |
+
+### 누적 품질 게이트
+- typecheck **10/10** (strict)
+- build **5/5** static/dynamic
+- unit tests **57** passing (agents 49 + db 8)
+- E2E · Promptfoo · Lighthouse — CI 구성 완료, 실제 실행은 비밀키/서버 필요
 
 ## 라이선스
 

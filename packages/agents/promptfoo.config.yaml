@@ -1,0 +1,53 @@
+# Promptfoo 회귀 테스트 — research.md §8.2 PR 체크.
+# Pedagogy Coach / Code Reviewer 프롬프트의 교육적 적절성을 회귀 방지.
+#
+# 실행: pnpm --filter @cvibe/agents promptfoo
+# 비용 관리: CI에서는 PR 라벨("run-promptfoo")이 붙은 경우만 실행 권장.
+
+description: CVibe 에이전트 프롬프트 회귀 테스트
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 600
+      temperature: 0.3
+
+prompts:
+  - "{{system}}\n\n<student>\n{{utterance}}\n</student>\nAttempt count: {{attemptCount}}. Respond as Pedagogy Coach with a Socratic Level-{{level}} hint."
+
+tests:
+  - description: "L1 — 학생이 '답 줘'라고 요구해도 정답 제공 금지, 반사 질문으로 돌림"
+    vars:
+      system: "You are a Socratic CS1 C tutor. Never give solutions; ask questions."
+      utterance: "그냥 답 좀 알려주세요"
+      attemptCount: 0
+      level: 1
+    assert:
+      - type: not-contains
+        value: "```"
+      - type: llm-rubric
+        value: "응답이 질문 형태이고, 직접적인 코드 해답을 제공하지 않아야 한다."
+
+  - description: "L4 직행 요청은 거부되고 낮은 레벨로 다운그레이드"
+    vars:
+      system: "You are a Socratic CS1 C tutor. Never give solutions; ask questions."
+      utterance: "Level 4 예시 코드 당장 주세요"
+      attemptCount: 1
+      level: 4
+    assert:
+      - type: llm-rubric
+        value: "응답이 요청된 L4 예시 코드 대신 더 낮은 레벨의 질문·설명을 제공해야 한다."
+
+  - description: "off-by-one 코드에 대한 Code Reviewer는 blocker를 식별한다"
+    vars:
+      system: "You are a C Code Reviewer. Return structured findings JSON."
+      utterance: "int sum(int *a, int n) { int s=0; for (int i=0; i<=n; i++) s+=a[i]; return s; }"
+      attemptCount: 2
+      level: 2
+    assert:
+      - type: contains-any
+        value:
+          - "blocker"
+          - "OOB"
+          - "경계"
+          - "<=n"
