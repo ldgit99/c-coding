@@ -42,8 +42,10 @@ pnpm-debug.log*
 _workspace/
 _workspace_prev/
 
-# 보호된 참고 솔루션 — 절대 커밋 금지
-supabase/seed-private/
+# 보호된 참고 솔루션
+# 파일럿 단계에서는 repo에 두어 테스트·리뷰 편의를 우선한다.
+# 프로덕션 배포 전: 아래 주석 해제 + 파일들을 Vercel Blob/Supabase Storage로 이전.
+# supabase/seed-private/
 
 # OS
 .DS_Store

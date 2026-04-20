@@ -1,0 +1,15 @@
+#include <stdio.h>
+
+void swap(int *a, int *b) {
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+int main(void) {
+    int x, y;
+    if (scanf("%d %d", &x, &y) != 2) return 1;
+    swap(&x, &y);
+    printf("%d %d\n", x, y);
+    return 0;
+}

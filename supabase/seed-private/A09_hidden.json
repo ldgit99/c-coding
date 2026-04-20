@@ -1,0 +1,7 @@
+[
+  { "id": 1, "input": "1",  "expected": "1\n" },
+  { "id": 2, "input": "3",  "expected": "6\n" },
+  { "id": 3, "input": "5",  "expected": "120\n" },
+  { "id": 4, "input": "7",  "expected": "5040\n" },
+  { "id": 5, "input": "10", "expected": "3628800\n" }
+]
