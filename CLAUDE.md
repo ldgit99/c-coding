@@ -58,3 +58,5 @@
 | 2026-04-20 | 프로젝트 초기화, research.md 작성, harness v1.2.0 설치 | 전체 | - |
 | 2026-04-20 | 하네스 신규 구축 — 에이전트 9개 + 도메인 스킬 6개 + 오케스트레이터 스킬 1개 생성 | `.claude/agents/`, `.claude/skills/` | research.md §5·§6·§7 구현 진입 |
 | 2026-04-20 | Week 1~2 부트스트랩 — 모노리포(apps 3 + packages 5) + Supabase 초기 마이그레이션(RLS 포함) + CI 워크플로우. typecheck·build 10/10 통과 | 루트 설정·`apps/`·`packages/`·`supabase/`·`.github/` | research.md §11 로드맵 착수 |
+| 2026-04-20 | Week 3 WASM 파이프라인 + Monaco — Judge0 백엔드, clang-wasm Worker 스캐폴드, Emscripten Dockerfile, `/api/run` + CEditor | `packages/wasm-runtime/`, `apps/student/` | research.md §7.3 C 실행 경로 |
+| 2026-04-20 | Week 4~5 Pedagogy Coach MVP — Supervisor 키워드 분류, 4단계 게이팅, Anthropic SDK + prompt caching, AIPanel (API key 미설정 시 mock 응답). 15 단위 테스트 통과 | `packages/agents/src/runtime/`, `apps/student/app/api/chat/` | research.md §11 Week 4~5 마일스톤 |

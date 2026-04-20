@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./prompts": "./src/prompts/index.ts",
-    "./state": "./src/state.ts"
+    "./state": "./src/state.ts",
+    "./runtime": "./src/runtime/index.ts"
   },
   "scripts": {
     "lint": "eslint src/",

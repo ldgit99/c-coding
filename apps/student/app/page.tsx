@@ -1,12 +1,19 @@
+"use client";
+
+import { useState } from "react";
+
+import { AIPanel } from "@/components/AIPanel";
 import { CEditor } from "@/components/CEditor";
 
 /**
  * 학생 앱 엔트리 — research.md §3.1 3-패널 레이아웃.
- * - 좌: 문제 설명 (Week 8 Problem Architect 통합 후 실제 과제)
- * - 중: Monaco 에디터 + 실행 패널 (Judge0 경로, Week 3 후반 clang.wasm으로 전환)
- * - 우: AI 협력 패널 (Week 4~5 Pedagogy Coach 통합)
+ * Week 4~5: AI 패널에 실제 Pedagogy Coach 연결 (Socratic 4단계 + 게이팅).
  */
 export default function StudentHome() {
+  // 데모용 정적 studentId — Week 10에 Supabase Auth로 교체
+  const studentId = "demo-student-001";
+  const [editorCode, setEditorCode] = useState("");
+
   return (
     <main className="flex h-screen flex-col">
       <header className="border-b bg-slate-50 px-4 py-2 text-sm">
@@ -28,20 +35,9 @@ export default function StudentHome() {
           </p>
         </aside>
 
-        <CEditor />
+        <CEditor onCodeChange={setEditorCode} />
 
-        <aside aria-label="ai-panel" className="overflow-auto p-4">
-          <div className="mb-3 flex gap-2 text-xs">
-            <button className="rounded border px-2 py-1">대화</button>
-            <button className="rounded border px-2 py-1">힌트</button>
-            <button className="rounded border px-2 py-1">리플렉션</button>
-            <button className="rounded border px-2 py-1">코드리뷰</button>
-          </div>
-          <p className="text-sm text-slate-600">
-            AI 협력 패널입니다. 코드를 한 번이라도 작성하거나 실행해야 대화가 시작돼요 —
-            <em>Navigator, not Driver</em> 원칙이에요.
-          </p>
-        </aside>
+        <AIPanel editorCode={editorCode} studentId={studentId} />
       </div>
     </main>
   );
