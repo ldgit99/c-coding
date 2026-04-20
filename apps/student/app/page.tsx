@@ -5,26 +5,37 @@ import { useState } from "react";
 import { AIPanel } from "@/components/AIPanel";
 import { AssignmentPanel, type AssignmentPublic } from "@/components/AssignmentPanel";
 import { CEditor } from "@/components/CEditor";
+import { InterventionBanner } from "@/components/InterventionBanner";
+import { ModeSwitch, type Mode } from "@/components/ModeSwitch";
 import { SubmitDialog } from "@/components/SubmitDialog";
 
 /**
  * 학생 앱 엔트리 — research.md §3.1 3-패널.
- * Week 8: 실제 과제 카탈로그(10개) 좌측 렌더 + starter_code 주입.
+ * 운영 이터레이션 2: 모드 스위치(§3.2) + 자기설명 강제(§3.1).
  */
 export default function StudentHome() {
   const studentId = "demo-student-001";
   const [assignment, setAssignment] = useState<AssignmentPublic | null>(null);
   const [editorCode, setEditorCode] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
+  const [mode, setMode] = useState<Mode>("pair");
+  const [modeLocked, setModeLocked] = useState(false);
 
   return (
     <main className="flex h-screen flex-col">
+      <InterventionBanner
+        studentId={studentId}
+        onModeChange={(next) => {
+          setMode(next);
+          setModeLocked(true);
+        }}
+      />
       <header className="border-b bg-slate-50 px-4 py-2 text-sm">
         <div className="flex items-center justify-between">
           <span className="font-semibold">CVibe — C 짝프로그래밍</span>
           <div className="flex items-center gap-3 text-xs text-slate-600">
+            <ModeSwitch mode={mode} onChange={setMode} locked={modeLocked} />
             <span>KC 숙련도: —</span>
-            <span>AI 개입: pair</span>
             <span>경과: 00:00</span>
             <button
               onClick={() => setShowSubmit(true)}
@@ -52,7 +63,7 @@ export default function StudentHome() {
           onCodeChange={setEditorCode}
         />
 
-        <AIPanel editorCode={editorCode} studentId={studentId} />
+        <AIPanel editorCode={editorCode} studentId={studentId} mode={mode} />
       </div>
 
       {showSubmit && (

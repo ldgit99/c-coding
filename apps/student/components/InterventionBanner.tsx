@@ -3,6 +3,8 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 
+import type { Mode } from "./ModeSwitch";
+
 interface Intervention {
   id: string;
   studentId: string;
@@ -12,11 +14,17 @@ interface Intervention {
   applied: boolean;
 }
 
+interface Props {
+  studentId: string;
+  /** mode_change 개입 수신 시 호출되는 콜백. 학생 앱이 모드를 전환+잠금. */
+  onModeChange?: (next: Mode) => void;
+}
+
 /**
  * 교사 개입 쪽지 수신 배너 — 5초 폴링.
- * Realtime SSE로 교체는 Week 10+ (Supabase Realtime 통합).
+ * mode_change는 학생 확인 없이 즉시 반영(교사 강제 권한).
  */
-export function InterventionBanner({ studentId }: { studentId: string }) {
+export function InterventionBanner({ studentId, onModeChange }: Props) {
   const [pending, setPending] = useState<Intervention[]>([]);
 
   useEffect(() => {
@@ -26,7 +34,21 @@ export function InterventionBanner({ studentId }: { studentId: string }) {
         const res = await fetch(`/api/interventions?studentId=${encodeURIComponent(studentId)}&pending=1`);
         if (!res.ok) return;
         const data = (await res.json()) as { interventions: Intervention[] };
-        if (!cancelled) setPending(data.interventions);
+        if (cancelled) return;
+
+        // mode_change는 확인 없이 즉시 반영
+        const modeChanges = data.interventions.filter((i) => i.type === "mode_change");
+        for (const mc of modeChanges) {
+          const next = (mc.payload["mode"] as Mode | undefined) ?? "pair";
+          onModeChange?.(next);
+          void fetch("/api/interventions", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: mc.id }),
+          });
+        }
+        // 나머지는 배너로 남긴다 (학생 확인 대기)
+        setPending(data.interventions.filter((i) => i.type !== "mode_change"));
       } catch {
         // ignore transient network errors
       }

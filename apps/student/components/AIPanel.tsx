@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 
+import type { Mode } from "./ModeSwitch";
+
 interface Finding {
   id: string;
   severity: "blocker" | "major" | "minor" | "style";
@@ -45,18 +47,21 @@ type Tab = "chat" | "hint" | "reflection" | "review";
 interface AIPanelProps {
   editorCode: string;
   studentId: string;
+  mode: Mode;
 }
 
 type HistoryEntry =
-  | { kind: "text"; role: "student" | "ai"; text: string; meta?: string }
+  | { kind: "text"; role: "student" | "ai"; text: string; meta?: string; level?: 1 | 2 | 3 | 4; requiresSelfExplanation?: boolean; accepted?: boolean }
   | { kind: "review"; review: ReviewPayload; meta?: string };
 
-export function AIPanel({ editorCode, studentId }: AIPanelProps) {
+export function AIPanel({ editorCode, studentId, mode }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [supportLevel, setSupportLevel] = useState<0 | 1 | 2 | 3>(0);
+  const [selfExplainTarget, setSelfExplainTarget] = useState<number | null>(null);
+  const [selfExplainText, setSelfExplainText] = useState("");
 
   const callChat = useCallback(
     async (utterance: string, opts: { requestedLevel?: 1 | 2 | 3 | 4 } = {}) => {
@@ -72,7 +77,7 @@ export function AIPanel({ editorCode, studentId }: AIPanelProps) {
             sessionState: {
               studentId,
               supportLevel,
-              mode: "pair",
+              mode,
               currentKC: [],
               learningSignals: {
                 attemptCount: editorCode.length > 20 ? 1 : 0,
@@ -97,7 +102,7 @@ export function AIPanel({ editorCode, studentId }: AIPanelProps) {
         setInput("");
       }
     },
-    [editorCode, history, studentId, supportLevel],
+    [editorCode, history, mode, studentId, supportLevel],
   );
 
   const applyChatResponse = useCallback((data: ChatResponse) => {
@@ -109,7 +114,18 @@ export function AIPanel({ editorCode, studentId }: AIPanelProps) {
         data.gating && data.gating.failedConditions.length > 0
           ? `\n(게이팅: ${data.gating.failedConditions[0]})`
           : "";
-      setHistory((h) => [...h, { kind: "text", role: "ai", text: data.hint!.message + gatingNote, meta }]);
+      setHistory((h) => [
+        ...h,
+        {
+          kind: "text",
+          role: "ai",
+          text: data.hint!.message + gatingNote,
+          meta,
+          level: data.hint!.hintLevel,
+          requiresSelfExplanation: data.hint!.requiresSelfExplanation,
+          accepted: false,
+        },
+      ]);
       setSupportLevel((prev) => Math.max(prev, data.hint!.hintLevel) as 0 | 1 | 2 | 3);
     } else if (data.review) {
       const meta = data.mocked ? `[mock] ${data.review.analysisMode}` : `${data.usedModel} · ${data.review.analysisMode}`;
@@ -126,6 +142,26 @@ export function AIPanel({ editorCode, studentId }: AIPanelProps) {
     }
     await callChat("이 코드 검토해줘");
   }, [callChat, editorCode]);
+
+  const submitSelfExplanation = useCallback(async () => {
+    if (selfExplainTarget === null) return;
+    const text = selfExplainText.trim();
+    if (text.length < 10) return;
+    await fetch("/api/self-explanation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, text, level: 4 }),
+    });
+    setHistory((h) =>
+      h.map((entry, i) =>
+        i === selfExplainTarget && entry.kind === "text"
+          ? { ...entry, accepted: true }
+          : entry,
+      ),
+    );
+    setSelfExplainTarget(null);
+    setSelfExplainText("");
+  }, [selfExplainTarget, selfExplainText, studentId]);
 
   return (
     <aside aria-label="ai-panel" className="flex h-full flex-col overflow-hidden">
@@ -154,6 +190,20 @@ export function AIPanel({ editorCode, studentId }: AIPanelProps) {
                 {msg.role === "student" ? "나" : "Pedagogy Coach"} {msg.meta && <span className="font-normal text-slate-400">· {msg.meta}</span>}
               </div>
               <div className="whitespace-pre-wrap">{msg.text}</div>
+              {msg.role === "ai" && msg.requiresSelfExplanation && !msg.accepted && (
+                <button
+                  onClick={() => {
+                    setSelfExplainTarget(i);
+                    setSelfExplainText("");
+                  }}
+                  className="mt-2 rounded border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-800"
+                >
+                  💭 이 예시를 내 코드에 반영하려면 → 자기 설명 필요
+                </button>
+              )}
+              {msg.role === "ai" && msg.accepted && (
+                <div className="mt-1 text-[11px] text-emerald-700">✓ 자기 설명 제출됨 · 수락됨</div>
+              )}
             </div>
           ) : (
             <ReviewCard key={i} review={msg.review} meta={msg.meta} />
@@ -216,6 +266,46 @@ export function AIPanel({ editorCode, studentId }: AIPanelProps) {
           </button>
         </div>
       </div>
+
+      {selfExplainTarget !== null && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded bg-white p-4 shadow-lg">
+            <h3 className="text-sm font-semibold">자기 설명 — 왜 이 수정이 필요한가?</h3>
+            <p className="mt-1 text-xs text-slate-600">
+              research.md §3.1 — AI 제안을 수락하기 전 1~2문장으로 이유를 적어주세요. 메타인지 훈련의 핵심이에요.
+            </p>
+            <textarea
+              autoFocus
+              value={selfExplainText}
+              onChange={(e) => setSelfExplainText(e.target.value)}
+              className="mt-2 w-full rounded border p-2 text-sm"
+              rows={4}
+              placeholder="예: 현재 내 코드는 ‥인데 AI의 제안이 ‥를 고쳐서 ‥가 맞아진다고 이해했다"
+            />
+            <div className="mt-1 text-[11px] text-slate-500">
+              {selfExplainText.trim().length}자 (최소 10자)
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setSelfExplainTarget(null);
+                  setSelfExplainText("");
+                }}
+                className="rounded border px-3 py-1 text-xs"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => void submitSelfExplanation()}
+                disabled={selfExplainText.trim().length < 10}
+                className="rounded bg-slate-900 px-3 py-1 text-xs text-white disabled:opacity-50"
+              >
+                제출하고 수락
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
