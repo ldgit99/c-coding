@@ -9,6 +9,7 @@ import {
 } from "@cvibe/agents";
 import { getAssignmentByCode } from "@cvibe/db";
 import { lintC } from "@cvibe/wasm-runtime";
+import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
 /**
  * POST /api/submit — 학생 제출물을 채점 파이프라인으로 처리.
@@ -79,6 +80,31 @@ export async function POST(request: Request) {
     styleWarnings: lintResult.warnings.filter((w) => w.severity === "warning").length,
     dependencyLog: body.dependencyLog,
   });
+
+  // xAPI: submission 결과 + reflection 제출 이벤트
+  const sid = "demo-student-001";
+  recordEvent(
+    buildStatement({
+      actor: { type: "student", id: sid },
+      verb: grade.assessment.passed ? Verbs.submissionPassed : Verbs.submissionFailed,
+      object: { type: "assignment", id: effectiveAssignment.id },
+      result: {
+        finalScore: grade.assessment.finalScore,
+        rubricScores: grade.assessment.rubricScores,
+      },
+    }),
+  );
+  recordEvent(
+    buildStatement({
+      actor: { type: "student", id: sid },
+      verb: Verbs.reflectionSubmitted,
+      object: { type: "assignment", id: effectiveAssignment.id },
+      result: {
+        completedPrompts: Object.values(body.reflection).filter((v) => (v ?? "").trim().length > 0)
+          .length,
+      },
+    }),
+  );
 
   // teacherOnlyNotes와 dependencyFactor는 클라이언트 응답에서 제거 (학생 UI 노출 금지)
   const { teacherOnlyNotes: _omit1, dependencyFactor: _omit2, ...studentFacing } = grade.assessment;

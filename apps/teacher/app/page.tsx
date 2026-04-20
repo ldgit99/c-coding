@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 
+import { InterventionActions } from "@/components/InterventionActions";
+import { LiveEvents } from "@/components/LiveEvents";
+
 interface InterventionItem {
   studentId: string;
   displayName: string;
@@ -136,18 +139,24 @@ export default function TeacherHome() {
                     <li key={i}>{r}</li>
                   ))}
                 </ul>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 text-xs text-slate-500">권고 액션:</div>
+                <ul className="text-xs text-slate-600">
                   {item.suggestedActions.map((a, i) => (
-                    <button key={i} className="rounded border bg-white px-2 py-0.5 text-xs">
-                      {a.label}
-                    </button>
+                    <li key={i}>· {a.label}</li>
                   ))}
+                </ul>
+                <div className="mt-2">
+                  <InterventionActions studentId={item.studentId} displayName={item.displayName} />
                 </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <div className="mb-6">
+        <LiveEvents />
+      </div>
 
       <section id="misconceptions" className="rounded border p-4">
         <h2 className="mb-2 font-semibold">Common Misconceptions</h2>

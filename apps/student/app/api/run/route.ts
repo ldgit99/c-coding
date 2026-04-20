@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { Judge0Backend, type RunCInput, type RunCResult } from "@cvibe/wasm-runtime";
+import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
 /**
  * POST /api/run — 학생 C 코드를 실행한다.
@@ -39,5 +40,28 @@ export async function POST(request: Request) {
     apiKey: process.env.JUDGE0_API_KEY,
   });
   const result = await backend.runC(input);
+
+  // xAPI — compile/runtime error 발생 시 로깅
+  const sid = "demo-student-001"; // Week 10 auth 붙으면 실제 학생 ID 대체
+  if (result.errorType === "compile") {
+    recordEvent(
+      buildStatement({
+        actor: { type: "student", id: sid },
+        verb: Verbs.compileError,
+        object: { type: "code", submissionId: "adhoc" },
+        result: { stderr: result.stderr.slice(0, 200) },
+      }),
+    );
+  } else if (result.errorType === "runtime" || result.errorType === "timeout") {
+    recordEvent(
+      buildStatement({
+        actor: { type: "student", id: sid },
+        verb: Verbs.runtimeError,
+        object: { type: "code", submissionId: "adhoc" },
+        result: { exitCode: result.exitCode, errorType: result.errorType },
+      }),
+    );
+  }
+
   return NextResponse.json(result);
 }

@@ -12,6 +12,7 @@ import {
   type SessionState,
 } from "@cvibe/agents";
 import { lintC } from "@cvibe/wasm-runtime";
+import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
 /**
  * POST /api/chat — 학생 발화를 받아 Supervisor 분류 + 해당 에이전트 응답.
@@ -101,6 +102,47 @@ export async function POST(request: Request) {
       outbound.verdict === "block"
         ? { ...hint, message: "잠시 후 다시 시도해줘 — 응답이 안전 검사에서 막혔어." }
         : { ...hint, message: outbound.sanitizedPayload };
+
+    // xAPI: requested-hint + received-hint
+    recordEvent(
+      buildStatement({
+        actor: { type: "student", id: sessionState.studentId },
+        verb: Verbs.requestedHint,
+        object:
+          (finalHint.relatedKC?.[0])
+            ? { type: "kc", slug: finalHint.relatedKC[0] }
+            : { type: "assignment", id: sessionState.assignmentId ?? "ungoverned" },
+        result: {
+          hintLevel: finalHint.hintLevel,
+          attemptNo: sessionState.learningSignals?.attemptCount ?? 0,
+          mode: sessionState.mode,
+        },
+        context: { assignmentId: sessionState.assignmentId, sessionId: sessionState.studentId },
+      }),
+    );
+    if (outbound.verdict === "block") {
+      recordEvent(
+        buildStatement({
+          actor: { type: "agent", id: "safety-guard" },
+          verb: Verbs.blockedBySafety,
+          object: { type: "assignment", id: sessionState.assignmentId ?? "ungoverned" },
+          result: { reason: outbound.reasons.join(";") },
+        }),
+      );
+    } else {
+      recordEvent(
+        buildStatement({
+          actor: { type: "student", id: sessionState.studentId },
+          verb: Verbs.receivedHint,
+          object:
+            (finalHint.relatedKC?.[0])
+              ? { type: "kc", slug: finalHint.relatedKC[0] }
+              : { type: "assignment", id: sessionState.assignmentId ?? "ungoverned" },
+          result: { hintLevel: finalHint.hintLevel, hintType: finalHint.hintType },
+        }),
+      );
+    }
+
     return NextResponse.json({
       intent: route.intent satisfies Intent,
       route: route.route,
