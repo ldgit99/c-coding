@@ -3,11 +3,14 @@ import { NextResponse } from "next/server";
 import {
   classify,
   requestHint,
+  reviewCode,
   SessionStateSchema,
   type Hint,
   type Intent,
+  type ReviewOutput,
   type SessionState,
 } from "@cvibe/agents";
+import { lintC } from "@cvibe/wasm-runtime";
 
 /**
  * POST /api/chat — 학생 발화를 받아 Supervisor 분류 + 해당 에이전트 응답.
@@ -22,6 +25,7 @@ interface ChatRequestBody {
   utterance: string;
   sessionState: Partial<SessionState> & { studentId: string };
   editorHasCode: boolean;
+  editorCode?: string;
   requestedLevel?: 1 | 2 | 3 | 4;
 }
 
@@ -87,10 +91,32 @@ export async function POST(request: Request) {
     });
   }
 
+  if (route.route === "code-reviewer") {
+    if (!body.editorCode || body.editorCode.trim().length === 0) {
+      return NextResponse.json(
+        { intent: route.intent, route: route.route, reason: "에디터에 코드가 없다" },
+        { status: 400 },
+      );
+    }
+    const lintResult = await lintC(body.editorCode);
+    const { review, usedModel, mocked } = await reviewCode({
+      code: body.editorCode,
+      studentLevel: "novice",
+      lintResult,
+    });
+    return NextResponse.json({
+      intent: route.intent satisfies Intent,
+      route: route.route,
+      reason: route.reason,
+      review: review satisfies ReviewOutput,
+      usedModel,
+      mocked,
+    });
+  }
+
   // 미구현 라우트 — 해당 에이전트 착수 주차를 반환
   const weekByRoute: Record<string, string> = {
-    "code-reviewer": "Week 6",
-    "runtime-debugger": "Week 6",
+    "runtime-debugger": "Week 6 (별도 /api/debug 엔드포인트 사용)",
     assessment: "Week 7",
     "problem-architect": "Week 8",
     "teacher-copilot": "Week 9",

@@ -60,3 +60,4 @@
 | 2026-04-20 | Week 1~2 부트스트랩 — 모노리포(apps 3 + packages 5) + Supabase 초기 마이그레이션(RLS 포함) + CI 워크플로우. typecheck·build 10/10 통과 | 루트 설정·`apps/`·`packages/`·`supabase/`·`.github/` | research.md §11 로드맵 착수 |
 | 2026-04-20 | Week 3 WASM 파이프라인 + Monaco — Judge0 백엔드, clang-wasm Worker 스캐폴드, Emscripten Dockerfile, `/api/run` + CEditor | `packages/wasm-runtime/`, `apps/student/` | research.md §7.3 C 실행 경로 |
 | 2026-04-20 | Week 4~5 Pedagogy Coach MVP — Supervisor 키워드 분류, 4단계 게이팅, Anthropic SDK + prompt caching, AIPanel (API key 미설정 시 mock 응답). 15 단위 테스트 통과 | `packages/agents/src/runtime/`, `apps/student/app/api/chat/` | research.md §11 Week 4~5 마일스톤 |
+| 2026-04-20 | Week 6 Code Reviewer + Runtime Debugger — c-code-review 3축 분석, findings JSON UI, /api/review · /api/debug, CEditor 에러 시 "왜 이 에러?" 분석 버튼. 20 단위 테스트 통과 | `packages/agents/src/runtime/{code-reviewer,runtime-debugger}.ts`, `apps/student/{app/api,components}` | research.md §11 Week 6 마일스톤 |
