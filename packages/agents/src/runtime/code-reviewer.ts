@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { CODE_REVIEWER_SYSTEM_PROMPT } from "../prompts";
 import { cacheSystemPrompt, createAnthropicClient, MODELS } from "./client";
+import { flushTrace, recordGeneration, startTrace } from "./observability";
 
 /**
  * Code Reviewer 런타임 — c-code-review 스킬 규약 구현.
@@ -79,6 +80,13 @@ export async function reviewCode(input: ReviewInput): Promise<RequestReviewOutpu
 
   const userMessage = formatReviewUserMessage(input, analysisMode);
 
+  const trace = startTrace({
+    name: "code-reviewer",
+    metadata: { assignmentId: input.assignment?.id, analysisMode },
+    tags: ["code-reviewer", analysisMode],
+  });
+  const startedAt = new Date();
+
   const response = await client.messages.create({
     model,
     max_tokens: 1200,
@@ -88,6 +96,22 @@ export async function reviewCode(input: ReviewInput): Promise<RequestReviewOutpu
 
   const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
   const review = parseReviewResponse(text, analysisMode);
+
+  recordGeneration(trace, {
+    name: "code-reviewer.messages.create",
+    model,
+    input: userMessage,
+    output: text,
+    startTime: startedAt,
+    endTime: new Date(),
+    usage: {
+      promptTokens: response.usage?.input_tokens,
+      completionTokens: response.usage?.output_tokens,
+    },
+    metadata: { findingsCount: review.findings.length, topIssues: review.topIssues },
+  });
+  await flushTrace(trace);
+
   return { review, usedModel: model, mocked: false };
 }
 

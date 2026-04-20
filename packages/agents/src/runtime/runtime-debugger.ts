@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { RUNTIME_DEBUGGER_SYSTEM_PROMPT } from "../prompts";
 import { cacheSystemPrompt, createAnthropicClient, MODELS } from "./client";
+import { flushTrace, recordGeneration, startTrace } from "./observability";
 
 /**
  * Runtime Debugger 런타임 — 이미 실행된 결과를 CS1 학생의 언어로 해석.
@@ -67,14 +68,39 @@ export async function debugRun(input: DebugInput): Promise<RequestDebugOutput> {
   const client = createAnthropicClient(input.anthropicApiKey);
   const model = MODELS.haiku; // research.md §5.2: Runtime Debugger는 Haiku 계층
 
+  const trace = startTrace({
+    name: "runtime-debugger",
+    metadata: { errorType: input.runResult.errorType, exitCode: input.runResult.exitCode },
+    tags: ["runtime-debugger", input.runResult.errorType ?? "unknown"],
+  });
+  const startedAt = new Date();
+  const userMsg = formatDebugUserMessage(input);
+
   const response = await client.messages.create({
     model,
     max_tokens: 800,
     system: cacheSystemPrompt(RUNTIME_DEBUGGER_SYSTEM_PROMPT),
-    messages: [{ role: "user", content: formatDebugUserMessage(input) }],
+    messages: [{ role: "user", content: userMsg }],
   });
   const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
-  return { debug: parseDebugResponse(text, input), usedModel: model, mocked: false };
+  const debug = parseDebugResponse(text, input);
+
+  recordGeneration(trace, {
+    name: "runtime-debugger.messages.create",
+    model,
+    input: userMsg,
+    output: text,
+    startTime: startedAt,
+    endTime: new Date(),
+    usage: {
+      promptTokens: response.usage?.input_tokens,
+      completionTokens: response.usage?.output_tokens,
+    },
+    metadata: { hypothesesCount: debug.hypotheses.length, errorType: debug.errorType },
+  });
+  await flushTrace(trace);
+
+  return { debug, usedModel: model, mocked: false };
 }
 
 function formatDebugUserMessage(input: DebugInput): string {
