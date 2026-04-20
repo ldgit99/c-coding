@@ -16,8 +16,11 @@ interface Intervention {
 
 interface Props {
   studentId: string;
-  /** mode_change 개입 수신 시 호출되는 콜백. 학생 앱이 모드를 전환+잠금. */
-  onModeChange?: (next: Mode) => void;
+  /**
+   * mode_change 개입 수신 시 호출되는 콜백.
+   * payload.unlock=true이면 학생이 다시 모드를 선택할 수 있도록 잠금 해제.
+   */
+  onModeChange?: (next: Mode, unlock: boolean) => void;
 }
 
 /**
@@ -40,7 +43,8 @@ export function InterventionBanner({ studentId, onModeChange }: Props) {
         const modeChanges = data.interventions.filter((i) => i.type === "mode_change");
         for (const mc of modeChanges) {
           const next = (mc.payload["mode"] as Mode | undefined) ?? "pair";
-          onModeChange?.(next);
+          const unlock = mc.payload["unlock"] === true;
+          onModeChange?.(next, unlock);
           void fetch("/api/interventions", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },

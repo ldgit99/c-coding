@@ -25,9 +25,9 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
     <main className="flex h-screen flex-col">
       <InterventionBanner
         studentId={user.id}
-        onModeChange={(next) => {
+        onModeChange={(next, unlock) => {
           setMode(next);
-          setModeLocked(true);
+          setModeLocked(!unlock);
         }}
       />
       <header className="border-b bg-slate-50 px-4 py-2 text-sm">

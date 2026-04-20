@@ -13,6 +13,8 @@ export interface AssignmentPublic {
   starterCode: string;
   visibleTests: Array<{ input: string; expected: string; note?: string }>;
   reflectionPrompts: string[];
+  variantCount: number;
+  variantIndex: number;
 }
 
 interface AssignmentPanelProps {
@@ -68,8 +70,13 @@ export function AssignmentPanel({ selectedCode, onSelect }: AssignmentPanelProps
         {selected && (
           <>
             <h2 className="text-base font-semibold">{selected.title}</h2>
-            <div className="mt-1 text-xs text-slate-500">
-              난이도 {selected.difficulty} · KC {selected.kcTags.join(", ")}
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span>난이도 {selected.difficulty} · KC {selected.kcTags.join(", ")}</span>
+              {selected.variantCount > 1 && (
+                <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-800">
+                  variant v{selected.variantIndex + 1} / {selected.variantCount}
+                </span>
+              )}
             </div>
             <p className="mt-3 whitespace-pre-wrap text-slate-800">{selected.template}</p>
 

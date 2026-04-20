@@ -30,6 +30,11 @@ export interface AssignmentSeed {
   visibleTests: Array<{ input: string; expected: string; note?: string }>;
   hiddenTestsPath: string; // supabase/seed-private/ 하위
   reflectionPrompts: string[];
+  /**
+   * 표절 방지·재응시용 variant 개수. Problem Architect가 파라미터 시드로
+   * 파생한다. 기본 1(단일). research.md §6.1 variants 필드와 매핑.
+   */
+  variantCount?: number;
 }
 
 const DEFAULT_RUBRIC = { correctness: 0.5, style: 0.15, memory_safety: 0.2, reflection: 0.15 };
@@ -120,6 +125,7 @@ int main(void) {
     ],
     hiddenTestsPath: "supabase/seed-private/A03_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
+    variantCount: 6,
   },
   {
     code: "A04_array_max",
@@ -179,6 +185,7 @@ int main(void) {
     ],
     hiddenTestsPath: "supabase/seed-private/A05_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
+    variantCount: 4,
   },
   {
     code: "A06_array_reverse",
@@ -235,6 +242,7 @@ int main(void) {
     ],
     hiddenTestsPath: "supabase/seed-private/A07_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
+    variantCount: 5,
   },
   {
     code: "A08_factorial_iter",

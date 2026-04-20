@@ -77,6 +77,14 @@ export function InterventionActions({ studentId, displayName }: Props) {
       >
         📝 쪽지 전송
       </button>
+      <button
+        onClick={() => void send("mode_change", { mode: "pair", unlock: true })}
+        disabled={busy}
+        className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 disabled:opacity-50"
+        title="학생이 모드를 다시 선택할 수 있게 풀어줌"
+      >
+        🔓 잠금 해제
+      </button>
       {status && <span className="text-xs text-slate-500">{status}</span>}
     </div>
   );
