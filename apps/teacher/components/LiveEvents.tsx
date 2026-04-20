@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Statement {
   actor: { account: { name: string } };
@@ -10,38 +10,66 @@ interface Statement {
   timestamp: string;
 }
 
+interface SnapshotPayload {
+  events: Statement[];
+}
+
+const STUDENT_APP_URL = process.env.NEXT_PUBLIC_STUDENT_APP_URL ?? "http://localhost:3000";
+
+/**
+ * 학생 앱 /api/events/stream에 SSE로 접속.
+ * 초기 snapshot → 구독된 event 실시간 수신.
+ * EventSource는 cross-origin이어도 CORS 응답 헤더만 맞으면 동작.
+ */
 export function LiveEvents() {
   const [events, setEvents] = useState<Statement[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<"connecting" | "open" | "error">("connecting");
+  const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
+    const url = `${STUDENT_APP_URL}/api/events/stream`;
+    const es = new EventSource(url, { withCredentials: false });
+    esRef.current = es;
+
+    es.addEventListener("open", () => setStatus("open"));
+
+    es.addEventListener("snapshot", (e) => {
       try {
-        const res = await fetch("/api/events?limit=30");
-        const data = (await res.json()) as { events: Statement[]; error?: string };
-        if (cancelled) return;
-        if (data.error) setError(data.error);
-        else {
-          setError(null);
-          setEvents(data.events);
-        }
-      } catch (err) {
-        if (!cancelled) setError(String(err));
+        const data = JSON.parse((e as MessageEvent).data) as SnapshotPayload;
+        setEvents(data.events.slice(0, 30));
+      } catch {
+        // ignore
       }
-    };
-    void load();
-    const t = setInterval(load, 5000);
+    });
+
+    es.addEventListener("event", (e) => {
+      try {
+        const stmt = JSON.parse((e as MessageEvent).data) as Statement;
+        setEvents((prev) => [stmt, ...prev].slice(0, 30));
+      } catch {
+        // ignore
+      }
+    });
+
+    es.addEventListener("error", () => {
+      setStatus("error");
+      // EventSource는 자동 재연결 — 로그만 남기고 수동 close는 하지 않음
+    });
+
     return () => {
-      cancelled = true;
-      clearInterval(t);
+      es.close();
+      esRef.current = null;
     };
   }, []);
 
   return (
     <section className="rounded border p-4">
-      <h2 className="mb-2 font-semibold">Live Events (xAPI, 5초 폴링)</h2>
-      {error && <div className="text-xs text-rose-600">학생 앱 연결 실패: {error}</div>}
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="font-semibold">Live Events (SSE 실시간 스트림)</h2>
+        <span className="text-[11px] text-slate-500">
+          {status === "open" ? "🟢 연결됨" : status === "connecting" ? "⏳ 연결 중…" : "🔴 연결 오류(자동 재시도)"}
+        </span>
+      </div>
       {events.length === 0 ? (
         <p className="text-sm text-slate-500">아직 기록된 이벤트가 없어요.</p>
       ) : (
