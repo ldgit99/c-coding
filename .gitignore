@@ -1,0 +1,60 @@
+# Claude Code local overrides
+.claude/settings.local.json
+.claude/*.local.json
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Turborepo / Vercel
+.turbo/
+.vercel/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+promptfoo-results/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Harness workspace — 세션 상태·중간 산출물
+_workspace/
+_workspace_prev/
+
+# 보호된 참고 솔루션 — 절대 커밋 금지
+supabase/seed-private/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+
+# Secrets
+*.pem
+*.key

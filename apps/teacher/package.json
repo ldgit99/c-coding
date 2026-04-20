@@ -1,0 +1,36 @@
+{
+  "name": "@cvibe/teacher",
+  "version": "0.1.0",
+  "private": true,
+  "description": "교사용 Next.js 앱 — Classroom/Student/Assignment 3단 뷰 대시보드",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@cvibe/agents": "workspace:*",
+    "@cvibe/db": "workspace:*",
+    "@cvibe/shared-ui": "workspace:*",
+    "@cvibe/xapi": "workspace:*",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.3",
+    "ai": "^5.0.60",
+    "next": "~15.5.15",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint-config-next": "~15.5.15",
+    "typescript": "~5.9.3",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "cvibe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CVibe — Collaborative Vibe Coding Agent for C. CS1 학생-AI 짝프로그래밍 플랫폼.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "promptfoo": "turbo run promptfoo"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.6",
+    "typescript": "~5.9.3",
+    "@types/node": "^22.10.0",
+    "prettier": "^3.8.3",
+    "eslint": "^9.17.0"
+  }
+}

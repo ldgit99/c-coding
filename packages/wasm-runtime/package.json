@@ -1,0 +1,27 @@
+{
+  "name": "@cvibe/wasm-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "브라우저 내 C→WASM 컴파일·실행 래퍼 (Emscripten/clang.wasm). Web Worker 격리, 2초 타임아웃·64MB 상한.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "twr-wasm": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "~5.9.3",
+    "vitest": "^2.1.9"
+  }
+}

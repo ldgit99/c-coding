@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [],
+  "references": [
+    { "path": "./apps/student" },
+    { "path": "./apps/teacher" },
+    { "path": "./apps/docs" },
+    { "path": "./packages/agents" },
+    { "path": "./packages/db" },
+    { "path": "./packages/shared-ui" },
+    { "path": "./packages/wasm-runtime" },
+    { "path": "./packages/xapi" }
+  ]
+}
