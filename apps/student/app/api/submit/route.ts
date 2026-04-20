@@ -7,6 +7,7 @@ import {
   type HiddenTestResult,
   type ReflectionInput,
 } from "@cvibe/agents";
+import { getAssignmentByCode } from "@cvibe/db";
 import { lintC } from "@cvibe/wasm-runtime";
 
 /**
@@ -46,10 +47,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "reflection은 필수 객체다" }, { status: 400 });
   }
 
+  // 과제 카탈로그에서 kcTags·rubric 조회 (클라이언트 body에 id만 와도 됨)
+  const catalog = body.assignment?.id ? getAssignmentByCode(body.assignment.id) : undefined;
+  const effectiveAssignment = {
+    id: body.assignment?.id ?? "ungoverned",
+    rubric: body.assignment?.rubric ?? catalog?.rubric,
+    kcTags: body.assignment?.kcTags ?? catalog?.kcTags,
+  };
+
   const lintResult = await lintC(body.code);
   const { review } = await reviewCode({
     code: body.code,
-    assignment: body.assignment,
+    assignment: {
+      id: effectiveAssignment.id,
+      kcTags: effectiveAssignment.kcTags,
+      rubric: effectiveAssignment.rubric,
+    },
     studentLevel: "novice",
     lintResult,
   });
@@ -60,11 +73,7 @@ export async function POST(request: Request) {
       reflection: body.reflection,
       submittedAt: new Date().toISOString(),
     },
-    assignment: {
-      id: body.assignment?.id ?? "ungoverned",
-      rubric: body.assignment?.rubric,
-      kcTags: body.assignment?.kcTags,
-    },
+    assignment: effectiveAssignment,
     hiddenTestResults: body.hiddenTestResults,
     codeReviewerFindings: review.findings,
     styleWarnings: lintResult.warnings.filter((w) => w.severity === "warning").length,

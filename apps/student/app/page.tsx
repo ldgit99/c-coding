@@ -3,15 +3,17 @@
 import { useState } from "react";
 
 import { AIPanel } from "@/components/AIPanel";
+import { AssignmentPanel, type AssignmentPublic } from "@/components/AssignmentPanel";
 import { CEditor } from "@/components/CEditor";
 import { SubmitDialog } from "@/components/SubmitDialog";
 
 /**
- * 학생 앱 엔트리 — research.md §3.1 3-패널 레이아웃.
- * Week 7: "제출" 버튼 + 리플렉션 + 4축 루브릭 채점 카드.
+ * 학생 앱 엔트리 — research.md §3.1 3-패널.
+ * Week 8: 실제 과제 카탈로그(10개) 좌측 렌더 + starter_code 주입.
  */
 export default function StudentHome() {
   const studentId = "demo-student-001";
+  const [assignment, setAssignment] = useState<AssignmentPublic | null>(null);
   const [editorCode, setEditorCode] = useState("");
   const [showSubmit, setShowSubmit] = useState(false);
 
@@ -36,20 +38,29 @@ export default function StudentHome() {
       </header>
 
       <div className="grid flex-1 grid-cols-[320px_1fr_360px] divide-x overflow-hidden">
-        <aside aria-label="problem-panel" className="overflow-auto p-4">
-          <h2 className="mb-2 text-base font-semibold">문제</h2>
-          <p className="text-sm text-slate-600">
-            과제가 아직 할당되지 않았어요. 왼쪽은 placeholder — Week 8에 Problem Architect 산출물로 채워집니다.
-          </p>
-        </aside>
+        <AssignmentPanel
+          selectedCode={assignment?.code ?? null}
+          onSelect={(a) => {
+            setAssignment(a);
+            setEditorCode(a.starterCode);
+          }}
+        />
 
-        <CEditor onCodeChange={setEditorCode} />
+        <CEditor
+          key={assignment?.code ?? "none"}
+          starterCode={assignment?.starterCode}
+          onCodeChange={setEditorCode}
+        />
 
         <AIPanel editorCode={editorCode} studentId={studentId} />
       </div>
 
       {showSubmit && (
-        <SubmitDialog editorCode={editorCode} onClose={() => setShowSubmit(false)} />
+        <SubmitDialog
+          editorCode={editorCode}
+          assignmentCode={assignment?.code ?? null}
+          onClose={() => setShowSubmit(false)}
+        />
       )}
     </main>
   );

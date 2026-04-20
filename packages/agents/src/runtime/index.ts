@@ -3,6 +3,7 @@ export * from "./client";
 export * from "./code-reviewer";
 export * from "./gating";
 export * from "./pedagogy-coach";
+export * from "./problem-architect";
 export * from "./runtime-debugger";
 export * from "./student-modeler";
 export * from "./supervisor";

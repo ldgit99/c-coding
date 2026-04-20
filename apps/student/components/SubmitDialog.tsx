@@ -33,9 +33,11 @@ type ReflectionState = Record<(typeof REFLECTION_PROMPTS)[number]["key"], string
 
 export function SubmitDialog({
   editorCode,
+  assignmentCode,
   onClose,
 }: {
   editorCode: string;
+  assignmentCode: string | null;
   onClose: () => void;
 }) {
   const [reflection, setReflection] = useState<ReflectionState>({
@@ -56,7 +58,11 @@ export function SubmitDialog({
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: editorCode, reflection }),
+        body: JSON.stringify({
+          code: editorCode,
+          reflection,
+          assignment: assignmentCode ? { id: assignmentCode } : undefined,
+        }),
       });
       if (!res.ok) {
         const msg = await res.text();
@@ -69,7 +75,7 @@ export function SubmitDialog({
     } finally {
       setSubmitting(false);
     }
-  }, [editorCode, reflection]);
+  }, [assignmentCode, editorCode, reflection]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
