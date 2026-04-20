@@ -130,6 +130,12 @@ Claude Code 세션에서 "이 학생한테 힌트 줘봐", "제출 채점", "과
 - 교사는 **담당 cohort 학생만** (select 한정)
 - 쓰기는 service_role (서버 측 에이전트 경로)에서만 — 학생 브라우저는 anon + JWT
 
+## 배포
+
+실제 인프라에 붙이는 순서·체크리스트는 [DEPLOY.md](DEPLOY.md) 참조.
+로컬 검증(Docker + Supabase CLI) → 남은 블로커 연결 → Vercel/Supabase 배포
+→ 파일럿 수업 + 회고의 4단계, 총 2~3일.
+
 ## 로드맵
 
 [research.md §11 12주 스프린트](research.md#11-구현-로드맵-12주-스프린트) 참조.
@@ -150,8 +156,12 @@ Claude Code 세션에서 "이 학생한테 힌트 줘봐", "제출 채점", "과
 ### 누적 품질 게이트
 - typecheck **10/10** (strict)
 - build **5/5** static/dynamic
-- unit tests **57** passing (agents 49 + db 8)
+- unit tests **106** passing (agents 58 + db 30 + xapi 6 + shared-ui 7 + wasm-runtime 5)
 - E2E · Promptfoo · Lighthouse — CI 구성 완료, 실제 실행은 비밀키/서버 필요
+
+### 운영 이터레이션
+12주 로드맵 완주 이후 파일럿 준비를 위한 추가 11회 이터레이션 진행됨.
+세부는 [CLAUDE.md 변경 이력](CLAUDE.md) 참조.
 
 ## 라이선스
 
