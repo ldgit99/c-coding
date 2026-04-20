@@ -11,8 +11,12 @@ import {
   type ReviewOutput,
   type SessionState,
 } from "@cvibe/agents";
+import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
+
+// /api/chat 기본 제한: 학생당 분당 20건. Anthropic 비용 폭발 방지.
+const CHAT_RATE = { name: "chat", capacity: 20, refillPerSec: 20 / 60 };
 
 /**
  * POST /api/chat — 학생 발화를 받아 Supervisor 분류 + 해당 에이전트 응답.
@@ -41,6 +45,26 @@ export async function POST(request: Request) {
 
   if (typeof body.utterance !== "string" || body.utterance.trim().length === 0) {
     return NextResponse.json({ error: "utterance는 필수다" }, { status: 400 });
+  }
+
+  // Rate limit — 학생 ID 기준 (IP fallback)
+  const rateKey =
+    body.sessionState.studentId ??
+    request.headers.get("x-forwarded-for") ??
+    request.headers.get("x-real-ip") ??
+    "anonymous";
+  const rl = checkRateLimit(CHAT_RATE, rateKey);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      {
+        error: "요청이 너무 잦아요. 잠시 후 다시 시도해주세요.",
+        retryAfterMs: rl.retryAfterMs,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": Math.ceil(rl.retryAfterMs / 1000).toString() },
+      },
+    );
   }
 
   // SessionState 기본값 병합 후 검증
