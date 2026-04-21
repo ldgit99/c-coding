@@ -7,6 +7,18 @@
 - 본 repo는 env 주입만으로 mock→실응답 전환되도록 추상화돼 있다.
 - 이 문서는 **순서**와 **체크리스트**를 담당. 각 단계가 끝나면 다음으로.
 
+## 현재 배포 URL (파일럿)
+
+| 앱 | URL | Vercel 프로젝트 |
+|---|---|---|
+| 학생 | <https://c-coding-student.vercel.app> | `c-coding-student` |
+| 교사 | <https://c-coding-teacher.vercel.app> | `c-coding-teacher` |
+| GitHub | <https://github.com/ldgit99/c-coding> (private) | — |
+
+Vercel env의 `TEACHER_APP_ORIGIN` / `NEXT_PUBLIC_STUDENT_APP_URL` /
+`STUDENT_APP_INTERNAL_URL`은 위 URL을 **trailing slash 없이** 주입.
+코드의 CORS 비교가 `===` exact match라 slash 하나로 SSE 끊긴다.
+
 ---
 
 ## Step 1 — 로컬 통합 검증 (반일)
