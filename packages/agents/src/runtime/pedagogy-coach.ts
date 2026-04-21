@@ -34,6 +34,11 @@ export interface RequestHintInput {
   /** 휴리스틱 — 학생 문장에 문제 재진술이 포함되는가. */
   restatedProblem?: boolean;
   namedStuckPoint?: boolean;
+  /** 학생 현재 에디터 코드 — prompt의 <student_code> 블록으로 주입. */
+  editorCode?: string;
+  /** 현재 과제 정보 — 문제 설명을 prompt에 포함해 컨텍스트 일관성 확보. */
+  assignmentTemplate?: string;
+  assignmentKC?: string[];
   anthropicApiKey?: string;
 }
 
@@ -121,7 +126,25 @@ function formatUserMessage(
   failed: string[],
 ): string {
   const signals = input.sessionState.learningSignals;
-  const lines = [
+  const lines: string[] = [];
+
+  if (input.assignmentTemplate) {
+    lines.push(`<assignment>`);
+    lines.push(input.assignmentTemplate);
+    if (input.assignmentKC && input.assignmentKC.length > 0) {
+      lines.push(`KC tags: ${input.assignmentKC.join(", ")}`);
+    }
+    lines.push(`</assignment>`, "");
+  }
+
+  // 학생의 현재 에디터 코드를 주석·문자열 주입 방지를 위해 <student_code>로 감싼다.
+  if (input.editorCode && input.editorCode.trim().length > 0) {
+    lines.push(`<student_code>`);
+    lines.push(input.editorCode);
+    lines.push(`</student_code>`, "");
+  }
+
+  lines.push(
     `<student_utterance>${input.utterance}</student_utterance>`,
     "",
     `<session_state>`,
@@ -137,6 +160,7 @@ function formatUserMessage(
     `<constraint>`,
     `Granted level: ${grantedLevel} (${HINT_LEVEL_TYPE[grantedLevel]})`,
     failed.length > 0 ? `Gating failures: ${failed.join("; ")}` : "All gating conditions satisfied.",
+    `학생 코드가 주어졌으면 질문·개념·의사코드·예시 모두 실제 코드 지점(변수·라인 번호·조건)을 언급해 구체적으로. 일반 답변 금지.`,
     `</constraint>`,
     "",
     "다음 JSON 스키마로만 응답하라 (다른 텍스트 금지):",
@@ -147,7 +171,7 @@ function formatUserMessage(
   "relatedKC": ["kc-slug-1"],
   "requiresSelfExplanation": false
 }`,
-  ];
+  );
   return lines.join("\n");
 }
 

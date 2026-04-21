@@ -11,6 +11,7 @@ import {
   type ReviewOutput,
   type SessionState,
 } from "@cvibe/agents";
+import { getAssignmentByCode } from "@cvibe/db";
 import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
@@ -118,6 +119,9 @@ export async function POST(request: Request) {
     : undefined;
 
   if (route.route === "pedagogy-coach") {
+    // 현재 과제의 템플릿·KC 조회 — 힌트 context 강화
+    const catalog = body.assignmentCode ? getAssignmentByCode(body.assignmentCode) : undefined;
+
     let hintResult;
     try {
       hintResult = await requestHint({
@@ -126,6 +130,9 @@ export async function POST(request: Request) {
         requestedLevel: body.requestedLevel,
         restatedProblem: detectRestatement(safeUtterance),
         namedStuckPoint: detectStuckPoint(safeUtterance),
+        editorCode: body.editorCode,
+        assignmentTemplate: catalog?.template,
+        assignmentKC: catalog?.kcTags,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
