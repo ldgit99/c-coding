@@ -164,7 +164,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           route: "pedagogy-coach",
-          error: "Pedagogy Coach 호출 실패",
+          error: "AI 튜터 호출 실패",
           details: [{ path: ["anthropic"], message, code: "upstream_llm_error" }],
         },
         { status: 502 },

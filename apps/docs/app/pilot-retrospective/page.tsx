@@ -24,7 +24,7 @@ export default function PilotRetrospective() {
 
       <h2>3. 시스템 신호</h2>
       <ul>
-        <li>Pedagogy Coach 응답 중 Safety Guard가 차단한 건수와 사유</li>
+        <li>AI 튜터(Pedagogy Coach) 응답 중 Safety Guard가 차단한 건수와 사유</li>
         <li>Runtime Debugger 폴백 경로(Judge0 → clang.wasm) 실행 비율</li>
         <li>Promptfoo 회귀 실패 — 어떤 시나리오에서 퇴행이 잡혔나</li>
       </ul>
