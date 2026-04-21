@@ -333,7 +333,7 @@ export function AIPanel({
                   }`}
                 >
                   <span className={msg.role === "student" ? "text-text-primary" : "text-primary"}>
-                    {msg.role === "student" ? "나" : "Pedagogy Coach"}
+                    {msg.role === "student" ? "나" : "AI 튜터"}
                   </span>
                   {msg.meta && <span className="font-mono text-neutral">· {msg.meta}</span>}
                 </div>

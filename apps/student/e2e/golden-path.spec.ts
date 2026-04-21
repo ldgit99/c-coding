@@ -22,10 +22,12 @@ test("학생이 과제를 선택하고 Level 1 힌트를 받는다", async ({ pa
 
   // 계단식 힌트 버튼이 4개 있고 L1을 누를 수 있다
   await expect(page.getByRole("button", { name: "L1" })).toBeVisible();
-  await page.getByRole("button", { name: "L1" }).click();
+  // 힌트 탭 제거 후 — 채팅 입력으로 힌트 요청 (Supervisor가 hint_request로 분류)
+  await page.getByPlaceholder(/질문 또는 힌트 요청/).fill("힌트 줘");
+  await page.getByRole("button", { name: "보내기" }).click();
 
   // 응답이 도착할 때까지 대기 (mock 또는 실제 Claude 응답)
-  await expect(page.getByText(/Pedagogy Coach/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/AI 튜터/)).toBeVisible({ timeout: 30_000 });
 });
 
 test("제출 버튼은 충분한 코드가 있어야 활성화된다", async ({ page }) => {
