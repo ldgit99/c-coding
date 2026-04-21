@@ -75,7 +75,14 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
           onCodeChange={setEditorCode}
         />
 
-        <AIPanel editorCode={editorCode} studentId={user.id} mode={mode} />
+        <AIPanel
+          editorCode={editorCode}
+          studentId={user.id}
+          mode={mode}
+          assignmentCode={assignment?.code ?? null}
+          assignmentTitle={assignment?.title}
+          learningObjectives={assignment?.learningObjectives}
+        />
       </div>
 
       {showSubmit && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Mode } from "./ModeSwitch";
 
@@ -50,13 +50,57 @@ interface AIPanelProps {
   studentId: string;
   mode: Mode;
   assignmentCode?: string | null;
+  /** 과제 제목 — 환영 턴 템플릿에 사용. 없으면 환영 턴 생략. */
+  assignmentTitle?: string;
+  /** 과제 학습 목표 (2개) — pair/tutor 모드에서 리스트로 노출. */
+  learningObjectives?: string[];
+}
+
+/**
+ * 과제 선택 시 AI가 먼저 말 거는 환영 턴 — 결정적 템플릿.
+ * LLM 호출 없음. research.md §3.2 Navigator-not-Driver 원칙 유지 (힌트 아님).
+ * 학생이 문제를 읽고 재진술하도록 유도하는 소크라틱 L0 발화.
+ */
+function buildWelcomeMessage(params: {
+  title?: string;
+  objectives?: string[];
+  mode: Mode;
+}): string | null {
+  const { title, objectives, mode } = params;
+  if (!title) return null;
+  if (mode === "silent") return null;
+
+  if (mode === "observer") {
+    return `"${title}" 문제를 여는구나. 나는 지켜볼게. 막히면 힌트 탭을 눌러.`;
+  }
+
+  const objLines =
+    objectives && objectives.length > 0
+      ? `\n\n이 문제는 다음을 연습하는 자리야:\n${objectives
+          .map((o, i) => `  ${["①", "②", "③"][i] ?? "•"} ${o}`)
+          .join("\n")}`
+      : "";
+
+  if (mode === "tutor") {
+    return `안녕! "${title}"을(를) 같이 풀어보자.${objLines}\n\n먼저 입력·출력이 뭔지, 그리고 어떤 자료구조·제어 흐름이 필요할지 함께 정리해볼까? 네가 먼저 한 문장으로 말해봐 — 접근 방향을 잡아주는 게 내 역할이야.`;
+  }
+
+  // pair (기본)
+  return `안녕! "${title}" 문제를 시작하는구나.${objLines}\n\n시작하기 전에 — 문제에서 원하는 입력과 출력이 정확히 뭐야? 한 문장으로 정리해봐. 옆에서 지켜볼게.`;
 }
 
 type HistoryEntry =
   | { kind: "text"; role: "student" | "ai"; text: string; meta?: string; level?: 1 | 2 | 3 | 4; requiresSelfExplanation?: boolean; accepted?: boolean }
   | { kind: "review"; review: ReviewPayload; meta?: string };
 
-export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanelProps) {
+export function AIPanel({
+  editorCode,
+  studentId,
+  mode,
+  assignmentCode,
+  assignmentTitle,
+  learningObjectives,
+}: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -64,6 +108,33 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
   const [supportLevel, setSupportLevel] = useState<0 | 1 | 2 | 3>(0);
   const [selfExplainTarget, setSelfExplainTarget] = useState<number | null>(null);
   const [selfExplainText, setSelfExplainText] = useState("");
+  const welcomedAssignmentRef = useRef<string | null>(null);
+
+  // 과제 전환 시 환영 턴 1회 주입. 학생이 이미 대화 시작했으면(= history 비어있지 않음) 생략.
+  useEffect(() => {
+    if (!assignmentCode || !assignmentTitle) return;
+    if (welcomedAssignmentRef.current === assignmentCode) return;
+    welcomedAssignmentRef.current = assignmentCode;
+    const message = buildWelcomeMessage({
+      title: assignmentTitle,
+      objectives: learningObjectives,
+      mode,
+    });
+    if (!message) return;
+    setHistory((h) => {
+      // 이미 같은 과제의 환영 턴이 있거나 학생 발화가 있으면 스킵
+      if (h.some((e) => e.kind === "text" && e.role === "student")) return h;
+      return [
+        ...h,
+        {
+          kind: "text",
+          role: "ai",
+          text: message,
+          meta: `welcome · ${mode}`,
+        },
+      ];
+    });
+  }, [assignmentCode, assignmentTitle, learningObjectives, mode]);
 
   const callChat = useCallback(
     async (utterance: string, opts: { requestedLevel?: 1 | 2 | 3 | 4 } = {}) => {
@@ -207,7 +278,7 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
       <div className="flex-1 overflow-auto px-5 py-4 text-[13px]">
         {history.length === 0 && (
           <p className="leading-relaxed text-text-secondary">
-            코드를 한 번이라도 작성하거나 실행해야 도움을 요청할 수 있어요.
+            과제를 고르면 같이 시작해볼까. 힌트는 코드를 조금 써본 뒤에 요청할 수 있어.
             <br />
             <span className="text-neutral">Navigator, not Driver.</span>
           </p>
