@@ -28,8 +28,12 @@ const EditorSnapshotSchema = z.object({
 });
 
 export const SessionStateSchema = z.object({
-  studentId: z.string().uuid(),
-  assignmentId: z.string().uuid().optional(),
+  // studentId·assignmentId는 runtime 구조만 보장하고 UUID 형식은 강제하지 않는다.
+  // 이유: Supabase auth UUID 외에도 demo 모드 ID·assignment code(slug) 등 다양한
+  // ID 체계가 통과해야 하고, 실제 PostgreSQL 쪽 UUID 컬럼 검증은 DB가 담당한다.
+  // Zod 4의 `.uuid()`는 strict RFC 4122 nibble 검증이라 불필요하게 엄격.
+  studentId: z.string().min(1),
+  assignmentId: z.string().min(1).optional(),
   currentKC: z.array(z.string()).default(() => []),
   mastery: z.record(z.string(), z.number().min(0).max(1)).default(() => ({})),
   learningSignals: LearningSignalsSchema.optional(),
