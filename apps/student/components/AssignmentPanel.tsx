@@ -84,7 +84,7 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
 
   return (
     <aside aria-label="problem-panel" className="flex h-full flex-col overflow-hidden bg-surface">
-      <div className="border-b border-border-soft bg-surface px-4 py-3">
+      <div className="shrink-0 border-b border-border-soft bg-surface px-4 py-3">
         <div className="mb-1 flex items-baseline justify-between">
           <span className="text-[10px] font-medium uppercase tracking-wider text-neutral">
             Progress
@@ -116,7 +116,7 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
         </div>
       </div>
 
-      <ul className="border-b border-border-soft bg-bg">
+      <ul className="max-h-[34vh] shrink-0 overflow-y-auto border-b border-border-soft bg-bg">
         {assignments.map((a) => {
           const st = statusByCode.get(a.code) ?? "untried";
           const active = a.code === selectedCode;
@@ -145,7 +145,7 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
         })}
       </ul>
 
-      <div className="flex-1 overflow-auto px-5 py-4 text-[13px]">
+      <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-[13px]">
         {selected && (
           <>
             <h2 className="font-display text-xl font-semibold tracking-tighter text-text-primary">
@@ -215,30 +215,6 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
               </div>
             </div>
 
-            <div className="mt-6">
-              <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
-                Constraints
-              </div>
-              <ul className="space-y-1 text-[12px] text-text-secondary">
-                <li>
-                  실행 제한 · {selected.constraints.timeLimitMs}ms /{" "}
-                  {selected.constraints.memLimitMb}MB
-                </li>
-                <li>허용 헤더 · {selected.constraints.allowedHeaders.join(", ")}</li>
-              </ul>
-            </div>
-
-            <div className="mt-6">
-              <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
-                Rubric
-              </div>
-              <ul className="space-y-1 text-[12px] text-text-secondary">
-                <li>correctness {selected.rubric.correctness}</li>
-                <li>style {selected.rubric.style}</li>
-                <li>memory_safety {selected.rubric.memory_safety}</li>
-                <li>reflection {selected.rubric.reflection}</li>
-              </ul>
-            </div>
           </>
         )}
       </div>
