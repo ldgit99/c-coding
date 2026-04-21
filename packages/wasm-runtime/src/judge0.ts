@@ -50,10 +50,13 @@ export class Judge0Backend implements Backend {
     const startedAt = Date.now();
     const timeoutSec = (input.timeoutMs ?? 2000) / 1000;
 
+    // Judge0는 UTF-8 밖의 문자(한국어 주석 등)를 거부 → base64 인코딩 필수.
+    // source_code·stdin은 base64로 보내고, 응답의 stdout/stderr/compile_output은
+    // base64 디코딩해서 반환.
     const body: Judge0SubmissionRequest = {
-      source_code: input.code,
+      source_code: toB64(input.code),
       language_id: this.config.languageId ?? JUDGE0_C_LANG_ID,
-      stdin: input.stdin,
+      stdin: input.stdin ? toB64(input.stdin) : undefined,
       cpu_time_limit: timeoutSec,
       wall_time_limit: timeoutSec * 2,
       memory_limit: (input.memLimitMb ?? 64) * 1024,
@@ -80,7 +83,8 @@ export class Judge0Backend implements Backend {
     }
 
     // wait=true: 작업 완료까지 동기 응답 (짧은 실행 전용)
-    const response = await fetch(`${this.config.baseUrl}/submissions?base64_encoded=false&wait=true`, {
+    // base64_encoded=true: 입출력 모두 base64로 교환
+    const response = await fetch(`${this.config.baseUrl}/submissions?base64_encoded=true&wait=true`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
@@ -103,16 +107,27 @@ export class Judge0Backend implements Backend {
     // Judge0 status 매핑: https://ce.judge0.com/statuses
     // 1=In Queue, 2=Processing, 3=Accepted, 4=WA, 5=TLE, 6=CE, 7..=Runtime Error, 13=Internal
     const errorType = mapJudge0Status(data.status.id);
+    const stdout = data.stdout ? fromB64(data.stdout) : "";
+    const stderr = data.stderr ? fromB64(data.stderr) : "";
+    const compileOutput = data.compile_output ? fromB64(data.compile_output) : "";
 
     return {
       executed: data.status.id !== 13,
       exitCode: data.status.id === 3 ? 0 : data.status.id === 7 ? 139 : null,
-      stdout: data.stdout ?? "",
-      stderr: (data.stderr ?? "") + (data.compile_output ? `\n${data.compile_output}` : ""),
+      stdout,
+      stderr: stderr + (compileOutput ? `\n${compileOutput}` : ""),
       durationMs,
       errorType,
     };
   }
+}
+
+function toB64(text: string): string {
+  return Buffer.from(text, "utf8").toString("base64");
+}
+
+function fromB64(b64: string): string {
+  return Buffer.from(b64, "base64").toString("utf8");
 }
 
 function mapJudge0Status(id: number): RunCResult["errorType"] | undefined {
