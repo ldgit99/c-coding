@@ -77,18 +77,26 @@ export function TeacherDashboard({ user }: { user: AppUser }) {
               )}
             </div>
           </div>
-          <div className="text-right text-[12px] text-text-secondary">
-            <div>
-              <span className="text-neutral">cohort · </span>
-              <span className="font-mono text-text-primary">{data.cohortId}</span>
+          <div className="flex items-start gap-5">
+            <div className="text-right text-[12px] text-text-secondary">
+              <div>
+                <span className="text-neutral">cohort · </span>
+                <span className="font-mono text-text-primary">{data.cohortId}</span>
+              </div>
+              <div className="mt-1">
+                <span className="text-neutral">{data.summary.studentCount} students · </span>
+                <span className="font-medium text-text-primary">
+                  {(data.summary.completionRate * 100).toFixed(0)}%
+                </span>
+                <span className="text-neutral"> completion</span>
+              </div>
             </div>
-            <div className="mt-1">
-              <span className="text-neutral">{data.summary.studentCount} students · </span>
-              <span className="font-medium text-text-primary">
-                {(data.summary.completionRate * 100).toFixed(0)}%
-              </span>
-              <span className="text-neutral"> completion</span>
-            </div>
+            <a
+              href="/research"
+              className="inline-flex h-9 items-center rounded-md border border-border-soft bg-white px-3 text-[11px] font-medium uppercase tracking-wider text-text-primary transition-all hover:-translate-y-px hover:border-primary hover:text-primary"
+            >
+              Research Lab →
+            </a>
           </div>
         </div>
       </header>

@@ -56,6 +56,13 @@ const config: NextConfig = {
           { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
         ],
       },
+      {
+        source: "/api/analytics/dump",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TEACHER_ORIGIN },
+          { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
+        ],
+      },
     ];
   },
 };
