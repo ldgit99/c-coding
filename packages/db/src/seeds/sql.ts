@@ -9,7 +9,7 @@ import type { AssignmentSeed } from "./assignments";
  * 포함된 값도 escape 없이 안전하게 넣는다.
  */
 
-export const SEED_TEACHER_ID = "00000000-0000-0000-0000-000000000001";
+export const SEED_TEACHER_ID = "00000000-0000-4000-8000-000000000001";
 
 export function renderCohortInsert(cohortId: string, name: string, term: string): string {
   return [

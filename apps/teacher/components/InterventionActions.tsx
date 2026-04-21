@@ -7,7 +7,7 @@ import { useState } from "react";
  * postgres/drizzle까지 끌고 오지 않도록 의도적으로 복제. Supabase Auth
  * 연결 후에는 실제 세션 user.id로 교체.
  */
-const DEMO_TEACHER_ID = "00000000-0000-0000-0000-000000000001";
+const DEMO_TEACHER_ID = "00000000-0000-4000-8000-000000000001";
 
 interface Props {
   studentId: string;

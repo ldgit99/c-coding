@@ -8,11 +8,11 @@ begin;
 
 -- Seed 교사 프로필 (auth.users는 별도 스크립트로 생성 필요).
 insert into public.profiles (id, email, role, display_name)
-values ('00000000-0000-0000-0000-000000000001', 'seed-teacher@cvibe.dev', 'teacher', 'Seed Teacher')
+values ('00000000-0000-4000-8000-000000000001', 'seed-teacher@cvibe.dev', 'teacher', 'Seed Teacher')
 on conflict (id) do nothing;
 
 insert into public.cohorts (id, name, term, teacher_id) values
-  ('cohort-2026-spring-cs1', $$2026 Spring CS1$$, $$2026-Spring$$, '00000000-0000-0000-0000-000000000001')
+  ('cohort-2026-spring-cs1', $$2026 Spring CS1$$, $$2026-Spring$$, '00000000-0000-4000-8000-000000000001')
 on conflict (id) do nothing;
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
@@ -35,7 +35,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -70,7 +70,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -106,7 +106,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -143,7 +143,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -183,7 +183,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -221,7 +221,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -257,7 +257,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -297,7 +297,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -337,7 +337,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
@@ -372,7 +372,7 @@ $$,
   $$["이 코드에서 가장 어려웠던 부분은?","AI의 어떤 힌트가 결정적이었나?","가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?","왜 그렇게 생각했는가?","다음에 비슷한 문제를 만나면 어떻게 접근하겠나?"]$$::jsonb,
   'cohort-2026-spring-cs1',
   true,
-  '00000000-0000-0000-0000-000000000001'
+  '00000000-0000-4000-8000-000000000001'
 ) on conflict (code) do update set
   version = excluded.version,
   title = excluded.title,
