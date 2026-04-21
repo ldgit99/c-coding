@@ -43,7 +43,7 @@ interface ChatResponse {
   details?: Array<{ path?: (string | number)[]; message?: string; code?: string }>;
 }
 
-type Tab = "chat" | "hint" | "reflection" | "review";
+type Tab = "chat" | "hint" | "review";
 
 interface AIPanelProps {
   editorCode: string;
@@ -189,7 +189,7 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
   return (
     <aside aria-label="ai-panel" className="flex h-full flex-col overflow-hidden bg-surface">
       <div className="flex border-b border-border-soft">
-        {(["chat", "hint", "reflection", "review"] as Tab[]).map((t) => (
+        {(["chat", "hint", "review"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -410,8 +410,6 @@ function tabLabel(t: Tab): string {
       return "대화";
     case "hint":
       return "힌트";
-    case "reflection":
-      return "리플렉션";
     case "review":
       return "코드리뷰";
   }
