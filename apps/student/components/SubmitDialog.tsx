@@ -35,10 +35,12 @@ export function SubmitDialog({
   editorCode,
   assignmentCode,
   onClose,
+  onSubmitted,
 }: {
   editorCode: string;
   assignmentCode: string | null;
   onClose: () => void;
+  onSubmitted?: (passed: boolean) => void;
 }) {
   const [reflection, setReflection] = useState<ReflectionState>({
     Q1_difficult: "",
@@ -69,13 +71,15 @@ export function SubmitDialog({
         setError(`제출 실패: ${msg}`);
         return;
       }
-      setResult((await res.json()) as SubmitResponse);
+      const parsed = (await res.json()) as SubmitResponse;
+      setResult(parsed);
+      onSubmitted?.(parsed.assessment.passed);
     } catch (err) {
       setError(String(err));
     } finally {
       setSubmitting(false);
     }
-  }, [assignmentCode, editorCode, reflection]);
+  }, [assignmentCode, editorCode, reflection, onSubmitted]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-text-primary/40 p-4 backdrop-blur-sm">

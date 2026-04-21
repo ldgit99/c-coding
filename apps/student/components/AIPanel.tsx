@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Mode } from "./ModeSwitch";
+import { StuckDiagnostic } from "./StuckDiagnostic";
+import { WalkthroughPrompt } from "./WalkthroughPrompt";
 
 interface Finding {
   id: string;
@@ -54,6 +56,10 @@ interface AIPanelProps {
   assignmentTitle?: string;
   /** 과제 학습 목표 (2개) — pair/tutor 모드에서 리스트로 노출. */
   learningObjectives?: string[];
+  /** 과제 KC tags — Walkthrough prompt self-check 질문에 사용. */
+  assignmentKcTags?: string[];
+  /** 과제 열고 경과한 시간(초). Walkthrough prompt 트리거 기준. */
+  elapsedSec?: number;
 }
 
 /**
@@ -100,6 +106,8 @@ export function AIPanel({
   assignmentCode,
   assignmentTitle,
   learningObjectives,
+  assignmentKcTags,
+  elapsedSec = 0,
 }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
@@ -110,6 +118,19 @@ export function AIPanel({
   const [selfExplainText, setSelfExplainText] = useState("");
   const welcomedAssignmentRef = useRef<string | null>(null);
   const hydratedAssignmentRef = useRef<string | null>(null);
+  const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
+
+  // 과제 전환 시 walkthrough 재활성
+  useEffect(() => {
+    setWalkthroughDismissed(false);
+  }, [assignmentCode]);
+
+  // 30분(1800초) 이상 경과 + 제출 안 했을 때 walkthrough prompt 표시
+  const STAGNATION_THRESHOLD_SEC = 30 * 60;
+  const showWalkthrough =
+    !walkthroughDismissed &&
+    elapsedSec >= STAGNATION_THRESHOLD_SEC &&
+    !!assignmentCode;
 
   // 과제 전환 시 서버(/api/conversations)에서 기존 대화 복원 → 재로그인·탭 이동 후에도 유지.
   // 성공적으로 복원하면 환영 턴 주입은 건너뛴다.
@@ -386,7 +407,23 @@ export function AIPanel({
         </div>
       )}
 
-      <div className="border-t border-border-soft bg-surface px-4 py-3">
+      {showWalkthrough && assignmentTitle && (
+        <div className="border-t border-border-soft bg-surface px-4 py-3">
+          <WalkthroughPrompt
+            kcTags={assignmentKcTags ?? []}
+            assignmentTitle={assignmentTitle}
+            stagnationMinutes={Math.floor(elapsedSec / 60)}
+            onDismiss={() => setWalkthroughDismissed(true)}
+          />
+        </div>
+      )}
+
+      <div className="border-t border-border-soft bg-surface px-4 py-3 space-y-2">
+        <StuckDiagnostic
+          onApply={(_cat, prefix) => {
+            setInput((v) => (v.startsWith("[") ? v : prefix + v));
+          }}
+        />
         <div className="flex gap-2">
           <input
             value={input}
