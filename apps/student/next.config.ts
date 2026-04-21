@@ -49,6 +49,13 @@ const config: NextConfig = {
           { key: "Access-Control-Allow-Headers", value: "Content-Type" },
         ],
       },
+      {
+        source: "/api/conversations",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TEACHER_ORIGIN },
+          { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
+        ],
+      },
     ];
   },
 };

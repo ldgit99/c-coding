@@ -46,7 +46,7 @@ export default function TeacherLoginPage() {
           Teacher Sign in
         </div>
         <h1 className="mt-1 font-display text-3xl font-semibold tracking-tighter text-text-primary">
-          CVibe
+          경북대학교 프로그래밍1
         </h1>
         <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
           교사용 magic-link 이메일 인증.

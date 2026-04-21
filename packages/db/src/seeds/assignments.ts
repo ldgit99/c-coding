@@ -37,6 +37,33 @@ export interface AssignmentSeed {
   variantCount?: number;
 }
 
+/**
+ * KC slug → 학생이 바로 이해할 수 있는 한국어 학습 목표 문장.
+ * AssignmentPanel에서 과제별로 kcTags 앞 2개를 꺼내 목표로 노출한다.
+ */
+const KC_OBJECTIVES: Record<string, string> = {
+  "variables-types": "정수·실수·문자 변수를 선언하고 적절한 자료형을 선택한다",
+  "io-formatting": "printf·scanf 형식 지정자로 값을 입출력한다",
+  "control-flow-if": "if·else if·else로 조건 분기를 구성한다",
+  "control-flow-loop": "for·while 반복문으로 동일 작업을 효율적으로 반복한다",
+  "arrays-indexing": "배열을 선언하고 인덱스로 원소를 안전하게 접근한다",
+  "pointer-basics": "포인터 선언·역참조·주소 연산자의 의미를 설명한다",
+  "pointer-arithmetic": "포인터 산술로 배열을 순회하고 경계를 넘지 않게 한다",
+  "functions-params": "함수 파라미터로 값·포인터 전달 차이를 구분한다",
+  "memory-allocation": "malloc·free로 동적 메모리를 안전하게 관리한다",
+  recursion: "재귀 함수의 기저 사례와 점화식을 설계한다",
+};
+
+export function getLearningObjectives(kcTags: string[], max = 2): string[] {
+  const out: string[] = [];
+  for (const kc of kcTags) {
+    const phrase = KC_OBJECTIVES[kc];
+    if (phrase && !out.includes(phrase)) out.push(phrase);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 const DEFAULT_RUBRIC = { correctness: 0.5, style: 0.15, memory_safety: 0.2, reflection: 0.15 };
 const DEFAULT_CONSTRAINTS = {
   timeLimitMs: 2000,

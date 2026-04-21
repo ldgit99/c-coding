@@ -52,7 +52,7 @@ export default function LoginPage() {
           Sign in
         </div>
         <h1 className="mt-1 font-display text-3xl font-semibold tracking-tighter text-text-primary">
-          CVibe
+          경북대학교 프로그래밍1
         </h1>
         <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
           학교 이메일로 매직 링크를 보내드려요. 로그인 후 바로 과제로 넘어갑니다.

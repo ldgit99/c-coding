@@ -14,7 +14,7 @@ import {
 import { getAssignmentByCode } from "@cvibe/db";
 import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
-import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
+import { buildStatement, recordEvent, recordTurn, Verbs } from "@cvibe/xapi";
 
 import { loadReferenceSolution } from "@/lib/seed-private";
 
@@ -103,6 +103,15 @@ export async function POST(request: Request) {
     editorHasCode: body.editorHasCode,
   });
 
+  // 대화 로그 — 학생 발화 원문 기록 (교사 전용 열람)
+  recordTurn({
+    studentId: sessionState.studentId,
+    role: "student",
+    text: body.utterance,
+    assignmentId: body.assignmentCode ?? sessionState.assignmentId,
+    meta: { mode: sessionState.mode },
+  });
+
   // inbound Safety Guard — 학생 발화에 PII·프롬프트 인젝션 사전 처리
   const inbound = checkSafety({
     direction: "inbound",
@@ -178,6 +187,21 @@ export async function POST(request: Request) {
         context: { assignmentId: sessionState.assignmentId, sessionId: sessionState.studentId },
       }),
     );
+    // 대화 로그 — AI 응답 원문 기록 (safety block 여부도 함께)
+    recordTurn({
+      studentId: sessionState.studentId,
+      role: "ai",
+      text: finalHint.message,
+      assignmentId: body.assignmentCode ?? sessionState.assignmentId,
+      meta: {
+        hintLevel: finalHint.hintLevel,
+        hintType: finalHint.hintType,
+        mode: sessionState.mode,
+        usedModel,
+        blockedBySafety: outbound.verdict === "block",
+      },
+    });
+
     if (outbound.verdict === "block") {
       recordEvent(
         buildStatement({
@@ -229,6 +253,15 @@ export async function POST(request: Request) {
       code: body.editorCode,
       studentLevel: "novice",
       lintResult,
+    });
+    recordTurn({
+      studentId: sessionState.studentId,
+      role: "ai",
+      text: `[Code Review] ${review.summary}\n${review.findings
+        .map((f) => `• [${f.severity}] L${f.line} ${f.message}`)
+        .join("\n")}`,
+      assignmentId: body.assignmentCode ?? sessionState.assignmentId,
+      meta: { mode: sessionState.mode, usedModel },
     });
     return NextResponse.json({
       intent: route.intent satisfies Intent,

@@ -5,6 +5,7 @@ import { ASSIGNMENT_BASE, CODE_BASE, KC_BASE, Verbs, type VerbId } from "./verbs
 
 export * from "./verbs";
 export * from "./store";
+export * from "./conversation-store";
 
 // =============================================================================
 // xAPI 스테이트먼트 스키마 (research.md §4.4)

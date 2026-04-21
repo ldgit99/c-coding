@@ -31,7 +31,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-baseline gap-3">
             <span className="font-display text-lg font-semibold tracking-tighter text-text-primary">
-              CVibe
+              경북대학교 프로그래밍1
             </span>
             <span className="text-[10px] uppercase tracking-wider text-neutral">
               C Pair Programming

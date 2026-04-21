@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { ASSIGNMENTS, pickVariantIndex, resolveUserFromRequest } from "@cvibe/db";
+import {
+  ASSIGNMENTS,
+  getLearningObjectives,
+  pickVariantIndex,
+  resolveUserFromRequest,
+} from "@cvibe/db";
 
 /**
  * GET /api/assignments — 학생에게 노출 가능한 과제 목록.
@@ -32,6 +37,7 @@ export async function GET(request: Request) {
       starterCode: a.starterCode,
       visibleTests: a.visibleTests,
       reflectionPrompts: a.reflectionPrompts,
+      learningObjectives: getLearningObjectives(a.kcTags, 2),
       variantCount,
       variantIndex,
     };
