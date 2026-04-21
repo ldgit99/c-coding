@@ -31,15 +31,16 @@ interface HintPayload {
 }
 
 interface ChatResponse {
-  intent: string;
-  route: string;
-  reason: string;
+  intent?: string;
+  route?: string;
+  reason?: string;
   hint?: HintPayload;
   review?: ReviewPayload;
   gating?: { grantedLevel: 1 | 2 | 3 | 4; failedConditions: string[]; fadedFrom?: number };
   usedModel?: string;
   mocked?: boolean;
   error?: string;
+  details?: Array<{ path?: (string | number)[]; message?: string; code?: string }>;
 }
 
 type Tab = "chat" | "hint" | "reflection" | "review";
@@ -133,7 +134,20 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
       const meta = data.mocked ? `[mock] ${data.review.analysisMode}` : `${data.usedModel} · ${data.review.analysisMode}`;
       setHistory((h) => [...h, { kind: "review", review: data.review!, meta }]);
     } else if (data.error) {
-      setHistory((h) => [...h, { kind: "text", role: "ai", text: `[${data.route}] ${data.error}` }]);
+      const detailSummary = data.details
+        ? data.details
+            .map((d) => `${(d.path ?? []).join(".")}: ${d.message ?? d.code ?? "?"}`)
+            .join("; ")
+        : "";
+      const tag = data.route ?? "server";
+      setHistory((h) => [
+        ...h,
+        {
+          kind: "text",
+          role: "ai",
+          text: `[${tag}] ${data.error}${detailSummary ? `\n  ▸ ${detailSummary}` : ""}`,
+        },
+      ]);
     }
   }, []);
 
