@@ -71,11 +71,9 @@ const DEFAULT_CONSTRAINTS = {
   allowedHeaders: ["stdio.h", "stdlib.h", "string.h"],
 };
 const DEFAULT_REFLECTION_PROMPTS = [
-  "이 코드에서 가장 어려웠던 부분은?",
-  "AI의 어떤 힌트가 결정적이었나?",
-  "가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?",
-  "왜 그렇게 생각했는가?",
-  "다음에 비슷한 문제를 만나면 어떻게 접근하겠나?",
+  "이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?",
+  "다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.",
+  "비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?",
 ];
 
 export const ASSIGNMENTS: AssignmentSeed[] = [

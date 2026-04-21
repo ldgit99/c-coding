@@ -260,10 +260,15 @@ async function evaluateReflection(input: AssessmentInput): Promise<ReflectionEva
 }
 
 function mockReflectionEval(reflection: ReflectionInput): ReflectionEval {
-  // 응답 길이·키워드 기반 heuristic
+  // 응답 길이·키워드 기반 heuristic.
+  // 2026-04-22 시안 A: 5문항 → 3문항 (Q1 통합 · Q3 · Q5). Q4 는 옵셔널 유지.
+  // Q4 가 비어 있으면 Q1 길이에서 metacognition 을 파생 — 새 UI 의 Q1 문구는
+  // "어떻게 해결했나" 가 포함돼 있어 단일 필드가 두 축을 대표함.
   const q = (s?: string) => (s ?? "").trim();
-  const specificity = Math.min(1, q(reflection.Q1_difficult).length / 60);
-  const metacognition = Math.min(1, q(reflection.Q4_why).length / 50);
+  const q1Len = q(reflection.Q1_difficult).length;
+  const q4Len = q(reflection.Q4_why).length;
+  const specificity = Math.min(1, q1Len / 90);
+  const metacognition = q4Len > 0 ? Math.min(1, q4Len / 50) : q1Len > 40 ? 0.6 : 0.2;
   const alternatives = q(reflection.Q3_alternatives).length > 10 ? 0.8 : 0;
   const selfAssessment = q(reflection.Q5_next_time).length > 15 ? 0.6 : 0.2;
   const score =

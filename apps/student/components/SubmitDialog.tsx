@@ -22,11 +22,18 @@ interface SubmitResponse {
 }
 
 const REFLECTION_PROMPTS = [
-  { key: "Q1_difficult" as const, label: "이 코드에서 가장 어려웠던 부분은?" },
-  { key: "Q2_hint_decisive" as const, label: "AI의 어떤 힌트가 결정적이었나?" },
-  { key: "Q3_alternatives" as const, label: "가능했던 두 가지 해결안은 무엇이었고, 왜 이 방식을 선택했는가?" },
-  { key: "Q4_why" as const, label: "왜 그렇게 생각했는가?" },
-  { key: "Q5_next_time" as const, label: "다음에 비슷한 문제를 만나면 어떻게 접근하겠나?" },
+  {
+    key: "Q1_difficult" as const,
+    label: "이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?",
+  },
+  {
+    key: "Q3_alternatives" as const,
+    label: "다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.",
+  },
+  {
+    key: "Q5_next_time" as const,
+    label: "비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?",
+  },
 ];
 
 type ReflectionState = Record<(typeof REFLECTION_PROMPTS)[number]["key"], string>;
@@ -44,9 +51,7 @@ export function SubmitDialog({
 }) {
   const [reflection, setReflection] = useState<ReflectionState>({
     Q1_difficult: "",
-    Q2_hint_decisive: "",
     Q3_alternatives: "",
-    Q4_why: "",
     Q5_next_time: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -112,7 +117,7 @@ export function SubmitDialog({
               className="space-y-4"
             >
               <p className="text-[13px] leading-relaxed text-text-secondary">
-                제출 전 5문항에 답해야 해요. 대안 비교 질문(Q3)은 메타인지 훈련의 핵심이에요.
+                제출 전 3문항에 답해야 해요. 두 번째 질문(대안 비교)이 메타인지 훈련의 핵심이에요.
               </p>
               {REFLECTION_PROMPTS.map((p, i) => (
                 <label key={p.key} className="block">
