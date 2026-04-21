@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { DEMO_STUDENTS } from "@cvibe/db";
+import {
+  DEMO_STUDENTS,
+  createServiceRoleClientIfAvailable,
+} from "@cvibe/db";
 import {
   getConversation,
   hashLearnerId,
@@ -15,23 +18,66 @@ import {
  * 연구 전용 export. 교사 앱의 /api/research/* 가 프록시한다. 학생 브라우저는
  * 직접 호출할 수 없게 CORS 화이트리스트로 TEACHER_ORIGIN만 허용.
  *
- * 응답:
- *  - events: 최근 xAPI 이벤트 (limit=500)
- *  - turns: 각 DEMO_STUDENT의 대화 로그
- *  - dependencyFactorHistory: DEMO_STUDENTS 의 이력 (파일럿 전엔 mock, 이후엔
- *    Supabase assessments 조인)
+ * 데이터 소스:
+ * - Supabase env 있으면 events + conversations 테이블 SELECT
+ * - 없으면 in-memory store (xapi store + conversation-store)
  *
- * Supabase 연결 후에는 events·conversations·assessments를 각각 실 테이블로 교체.
+ * 응답: events, turns, dependencyFactorHistory, transferByStudent, students, source
  */
 export async function GET() {
-  const events: XApiStatementT[] = listRecentEvents(500);
+  const supabase = createServiceRoleClientIfAvailable();
+  let events: XApiStatementT[] = [];
+  let turns: ConversationTurn[] = [];
+  let source: "supabase" | "memory" = "memory";
 
-  // DEMO_STUDENTS 기준 대화 덤프 + hash id로도 조회 (xAPI actor name이 hash)
-  const turns: ConversationTurn[] = [];
-  for (const s of DEMO_STUDENTS) {
-    const direct = getConversation({ studentId: s.id, limit: 200 });
-    const hashed = getConversation({ studentId: hashLearnerId(s.id), limit: 200 });
-    turns.push(...direct, ...hashed);
+  if (supabase) {
+    try {
+      const [eventsRes, convRes] = await Promise.all([
+        supabase
+          .from("events")
+          .select("actor, verb, object, result, context, timestamp")
+          .order("timestamp", { ascending: false })
+          .limit(500),
+        supabase
+          .from("conversations")
+          .select("id, student_id, assignment_id, role, text, meta, created_at")
+          .order("created_at", { ascending: false })
+          .limit(2000),
+      ]);
+      if (!eventsRes.error && eventsRes.data) {
+        events = eventsRes.data.map((row) => ({
+          actor: row.actor as XApiStatementT["actor"],
+          verb: row.verb as XApiStatementT["verb"],
+          object: row.object as XApiStatementT["object"],
+          result: row.result as XApiStatementT["result"],
+          context: row.context as XApiStatementT["context"],
+          timestamp: row.timestamp as string,
+        }));
+      }
+      if (!convRes.error && convRes.data) {
+        turns = convRes.data.map((row) => ({
+          id: row.id as string,
+          studentId: row.student_id as string,
+          assignmentId: (row.assignment_id as string | null) ?? undefined,
+          role: row.role as "student" | "ai",
+          text: row.text as string,
+          meta: row.meta as ConversationTurn["meta"],
+          timestamp: row.created_at as string,
+        }));
+      }
+      source = "supabase";
+    } catch {
+      // fall through to memory fallback below
+    }
+  }
+
+  if (source === "memory") {
+    events = listRecentEvents(500);
+    for (const s of DEMO_STUDENTS) {
+      const direct = getConversation({ studentId: s.id, limit: 200 });
+      const hashed = getConversation({ studentId: hashLearnerId(s.id), limit: 200 });
+      turns.push(...direct, ...hashed);
+    }
   }
 
   const dependencyFactorHistory = DEMO_STUDENTS.flatMap((s) =>
@@ -39,15 +85,15 @@ export async function GET() {
       studentId: s.id,
       studentIdHashed: hashLearnerId(s.id),
       dependencyFactor: d,
-      // timestamp 가상: 가장 최근부터 역산 (i + 1) 일 전
-      timestamp: new Date(Date.now() - (s.dependencyFactorHistory.length - i) * 86400000).toISOString(),
+      timestamp: new Date(
+        Date.now() - (s.dependencyFactorHistory.length - i) * 86400000,
+      ).toISOString(),
     })),
   );
 
   const transferByStudent = DEMO_STUDENTS.map((s) => ({
     studentId: s.id,
     studentIdHashed: hashLearnerId(s.id),
-    // DEMO에는 self-explanation transfer 축이 없으므로 mastery 평균으로 대체
     transferAxisMean:
       Object.values(s.mastery).length > 0
         ? Object.values(s.mastery).reduce((a, b) => a + b, 0) /
@@ -58,6 +104,7 @@ export async function GET() {
   return NextResponse.json(
     {
       collectedAt: new Date().toISOString(),
+      source,
       events,
       turns,
       dependencyFactorHistory,

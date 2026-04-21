@@ -11,7 +11,11 @@ import {
   type ReviewOutput,
   type SessionState,
 } from "@cvibe/agents";
-import { getAssignmentByCode } from "@cvibe/db";
+import {
+  createServiceRoleClientIfAvailable,
+  getAssignmentByCode,
+  insertConversationTurn,
+} from "@cvibe/db";
 import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, recordTurn, Verbs } from "@cvibe/xapi";
@@ -104,11 +108,21 @@ export async function POST(request: Request) {
   });
 
   // 대화 로그 — 학생 발화 원문 기록 (교사 전용 열람)
+  const supabaseForWrites = createServiceRoleClientIfAvailable();
+  const conversationAssignmentId =
+    body.assignmentCode ?? sessionState.assignmentId;
   recordTurn({
     studentId: sessionState.studentId,
     role: "student",
     text: body.utterance,
-    assignmentId: body.assignmentCode ?? sessionState.assignmentId,
+    assignmentId: conversationAssignmentId,
+    meta: { mode: sessionState.mode },
+  });
+  void insertConversationTurn(supabaseForWrites, {
+    studentId: sessionState.studentId,
+    assignmentId: conversationAssignmentId,
+    role: "student",
+    text: body.utterance,
     meta: { mode: sessionState.mode },
   });
 
@@ -188,18 +202,26 @@ export async function POST(request: Request) {
       }),
     );
     // 대화 로그 — AI 응답 원문 기록 (safety block 여부도 함께)
+    const aiTurnMeta = {
+      hintLevel: finalHint.hintLevel,
+      hintType: finalHint.hintType,
+      mode: sessionState.mode,
+      usedModel,
+      blockedBySafety: outbound.verdict === "block",
+    };
     recordTurn({
       studentId: sessionState.studentId,
       role: "ai",
       text: finalHint.message,
-      assignmentId: body.assignmentCode ?? sessionState.assignmentId,
-      meta: {
-        hintLevel: finalHint.hintLevel,
-        hintType: finalHint.hintType,
-        mode: sessionState.mode,
-        usedModel,
-        blockedBySafety: outbound.verdict === "block",
-      },
+      assignmentId: conversationAssignmentId,
+      meta: aiTurnMeta,
+    });
+    void insertConversationTurn(supabaseForWrites, {
+      studentId: sessionState.studentId,
+      assignmentId: conversationAssignmentId,
+      role: "ai",
+      text: finalHint.message,
+      meta: aiTurnMeta,
     });
 
     if (outbound.verdict === "block") {
@@ -254,14 +276,23 @@ export async function POST(request: Request) {
       studentLevel: "novice",
       lintResult,
     });
+    const reviewText = `[Code Review] ${review.summary}\n${review.findings
+      .map((f) => `• [${f.severity}] L${f.line} ${f.message}`)
+      .join("\n")}`;
+    const reviewAssignmentId = body.assignmentCode ?? sessionState.assignmentId;
     recordTurn({
       studentId: sessionState.studentId,
       role: "ai",
-      text: `[Code Review] ${review.summary}\n${review.findings
-        .map((f) => `• [${f.severity}] L${f.line} ${f.message}`)
-        .join("\n")}`,
-      assignmentId: body.assignmentCode ?? sessionState.assignmentId,
+      text: reviewText,
+      assignmentId: reviewAssignmentId,
       meta: { mode: sessionState.mode, usedModel },
+    });
+    void insertConversationTurn(supabaseForWrites, {
+      studentId: sessionState.studentId,
+      assignmentId: reviewAssignmentId,
+      role: "ai",
+      text: reviewText,
+      meta: { mode: sessionState.mode, usedModel, kind: "code-review" },
     });
     return NextResponse.json({
       intent: route.intent satisfies Intent,

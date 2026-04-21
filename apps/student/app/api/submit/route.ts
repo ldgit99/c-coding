@@ -7,7 +7,12 @@ import {
   type HiddenTestResult,
   type ReflectionInput,
 } from "@cvibe/agents";
-import { getAssignmentByCode, resolveUserFromRequest } from "@cvibe/db";
+import {
+  createServiceRoleClientIfAvailable,
+  getAssignmentByCode,
+  insertSubmission,
+  resolveUserFromRequest,
+} from "@cvibe/db";
 import { Judge0Backend, lintC, runHiddenTests } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
@@ -131,6 +136,21 @@ export async function POST(request: Request) {
       },
     }),
   );
+
+  // Supabase env 있으면 submission insert (service_role, RLS 우회). 실패 시 silent.
+  const supabaseWriter = createServiceRoleClientIfAvailable();
+  void insertSubmission(supabaseWriter, {
+    studentId: sid,
+    assignmentCode: effectiveAssignment.id,
+    code: body.code,
+    reflection: body.reflection as Record<string, string>,
+    status: grade.assessment.passed ? "passed" : "failed",
+    rubricScores: grade.assessment.rubricScores as unknown as Record<string, unknown>,
+    finalScore: grade.assessment.finalScore,
+    kcDelta: grade.assessment.kcDelta,
+    dependencyFactor: grade.assessment.dependencyFactor ?? undefined,
+    teacherOnlyNotes: grade.assessment.teacherOnlyNotes,
+  });
 
   // teacherOnlyNotes와 dependencyFactor는 클라이언트 응답에서 제거 (학생 UI 노출 금지)
   const { teacherOnlyNotes: _omit1, dependencyFactor: _omit2, ...studentFacing } = grade.assessment;
