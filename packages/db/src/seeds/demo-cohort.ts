@@ -23,7 +23,7 @@ export interface DemoStudent {
   }>;
 }
 
-export const DEMO_COHORT_ID = "cohort-2026-spring-cs1";
+export const DEMO_COHORT_ID = "00000000-0000-4000-8000-000000000010";
 
 export const DEMO_STUDENTS: DemoStudent[] = [
   {
