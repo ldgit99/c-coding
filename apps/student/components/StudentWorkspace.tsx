@@ -131,7 +131,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   );
 
   return (
-    <main className="flex h-screen flex-col bg-bg">
+    <main className="flex h-screen flex-col overflow-hidden bg-bg">
       <InterventionBanner
         studentId={user.id}
         onModeChange={(next, unlock) => {
@@ -215,7 +215,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
           onRunComplete={handleRunComplete}
         />
 
-        <div className="relative">
+        <div className="relative flex flex-col overflow-hidden">
           <AIPanel
             editorCode={editorCode}
             studentId={user.id}
