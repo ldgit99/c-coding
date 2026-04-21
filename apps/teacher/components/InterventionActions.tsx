@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { DEMO_TEACHER_USER } from "@cvibe/db";
+
 interface Props {
   studentId: string;
   displayName: string;
@@ -29,7 +31,7 @@ export function InterventionActions({ studentId, displayName }: Props) {
           studentId,
           type,
           payload,
-          teacherId: "demo-teacher-001",
+          teacherId: DEMO_TEACHER_USER.id,
         }),
       });
       if (res.ok) setStatus(`[${type}] ${displayName}에게 전달됨`);

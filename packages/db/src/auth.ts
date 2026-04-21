@@ -20,8 +20,13 @@ export interface AppUser {
   mocked: boolean;
 }
 
+/**
+ * DEMO 사용자 ID는 UUID v4 형식을 강제한다 — SessionStateSchema 등 다른 zod
+ * 스키마가 `z.string().uuid()`로 검증하므로 데모 모드에서도 동일한 contract.
+ * 교사 UUID는 seed.sql의 SEED_TEACHER_ID와 일치.
+ */
 export const DEMO_STUDENT_USER: AppUser = {
-  id: "demo-student-001",
+  id: "00000000-0000-0000-0000-000000000002",
   email: "demo-student@cvibe.dev",
   role: "student",
   displayName: "데모 학생",
@@ -30,7 +35,7 @@ export const DEMO_STUDENT_USER: AppUser = {
 };
 
 export const DEMO_TEACHER_USER: AppUser = {
-  id: "demo-teacher-001",
+  id: "00000000-0000-0000-0000-000000000001",
   email: "demo-teacher@cvibe.dev",
   role: "teacher",
   displayName: "데모 교사",
