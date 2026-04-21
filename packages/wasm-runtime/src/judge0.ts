@@ -63,8 +63,20 @@ export class Judge0Backend implements Backend {
     if (this.config.apiKey) {
       headers["X-RapidAPI-Key"] = this.config.apiKey;
     }
-    if (this.config.apiHost) {
-      headers["X-RapidAPI-Host"] = this.config.apiHost;
+    // RapidAPI Gateway는 Host 헤더가 명시돼야 올바른 API로 라우팅한다.
+    // config.apiHost가 명시 안 됐으면 baseUrl에서 hostname을 파싱해 자동 주입.
+    // (예: https://judge0-ce.p.rapidapi.com → judge0-ce.p.rapidapi.com)
+    const inferredHost =
+      this.config.apiHost ??
+      (() => {
+        try {
+          return new URL(this.config.baseUrl).hostname;
+        } catch {
+          return undefined;
+        }
+      })();
+    if (inferredHost && inferredHost.endsWith(".rapidapi.com")) {
+      headers["X-RapidAPI-Host"] = inferredHost;
     }
 
     // wait=true: 작업 완료까지 동기 응답 (짧은 실행 전용)
