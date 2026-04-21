@@ -118,13 +118,29 @@ export async function POST(request: Request) {
     : undefined;
 
   if (route.route === "pedagogy-coach") {
-    const { hint, gating, usedModel, mocked } = await requestHint({
-      utterance: safeUtterance,
-      sessionState,
-      requestedLevel: body.requestedLevel,
-      restatedProblem: detectRestatement(safeUtterance),
-      namedStuckPoint: detectStuckPoint(safeUtterance),
-    });
+    let hintResult;
+    try {
+      hintResult = await requestHint({
+        utterance: safeUtterance,
+        sessionState,
+        requestedLevel: body.requestedLevel,
+        restatedProblem: detectRestatement(safeUtterance),
+        namedStuckPoint: detectStuckPoint(safeUtterance),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // Anthropic 호출 실패 (rate limit · invalid key · credit 소진 등) 시
+      // 빈 500 대신 JSON으로 상세 반환해 클라이언트에서 확인 가능.
+      return NextResponse.json(
+        {
+          route: "pedagogy-coach",
+          error: "Pedagogy Coach 호출 실패",
+          details: [{ path: ["anthropic"], message, code: "upstream_llm_error" }],
+        },
+        { status: 502 },
+      );
+    }
+    const { hint, gating, usedModel, mocked } = hintResult;
     // outbound Safety Guard — AI 응답에 정답 유출·코드 블록 과다·욕설 검사
     const outbound = checkSafety({
       direction: "outbound",
