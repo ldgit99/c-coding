@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=@cvibe/teacher",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "ignoreCommand": "npx turbo-ignore @cvibe/teacher",
+  "regions": ["icn1"],
+  "functions": {
+    "app/api/**/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}
