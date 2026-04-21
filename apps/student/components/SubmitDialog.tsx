@@ -78,51 +78,71 @@ export function SubmitDialog({
   }, [assignmentCode, editorCode, reflection]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded bg-white shadow-lg">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-base font-semibold">제출 — 리플렉션 + 채점</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-text-primary/40 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border-soft bg-surface shadow-card">
+        <div className="flex items-center justify-between border-b border-border-soft px-6 py-4">
+          <div>
+            <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+              Submit
+            </div>
+            <h2 className="mt-0.5 font-display text-xl font-semibold tracking-tighter text-text-primary">
+              리플렉션 + 채점
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[20px] text-neutral transition-colors hover:text-text-primary"
+            aria-label="닫기"
+          >
             ✕
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto px-6 py-5">
           {!result ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void handleSubmit();
               }}
-              className="space-y-3"
+              className="space-y-4"
             >
-              <p className="text-sm text-slate-600">
-                research.md §3.4 — 제출 전 반드시 리플렉션 5문항에 답해야 해요. 대안 비교 질문(Q3)은 메타인지 훈련의 핵심이에요.
+              <p className="text-[13px] leading-relaxed text-text-secondary">
+                제출 전 5문항에 답해야 해요. 대안 비교 질문(Q3)은 메타인지 훈련의 핵심이에요.
               </p>
-              {REFLECTION_PROMPTS.map((p) => (
-                <label key={p.key} className="block text-sm">
-                  <span className="font-semibold text-slate-700">{p.label}</span>
+              {REFLECTION_PROMPTS.map((p, i) => (
+                <label key={p.key} className="block">
+                  <div className="flex items-baseline gap-2 text-[10px] uppercase tracking-wider text-neutral">
+                    <span className="font-mono text-primary">Q{i + 1}</span>
+                  </div>
+                  <span className="mt-0.5 block text-[13px] font-medium text-text-primary">
+                    {p.label}
+                  </span>
                   <textarea
                     value={reflection[p.key]}
                     onChange={(e) => setReflection((r) => ({ ...r, [p.key]: e.target.value }))}
-                    className="mt-1 w-full rounded border p-2 text-sm"
+                    className="mt-2 w-full rounded-md border border-border-soft bg-white p-3 text-[13px] text-text-primary focus:border-primary focus:outline-none focus:shadow-ring"
                     rows={2}
                   />
                 </label>
               ))}
-              {error && <div className="rounded bg-rose-50 p-2 text-sm text-rose-700">{error}</div>}
+              {error && (
+                <div className="rounded-md border border-error/20 bg-error/5 p-3 text-[13px] text-error">
+                  {error}
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded border px-3 py-1.5 text-sm"
+                  className="rounded-md border border-border-soft px-4 py-2 text-[13px] text-text-primary transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
                   disabled={submitting}
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-60"
+                  className="rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-white transition-all hover:-translate-y-px hover:bg-primary-hover hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   disabled={submitting}
                 >
                   {submitting ? "채점 중…" : "제출하기"}
@@ -147,31 +167,46 @@ function ScoreCard({ result }: { result: SubmitResponse }) {
     ["reflection", s.reflection, 0.15],
   ];
   return (
-    <div className="space-y-3">
-      <div className="rounded border p-3">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm font-semibold">최종 점수</span>
-          <span className={`text-2xl font-bold ${result.assessment.passed ? "text-emerald-700" : "text-rose-700"}`}>
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border-soft bg-bg p-5">
+        <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+          Final Score
+        </div>
+        <div className="mt-2 flex items-baseline justify-between">
+          <span
+            className={`font-display text-5xl font-semibold tracking-tighter ${
+              result.assessment.passed ? "text-success" : "text-error"
+            }`}
+          >
             {(result.assessment.finalScore * 100).toFixed(1)}
           </span>
+          <span
+            className={`rounded-sm px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+              result.assessment.passed
+                ? "bg-success/10 text-success"
+                : "bg-error/10 text-error"
+            }`}
+          >
+            {result.assessment.passed ? "통과" : "재제출"}
+          </span>
         </div>
-        <div className="mt-1 text-xs text-slate-500">
-          {result.assessment.passed ? "통과" : "재제출 필요"} · {result.mocked ? "[mock]" : result.usedModel}
+        <div className="mt-1 text-[11px] font-mono text-neutral">
+          {result.mocked ? "[mock]" : result.usedModel}
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {bars.map(([name, value, weight]) => (
           <div key={name}>
-            <div className="flex justify-between text-xs">
-              <span className="font-semibold">{name}</span>
-              <span className="text-slate-500">
-                {value === null ? "—" : value.toFixed(2)} · 가중 {weight}
+            <div className="flex items-baseline justify-between text-[12px]">
+              <span className="font-medium uppercase tracking-wider text-text-primary">{name}</span>
+              <span className="font-mono text-neutral">
+                {value === null ? "—" : value.toFixed(2)} · w{weight}
               </span>
             </div>
-            <div className="mt-0.5 h-2 rounded bg-slate-100">
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border-soft">
               <div
-                className="h-2 rounded bg-slate-700"
+                className="h-full rounded-full bg-primary transition-all"
                 style={{ width: `${(value ?? 0) * 100}%` }}
               />
             </div>
@@ -179,20 +214,28 @@ function ScoreCard({ result }: { result: SubmitResponse }) {
         ))}
       </div>
 
-      <details>
-        <summary className="cursor-pointer text-xs text-slate-600">증거 · KC 변동</summary>
-        <div className="mt-2 space-y-1 text-xs">
+      <details className="rounded-lg border border-border-soft bg-bg p-3">
+        <summary className="cursor-pointer text-[11px] uppercase tracking-wider text-neutral hover:text-text-secondary">
+          증거 · KC 변동
+        </summary>
+        <div className="mt-3 space-y-2 text-[12px]">
           {result.assessment.evidence.map((e, i) => (
-            <div key={i} className="rounded bg-slate-50 p-1.5">
-              <span className="font-semibold">{e.criterion}</span>
-              {e.partial && <span className="ml-1 text-amber-700">(partial)</span>}
-              <div className="text-slate-600">{e.note}</div>
+            <div key={i} className="rounded-md border border-border-soft bg-surface p-2">
+              <div className="flex items-baseline gap-2">
+                <span className="font-medium text-text-primary">{e.criterion}</span>
+                {e.partial && (
+                  <span className="rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-warning">
+                    partial
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-text-secondary">{e.note}</div>
             </div>
           ))}
           {Object.keys(result.assessment.kcDelta).length > 0 && (
-            <div className="mt-2 rounded bg-slate-50 p-1.5">
-              <span className="font-semibold">KC Delta</span>
-              <pre className="mt-1 whitespace-pre-wrap text-[11px]">
+            <div className="rounded-md border border-border-soft bg-surface p-2">
+              <div className="font-medium text-text-primary">KC Delta</div>
+              <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-text-secondary">
                 {JSON.stringify(result.assessment.kcDelta, null, 2)}
               </pre>
             </div>

@@ -32,7 +32,6 @@ export function AssignmentPanel({ selectedCode, onSelect }: AssignmentPanelProps
         const res = await fetch("/api/assignments");
         const data = (await res.json()) as { assignments: AssignmentPublic[] };
         setAssignments(data.assignments);
-        // 첫 과제 자동 선택
         if (!selectedCode && data.assignments[0]) onSelect(data.assignments[0]);
       } finally {
         setLoading(false);
@@ -44,19 +43,24 @@ export function AssignmentPanel({ selectedCode, onSelect }: AssignmentPanelProps
   const selected = assignments.find((a) => a.code === selectedCode);
 
   if (loading) {
-    return <aside className="overflow-auto p-4 text-sm text-slate-500">과제 목록 로딩 중…</aside>;
+    return (
+      <aside className="overflow-auto p-6 text-[13px] text-text-secondary">과제 목록 로딩 중…</aside>
+    );
   }
 
   return (
-    <aside aria-label="problem-panel" className="flex h-full flex-col overflow-hidden">
-      <div className="border-b bg-slate-50 p-2">
+    <aside aria-label="problem-panel" className="flex h-full flex-col overflow-hidden bg-surface">
+      <div className="border-b border-border-soft bg-surface px-4 py-3">
+        <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral">
+          Assignment
+        </div>
         <select
           value={selectedCode ?? ""}
           onChange={(e) => {
             const next = assignments.find((a) => a.code === e.target.value);
             if (next) onSelect(next);
           }}
-          className="w-full rounded border px-2 py-1 text-sm"
+          className="w-full rounded-md border border-border-soft bg-white px-2.5 py-1.5 text-[13px] text-text-primary transition-colors focus:border-primary focus:outline-none focus:shadow-ring"
         >
           {assignments.map((a) => (
             <option key={a.code} value={a.code}>
@@ -66,44 +70,75 @@ export function AssignmentPanel({ selectedCode, onSelect }: AssignmentPanelProps
         </select>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 text-sm">
+      <div className="flex-1 overflow-auto px-5 py-4 text-[13px]">
         {selected && (
           <>
-            <h2 className="text-base font-semibold">{selected.title}</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <span>난이도 {selected.difficulty} · KC {selected.kcTags.join(", ")}</span>
+            <h2 className="font-display text-xl font-semibold tracking-tighter text-text-primary">
+              {selected.title}
+            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="rounded-full border border-border-soft px-2 py-0.5 font-mono text-neutral">
+                D{selected.difficulty}
+              </span>
+              {selected.kcTags.map((kc) => (
+                <span
+                  key={kc}
+                  className="rounded-full bg-primary/5 px-2 py-0.5 font-mono text-primary"
+                >
+                  {kc}
+                </span>
+              ))}
               {selected.variantCount > 1 && (
-                <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-800">
-                  variant v{selected.variantIndex + 1} / {selected.variantCount}
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                  v{selected.variantIndex + 1} / {selected.variantCount}
                 </span>
               )}
             </div>
-            <p className="mt-3 whitespace-pre-wrap text-slate-800">{selected.template}</p>
+            <p className="mt-4 whitespace-pre-wrap leading-relaxed text-text-primary">
+              {selected.template}
+            </p>
 
-            <div className="mt-4">
-              <div className="text-xs font-semibold text-slate-600">입출력 예시</div>
-              {selected.visibleTests.map((t, i) => (
-                <div key={i} className="mt-1 rounded border bg-slate-50 p-2 font-mono text-[11px]">
-                  <div className="text-slate-500">input</div>
-                  <pre className="whitespace-pre-wrap text-slate-800">{t.input || "(empty)"}</pre>
-                  <div className="mt-1 text-slate-500">expected</div>
-                  <pre className="whitespace-pre-wrap text-slate-800">{t.expected}</pre>
-                  {t.note && <div className="mt-1 text-slate-500">// {t.note}</div>}
-                </div>
-              ))}
+            <div className="mt-6">
+              <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
+                Examples
+              </div>
+              <div className="space-y-2">
+                {selected.visibleTests.map((t, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-border-soft bg-bg p-3 font-mono text-[11px]"
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-neutral">input</div>
+                    <pre className="mt-1 whitespace-pre-wrap text-text-primary">
+                      {t.input || "(empty)"}
+                    </pre>
+                    <div className="mt-2 text-[10px] uppercase tracking-wider text-neutral">
+                      expected
+                    </div>
+                    <pre className="mt-1 whitespace-pre-wrap text-text-primary">{t.expected}</pre>
+                    {t.note && <div className="mt-2 text-text-secondary">// {t.note}</div>}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="mt-4">
-              <div className="text-xs font-semibold text-slate-600">제약</div>
-              <ul className="mt-1 text-xs text-slate-700">
-                <li>실행 제한: {selected.constraints.timeLimitMs}ms / {selected.constraints.memLimitMb}MB</li>
-                <li>허용 헤더: {selected.constraints.allowedHeaders.join(", ")}</li>
+            <div className="mt-6">
+              <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
+                Constraints
+              </div>
+              <ul className="space-y-1 text-[12px] text-text-secondary">
+                <li>
+                  실행 제한 · {selected.constraints.timeLimitMs}ms / {selected.constraints.memLimitMb}MB
+                </li>
+                <li>허용 헤더 · {selected.constraints.allowedHeaders.join(", ")}</li>
               </ul>
             </div>
 
-            <div className="mt-4">
-              <div className="text-xs font-semibold text-slate-600">루브릭 가중치</div>
-              <ul className="mt-1 text-xs text-slate-700">
+            <div className="mt-6">
+              <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
+                Rubric
+              </div>
+              <ul className="space-y-1 text-[12px] text-text-secondary">
                 <li>correctness {selected.rubric.correctness}</li>
                 <li>style {selected.rubric.style}</li>
                 <li>memory_safety {selected.rubric.memory_safety}</li>

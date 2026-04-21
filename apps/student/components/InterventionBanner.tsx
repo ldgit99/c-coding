@@ -16,17 +16,9 @@ interface Intervention {
 
 interface Props {
   studentId: string;
-  /**
-   * mode_change 개입 수신 시 호출되는 콜백.
-   * payload.unlock=true이면 학생이 다시 모드를 선택할 수 있도록 잠금 해제.
-   */
   onModeChange?: (next: Mode, unlock: boolean) => void;
 }
 
-/**
- * 교사 개입 쪽지 수신 배너 — 5초 폴링.
- * mode_change는 학생 확인 없이 즉시 반영(교사 강제 권한).
- */
 export function InterventionBanner({ studentId, onModeChange }: Props) {
   const [pending, setPending] = useState<Intervention[]>([]);
 
@@ -39,7 +31,6 @@ export function InterventionBanner({ studentId, onModeChange }: Props) {
         const data = (await res.json()) as { interventions: Intervention[] };
         if (cancelled) return;
 
-        // mode_change는 확인 없이 즉시 반영
         const modeChanges = data.interventions.filter((i) => i.type === "mode_change");
         for (const mc of modeChanges) {
           const next = (mc.payload["mode"] as Mode | undefined) ?? "pair";
@@ -51,7 +42,6 @@ export function InterventionBanner({ studentId, onModeChange }: Props) {
             body: JSON.stringify({ id: mc.id }),
           });
         }
-        // 나머지는 배너로 남긴다 (학생 확인 대기)
         setPending(data.interventions.filter((i) => i.type !== "mode_change"));
       } catch {
         // ignore transient network errors
@@ -77,19 +67,19 @@ export function InterventionBanner({ studentId, onModeChange }: Props) {
   if (pending.length === 0) return null;
 
   return (
-    <div className="border-b border-amber-300 bg-amber-50 px-4 py-2">
+    <div className="border-b border-warning/30 bg-warning/10 px-6 py-3">
       {pending.map((item) => (
-        <div key={item.id} className="flex items-start justify-between gap-3 py-1 text-sm">
-          <div>
-            <span className="mr-2 rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              교사 개입
+        <div key={item.id} className="flex items-start justify-between gap-4 py-1 text-[13px]">
+          <div className="flex items-baseline gap-3">
+            <span className="rounded-sm bg-warning/90 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white">
+              Teacher
             </span>
-            <span className="font-semibold">{interventionLabel(item.type)}</span>
-            <span className="ml-2 text-slate-700">{describePayload(item)}</span>
+            <span className="font-medium text-text-primary">{interventionLabel(item.type)}</span>
+            <span className="text-text-secondary">{describePayload(item)}</span>
           </div>
           <button
             onClick={() => void dismiss(item.id)}
-            className="text-xs text-slate-600 hover:text-slate-900"
+            className="text-[11px] uppercase tracking-wider text-text-secondary transition-colors hover:text-primary"
           >
             확인
           </button>

@@ -52,35 +52,66 @@ export function TeacherDashboard({ user }: { user: AppUser }) {
   }, []);
 
   if (loading || !data) {
-    return <main className="p-6 text-slate-500">대시보드 로딩 중…</main>;
+    return <main className="p-12 text-sm text-neutral">대시보드 로딩 중…</main>;
   }
 
   const kcs = Object.keys(data.summary.avgMasteryByKC);
 
   return (
-    <main className="p-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">CVibe — 교사 대시보드</h1>
-          <div className="text-xs text-slate-500">
-            {user.displayName}
-            {user.mocked && <span className="ml-1 rounded bg-amber-100 px-1 text-amber-800">demo</span>}
-          </div>
+    <main className="mx-auto max-w-[1280px] px-6 py-10">
+      <header className="mb-10 border-b border-border-soft pb-6">
+        <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
+          Teacher Dashboard
         </div>
-        <div className="text-xs text-slate-500">
-          cohort {data.cohortId} · {data.summary.studentCount}명 · 완료율 {(data.summary.completionRate * 100).toFixed(0)}%
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-4xl font-semibold tracking-tighter text-text-primary">
+              Classroom Overview
+            </h1>
+            <div className="mt-2 flex items-center gap-3 text-[13px] text-text-secondary">
+              <span>{user.displayName}</span>
+              {user.mocked && (
+                <span className="rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">
+                  demo
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-right text-[12px] text-text-secondary">
+            <div>
+              <span className="text-neutral">cohort · </span>
+              <span className="font-mono text-text-primary">{data.cohortId}</span>
+            </div>
+            <div className="mt-1">
+              <span className="text-neutral">{data.summary.studentCount} students · </span>
+              <span className="font-medium text-text-primary">
+                {(data.summary.completionRate * 100).toFixed(0)}%
+              </span>
+              <span className="text-neutral"> completion</span>
+            </div>
+          </div>
         </div>
       </header>
 
-      <section id="classroom" className="mb-6 rounded border p-4">
-        <h2 className="mb-3 font-semibold">Classroom Heatmap — KC별 평균 숙련도</h2>
-        <div className="overflow-auto">
-          <table className="w-full text-xs">
+      <section
+        id="classroom"
+        className="mb-10 overflow-hidden rounded-xl border border-border-soft bg-surface"
+      >
+        <div className="border-b border-border-soft px-6 py-4">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+            Classroom Heatmap
+          </div>
+          <h2 className="mt-0.5 font-display text-xl font-semibold tracking-tighter text-text-primary">
+            KC별 평균 숙련도
+          </h2>
+        </div>
+        <div className="overflow-auto px-6 py-4">
+          <table className="w-full text-[12px]">
             <thead>
-              <tr>
-                <th className="sticky left-0 bg-white p-1 text-left">학생</th>
+              <tr className="border-b border-border-soft text-left text-[10px] uppercase tracking-wider text-neutral">
+                <th className="sticky left-0 bg-surface py-2 pr-4 font-medium">Student</th>
                 {kcs.map((kc) => (
-                  <th key={kc} className="whitespace-nowrap p-1 text-left font-normal text-slate-600">
+                  <th key={kc} className="whitespace-nowrap py-2 pr-3 font-medium">
                     {kc}
                   </th>
                 ))}
@@ -88,18 +119,21 @@ export function TeacherDashboard({ user }: { user: AppUser }) {
             </thead>
             <tbody>
               {data.summary.heatmap.map((row) => (
-                <tr key={row.studentId}>
-                  <td className="sticky left-0 bg-white p-1 font-semibold">
-                    <a href={`/student/${row.studentId}`} className="text-slate-900 hover:underline">
+                <tr key={row.studentId} className="border-b border-border-soft last:border-0">
+                  <td className="sticky left-0 bg-surface py-2 pr-4 font-medium text-text-primary">
+                    <a
+                      href={`/student/${row.studentId}`}
+                      className="transition-colors hover:text-primary"
+                    >
                       {row.displayName}
                     </a>
                   </td>
                   {kcs.map((kc) => {
                     const v = row.mastery[kc] ?? 0;
                     return (
-                      <td key={kc} className="p-1">
+                      <td key={kc} className="py-2 pr-3">
                         <div
-                          className="flex h-6 w-full items-center justify-center rounded text-[10px] text-white"
+                          className="flex h-6 w-14 items-center justify-center rounded-md text-[10px] font-medium text-white"
                           style={{ background: heatColor(v) }}
                           title={`${kc}: ${v.toFixed(2)}`}
                         >
@@ -110,96 +144,138 @@ export function TeacherDashboard({ user }: { user: AppUser }) {
                   })}
                 </tr>
               ))}
-              <tr className="border-t-2 border-slate-200 font-semibold">
-                <td className="sticky left-0 bg-white p-1">평균</td>
+              <tr className="border-t-2 border-border-soft bg-bg text-[10px] uppercase tracking-wider text-neutral">
+                <td className="sticky left-0 bg-bg py-2 pr-4 font-medium">Average</td>
                 {kcs.map((kc) => (
-                  <td key={kc} className="p-1 text-[10px] text-slate-600">
+                  <td key={kc} className="py-2 pr-3 font-mono text-[11px] text-text-primary">
                     {data.summary.avgMasteryByKC[kc]?.toFixed(2)}
                   </td>
                 ))}
               </tr>
             </tbody>
           </table>
+          {data.summary.weakKCs.length > 0 && (
+            <div className="mt-4 rounded-md border border-error/20 bg-error/5 p-3 text-[12px] text-error">
+              <span className="font-medium uppercase tracking-wider">Weak KC · </span>
+              {data.summary.weakKCs.join(", ")}
+            </div>
+          )}
         </div>
-        {data.summary.weakKCs.length > 0 && (
-          <div className="mt-3 text-xs text-rose-700">
-            취약 KC (평균 {"<"} 0.5): {data.summary.weakKCs.join(", ")}
+      </section>
+
+      <section
+        id="intervention"
+        className="mb-10 overflow-hidden rounded-xl border border-border-soft bg-surface"
+      >
+        <div className="border-b border-border-soft px-6 py-4">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+            Teacher Copilot
           </div>
-        )}
+          <h2 className="mt-0.5 font-display text-xl font-semibold tracking-tighter text-text-primary">
+            Intervention Queue
+          </h2>
+        </div>
+        <div className="px-6 py-4">
+          {data.interventionQueue.length === 0 ? (
+            <p className="text-[13px] text-text-secondary">개입이 필요한 학생이 없어요.</p>
+          ) : (
+            <ul className="divide-y divide-border-soft">
+              {data.interventionQueue.map((item) => (
+                <li key={item.studentId} className="py-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-text-primary">{item.displayName}</span>
+                    <LevelBadge level={item.level} />
+                  </div>
+                  <ul className="mt-2 list-disc space-y-0.5 pl-5 text-[12px] text-text-secondary">
+                    {item.reasons.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-2 text-[10px] uppercase tracking-wider text-neutral">
+                    Suggested
+                  </div>
+                  <ul className="text-[12px] text-text-secondary">
+                    {item.suggestedActions.map((a, i) => (
+                      <li key={i}>· {a.label}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-3">
+                    <InterventionActions
+                      studentId={item.studentId}
+                      displayName={item.displayName}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
-      <section id="intervention" className="mb-6 rounded border p-4">
-        <h2 className="mb-2 font-semibold">Intervention Queue — Teacher Copilot 권고</h2>
-        {data.interventionQueue.length === 0 ? (
-          <p className="text-sm text-slate-500">개입이 필요한 학생이 없어요.</p>
-        ) : (
-          <ul className="space-y-2">
-            {data.interventionQueue.map((item) => (
-              <li key={item.studentId} className="rounded border bg-slate-50 p-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{item.displayName}</span>
-                  <span className={`rounded px-2 py-0.5 text-xs text-white ${LEVEL_BADGE[item.level]}`}>
-                    {item.level}
-                  </span>
-                </div>
-                <ul className="mt-2 list-disc pl-4 text-xs text-slate-700">
-                  {item.reasons.map((r, i) => (
-                    <li key={i}>{r}</li>
-                  ))}
-                </ul>
-                <div className="mt-2 text-xs text-slate-500">권고 액션:</div>
-                <ul className="text-xs text-slate-600">
-                  {item.suggestedActions.map((a, i) => (
-                    <li key={i}>· {a.label}</li>
-                  ))}
-                </ul>
-                <div className="mt-2">
-                  <InterventionActions studentId={item.studentId} displayName={item.displayName} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <div className="mb-6">
+      <div className="mb-10">
         <LiveEvents />
       </div>
 
-      <section id="misconceptions" className="rounded border p-4">
-        <h2 className="mb-2 font-semibold">Common Misconceptions</h2>
-        {data.misconceptions.length === 0 ? (
-          <p className="text-sm text-slate-500">현재 감지된 공통 오개념 없음.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {data.misconceptions.map((m, i) => (
-              <li key={i} className="rounded bg-slate-50 p-2">
-                <span className="font-semibold">{m.kc}</span>
-                <span className="ml-2 text-slate-600">{m.pattern}</span>
-                <span className="ml-2 text-xs text-slate-500">
-                  {m.affectedStudentCount}명 · 누적 {m.totalOccurrences}회
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <section
+        id="misconceptions"
+        className="mb-10 overflow-hidden rounded-xl border border-border-soft bg-surface"
+      >
+        <div className="border-b border-border-soft px-6 py-4">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+            Student Modeler
+          </div>
+          <h2 className="mt-0.5 font-display text-xl font-semibold tracking-tighter text-text-primary">
+            Common Misconceptions
+          </h2>
+        </div>
+        <div className="px-6 py-4">
+          {data.misconceptions.length === 0 ? (
+            <p className="text-[13px] text-text-secondary">현재 감지된 공통 오개념 없음.</p>
+          ) : (
+            <ul className="divide-y divide-border-soft">
+              {data.misconceptions.map((m, i) => (
+                <li key={i} className="flex items-center justify-between py-3 text-[13px]">
+                  <div>
+                    <span className="font-mono text-text-primary">{m.kc}</span>
+                    <span className="ml-2 text-text-secondary">{m.pattern}</span>
+                  </div>
+                  <span className="text-[11px] text-neutral">
+                    {m.affectedStudentCount} students · {m.totalOccurrences}×
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
-      <div className="mt-4 text-right text-xs text-slate-400">
+      <div className="text-right text-[11px] text-neutral">
         generated {new Date(data.generatedAt).toLocaleTimeString("ko-KR")}
       </div>
     </main>
   );
 }
 
-const LEVEL_BADGE = {
-  weak: "bg-slate-400",
-  medium: "bg-amber-500",
-  strong: "bg-rose-600",
-} as const;
+function LevelBadge({ level }: { level: "weak" | "medium" | "strong" }) {
+  const classes =
+    level === "strong"
+      ? "bg-error/10 text-error border-error/20"
+      : level === "medium"
+        ? "bg-warning/10 text-warning border-warning/20"
+        : "bg-bg text-text-secondary border-border-soft";
+  return (
+    <span
+      className={`rounded-sm border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${classes}`}
+    >
+      {level}
+    </span>
+  );
+}
 
 function heatColor(v: number): string {
+  // 0(red) → 1(green). Genesis 팔레트 중간 구간을 선명하지 않게 저채도 사용.
   const hue = Math.round(v * 120);
-  const light = 40 + (1 - v) * 15;
-  return `hsl(${hue}, 60%, ${light}%)`;
+  const light = 45 + (1 - v) * 10;
+  const sat = 55;
+  return `hsl(${hue}, ${sat}%, ${light}%)`;
 }

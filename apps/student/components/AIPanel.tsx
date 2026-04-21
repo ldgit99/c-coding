@@ -153,7 +153,14 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
 
   const requestReview = useCallback(async () => {
     if (editorCode.trim().length === 0) {
-      setHistory((h) => [...h, { kind: "text", role: "ai", text: "에디터에 코드를 먼저 작성해봐 — Navigator, not Driver 원칙이야." }]);
+      setHistory((h) => [
+        ...h,
+        {
+          kind: "text",
+          role: "ai",
+          text: "에디터에 코드를 먼저 작성해봐 — Navigator, not Driver 원칙이야.",
+        },
+      ]);
       return;
     }
     await callChat("이 코드 검토해줘");
@@ -180,64 +187,75 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
   }, [selfExplainTarget, selfExplainText, studentId]);
 
   return (
-    <aside aria-label="ai-panel" className="flex h-full flex-col overflow-hidden">
-      <div className="flex border-b bg-slate-50 text-xs">
+    <aside aria-label="ai-panel" className="flex h-full flex-col overflow-hidden bg-surface">
+      <div className="flex border-b border-border-soft">
         {(["chat", "hint", "reflection", "review"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 px-2 py-2 ${tab === t ? "bg-white font-semibold" : "text-slate-500"}`}
+            className={`flex-1 border-b-2 px-3 py-3 text-[11px] font-medium uppercase tracking-wider transition-colors ${
+              tab === t
+                ? "border-primary text-text-primary"
+                : "border-transparent text-neutral hover:text-text-secondary"
+            }`}
           >
             {tabLabel(t)}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-3 text-sm">
+      <div className="flex-1 overflow-auto px-5 py-4 text-[13px]">
         {history.length === 0 && (
-          <p className="text-slate-500">
-            코드를 한 번이라도 작성하거나 실행해야 도움을 요청할 수 있어요 — Navigator, not Driver.
+          <p className="leading-relaxed text-text-secondary">
+            코드를 한 번이라도 작성하거나 실행해야 도움을 요청할 수 있어요.
+            <br />
+            <span className="text-neutral">Navigator, not Driver.</span>
           </p>
         )}
         {history.map((msg, i) =>
           msg.kind === "text" ? (
-            <div key={i} className={`mb-3 ${msg.role === "student" ? "text-slate-900" : "text-slate-700"}`}>
-              <div className="text-xs font-semibold text-slate-500">
-                {msg.role === "student" ? "나" : "Pedagogy Coach"} {msg.meta && <span className="font-normal text-slate-400">· {msg.meta}</span>}
+            <div key={i} className="mb-4">
+              <div className="mb-1 flex items-baseline gap-2 text-[10px] uppercase tracking-wider text-neutral">
+                <span className={msg.role === "student" ? "text-text-primary" : "text-primary"}>
+                  {msg.role === "student" ? "나" : "Pedagogy Coach"}
+                </span>
+                {msg.meta && <span className="font-mono text-neutral">· {msg.meta}</span>}
               </div>
-              <div className="whitespace-pre-wrap">{msg.text}</div>
+              <div className="whitespace-pre-wrap leading-relaxed text-text-primary">{msg.text}</div>
               {msg.role === "ai" && msg.requiresSelfExplanation && !msg.accepted && (
                 <button
                   onClick={() => {
                     setSelfExplainTarget(i);
                     setSelfExplainText("");
                   }}
-                  className="mt-2 rounded border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-800"
+                  className="mt-2 rounded-md border border-error/30 bg-error/5 px-3 py-1.5 text-[11px] font-medium text-error transition-colors hover:bg-error/10"
                 >
-                  💭 이 예시를 내 코드에 반영하려면 → 자기 설명 필요
+                  💭 이 예시를 반영하려면 → 자기 설명 필요
                 </button>
               )}
               {msg.role === "ai" && msg.accepted && (
-                <div className="mt-1 text-[11px] text-emerald-700">✓ 자기 설명 제출됨 · 수락됨</div>
+                <div className="mt-1 text-[11px] text-success">✓ 자기 설명 제출됨 · 수락됨</div>
               )}
             </div>
           ) : (
             <ReviewCard key={i} review={msg.review} meta={msg.meta} />
           ),
         )}
-        {loading && <div className="text-slate-400">생각 중…</div>}
+        {loading && <div className="text-[12px] text-neutral">생각 중…</div>}
       </div>
 
       {tab === "hint" && (
-        <div className="border-t bg-slate-50 p-2">
-          <div className="mb-2 text-xs text-slate-600">계단식 힌트 요청 (게이팅이 실제 레벨을 결정)</div>
-          <div className="flex gap-1 text-xs">
+        <div className="border-t border-border-soft bg-bg px-4 py-3">
+          <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
+            계단식 힌트 요청 (게이팅이 레벨 결정)
+          </div>
+          <div className="flex gap-1">
             {([1, 2, 3, 4] as const).map((lvl) => (
               <button
                 key={lvl}
                 disabled={loading}
                 onClick={() => void callChat("", { requestedLevel: lvl })}
-                className="flex-1 rounded border bg-white px-2 py-1 disabled:opacity-50"
+                className="flex-1 rounded-md border border-border-soft bg-white px-2 py-1.5 text-[11px] font-medium text-text-primary transition-all hover:-translate-y-px hover:border-primary hover:text-primary disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 L{lvl}
               </button>
@@ -247,18 +265,18 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
       )}
 
       {tab === "review" && (
-        <div className="border-t bg-slate-50 p-2">
+        <div className="border-t border-border-soft bg-bg px-4 py-3">
           <button
             onClick={() => void requestReview()}
             disabled={loading}
-            className="w-full rounded bg-slate-900 px-3 py-1.5 text-xs text-white disabled:opacity-60"
+            className="w-full rounded-md bg-primary px-3 py-2 text-[12px] font-medium text-white transition-all hover:-translate-y-px hover:bg-primary-hover hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             현재 코드 검토 요청
           </button>
         </div>
       )}
 
-      <div className="border-t bg-white p-2">
+      <div className="border-t border-border-soft bg-surface px-4 py-3">
         <div className="flex gap-2">
           <input
             value={input}
@@ -270,13 +288,13 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
               }
             }}
             placeholder="질문 또는 힌트 요청…"
-            className="flex-1 rounded border px-2 py-1 text-sm"
+            className="flex-1 rounded-md border border-border-soft bg-white px-3 py-1.5 text-[13px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring"
             disabled={loading}
           />
           <button
             onClick={() => void callChat(input)}
             disabled={loading || !input.trim()}
-            className="rounded bg-slate-900 px-3 text-xs text-white disabled:opacity-60"
+            className="rounded-md bg-primary px-3 text-[12px] font-medium text-white transition-all hover:-translate-y-px hover:bg-primary-hover hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             보내기
           </button>
@@ -284,37 +302,42 @@ export function AIPanel({ editorCode, studentId, mode, assignmentCode }: AIPanel
       </div>
 
       {selfExplainTarget !== null && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded bg-white p-4 shadow-lg">
-            <h3 className="text-sm font-semibold">자기 설명 — 왜 이 수정이 필요한가?</h3>
-            <p className="mt-1 text-xs text-slate-600">
-              research.md §3.1 — AI 제안을 수락하기 전 1~2문장으로 이유를 적어주세요. 메타인지 훈련의 핵심이에요.
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-text-primary/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border border-border-soft bg-surface p-6 shadow-card">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+              Meta-cognition
+            </div>
+            <h3 className="mt-0.5 font-display text-xl font-semibold tracking-tighter text-text-primary">
+              자기 설명 — 왜 이 수정이 필요한가?
+            </h3>
+            <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
+              AI 제안을 수락하기 전 1~2문장으로 이유를 적어주세요. 메타인지 훈련의 핵심이에요.
             </p>
             <textarea
               autoFocus
               value={selfExplainText}
               onChange={(e) => setSelfExplainText(e.target.value)}
-              className="mt-2 w-full rounded border p-2 text-sm"
+              className="mt-3 w-full rounded-md border border-border-soft bg-white p-3 text-[13px] text-text-primary focus:border-primary focus:outline-none focus:shadow-ring"
               rows={4}
               placeholder="예: 현재 내 코드는 ‥인데 AI의 제안이 ‥를 고쳐서 ‥가 맞아진다고 이해했다"
             />
-            <div className="mt-1 text-[11px] text-slate-500">
-              {selfExplainText.trim().length}자 (최소 10자)
+            <div className="mt-1 text-[11px] text-neutral">
+              {selfExplainText.trim().length}자 · 최소 10자
             </div>
-            <div className="mt-3 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => {
                   setSelfExplainTarget(null);
                   setSelfExplainText("");
                 }}
-                className="rounded border px-3 py-1 text-xs"
+                className="rounded-md border border-border-soft px-3 py-1.5 text-[12px] text-text-primary transition-colors hover:border-primary hover:text-primary"
               >
                 취소
               </button>
               <button
                 onClick={() => void submitSelfExplanation()}
                 disabled={selfExplainText.trim().length < 10}
-                className="rounded bg-slate-900 px-3 py-1 text-xs text-white disabled:opacity-50"
+                className="rounded-md bg-primary px-3 py-1.5 text-[12px] font-medium text-white transition-all hover:-translate-y-px hover:bg-primary-hover hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 제출하고 수락
               </button>
@@ -330,20 +353,23 @@ function ReviewCard({ review, meta }: { review: ReviewPayload; meta?: string }) 
   const top = review.findings.filter((f) => review.topIssues.includes(f.id));
   const rest = review.findings.filter((f) => !review.topIssues.includes(f.id));
   return (
-    <div className="mb-3 rounded border border-slate-200 bg-white p-2">
-      <div className="text-xs font-semibold text-slate-500">
-        Code Reviewer {meta && <span className="font-normal text-slate-400">· {meta}</span>}
+    <div className="mb-4 rounded-xl border border-border-soft bg-bg p-4 transition-shadow hover:shadow-card">
+      <div className="flex items-baseline gap-2 text-[10px] uppercase tracking-wider text-neutral">
+        <span className="text-primary">Code Reviewer</span>
+        {meta && <span className="font-mono">· {meta}</span>}
       </div>
-      <div className="mt-1 text-xs text-slate-700">{review.summary}</div>
+      <div className="mt-1 text-[13px] text-text-primary">{review.summary}</div>
       {top.length === 0 && rest.length === 0 && (
-        <div className="mt-2 text-xs text-slate-500">눈에 띄는 이슈 없음.</div>
+        <div className="mt-2 text-[12px] text-neutral">눈에 띄는 이슈 없음.</div>
       )}
       {top.map((f) => (
         <FindingItem key={f.id} finding={f} highlight />
       ))}
       {rest.length > 0 && (
-        <details className="mt-1 text-xs">
-          <summary className="cursor-pointer text-slate-500">추가 이슈 {rest.length}건</summary>
+        <details className="mt-2 text-[12px]">
+          <summary className="cursor-pointer text-neutral hover:text-text-secondary">
+            추가 이슈 {rest.length}건
+          </summary>
           {rest.map((f) => (
             <FindingItem key={f.id} finding={f} />
           ))}
@@ -356,19 +382,21 @@ function ReviewCard({ review, meta }: { review: ReviewPayload; meta?: string }) 
 function FindingItem({ finding, highlight }: { finding: Finding; highlight?: boolean }) {
   const color =
     finding.severity === "blocker"
-      ? "text-rose-700"
+      ? "text-error"
       : finding.severity === "major"
-        ? "text-amber-700"
-        : "text-slate-700";
+        ? "text-warning"
+        : "text-text-secondary";
   return (
-    <div className={`mt-2 rounded ${highlight ? "bg-rose-50 p-2" : "px-1 py-1"}`}>
-      <div className={`text-xs font-semibold ${color}`}>
+    <div
+      className={`mt-2 rounded-md ${highlight ? "border border-error/20 bg-error/5 p-3" : "px-1 py-1"}`}
+    >
+      <div className={`text-[10px] font-medium uppercase tracking-wider ${color}`}>
         [{finding.severity}] line {finding.line} · {finding.category} · {finding.kc}
       </div>
-      <div className="mt-1 text-xs text-slate-800">{finding.message}</div>
-      <div className="mt-1 text-xs italic text-slate-600">{finding.suggestion}</div>
+      <div className="mt-1 text-[12px] text-text-primary">{finding.message}</div>
+      <div className="mt-1 text-[12px] italic text-text-secondary">{finding.suggestion}</div>
       {finding.proposedCode && (
-        <pre className="mt-1 overflow-auto rounded bg-slate-900 p-2 font-mono text-[11px] text-slate-100">
+        <pre className="mt-2 overflow-auto rounded-md bg-text-primary p-2 font-mono text-[11px] text-white">
           {finding.proposedCode}
         </pre>
       )}

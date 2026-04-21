@@ -2,11 +2,6 @@
 
 import { useState } from "react";
 
-/**
- * packages/db의 DEMO_TEACHER_USER.id와 동일값. 클라이언트 번들에서 db의
- * postgres/drizzle까지 끌고 오지 않도록 의도적으로 복제. Supabase Auth
- * 연결 후에는 실제 세션 user.id로 교체.
- */
 const DEMO_TEACHER_ID = "00000000-0000-4000-8000-000000000001";
 
 interface Props {
@@ -14,10 +9,6 @@ interface Props {
   displayName: string;
 }
 
-/**
- * 교사가 개별 학생에 직접 쪽지/모드 변경/수동 힌트를 전송.
- * /api/intervene(교사 앱) → 학생 앱의 /api/interventions로 프록시 전달.
- */
 export function InterventionActions({ studentId, displayName }: Props) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -54,45 +45,48 @@ export function InterventionActions({ studentId, displayName }: Props) {
     await send("direct_message", { text });
   };
 
+  const baseBtn =
+    "rounded-md border border-border-soft bg-white px-2.5 py-1 text-[11px] font-medium text-text-primary transition-all hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       <button
         onClick={() => void send("mode_change", { mode: "tutor" })}
         disabled={busy}
-        className="rounded border bg-white px-2 py-1 text-xs disabled:opacity-50"
+        className={`${baseBtn} hover:border-error/40 hover:bg-error/5 hover:text-error`}
       >
-        🔴 tutor로 상승
+        → tutor
       </button>
       <button
         onClick={() => void send("mode_change", { mode: "pair" })}
         disabled={busy}
-        className="rounded border bg-white px-2 py-1 text-xs disabled:opacity-50"
+        className={`${baseBtn} hover:border-primary/40 hover:bg-primary/5 hover:text-primary`}
       >
-        🟠 pair 유지
+        → pair
       </button>
       <button
         onClick={() => void send("mode_change", { mode: "observer" })}
         disabled={busy}
-        className="rounded border bg-white px-2 py-1 text-xs disabled:opacity-50"
+        className={`${baseBtn} hover:border-warning/40 hover:bg-warning/5 hover:text-warning`}
       >
-        🟡 observer 관찰
+        → observer
       </button>
       <button
         onClick={() => void sendMessage()}
         disabled={busy}
-        className="rounded border bg-white px-2 py-1 text-xs disabled:opacity-50"
+        className={`${baseBtn} hover:border-primary hover:text-primary`}
       >
-        📝 쪽지 전송
+        쪽지
       </button>
       <button
         onClick={() => void send("mode_change", { mode: "pair", unlock: true })}
         disabled={busy}
-        className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 disabled:opacity-50"
+        className="rounded-md border border-success/30 bg-success/5 px-2.5 py-1 text-[11px] font-medium text-success transition-all hover:-translate-y-px hover:bg-success/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
         title="학생이 모드를 다시 선택할 수 있게 풀어줌"
       >
-        🔓 잠금 해제
+        잠금 해제
       </button>
-      {status && <span className="text-xs text-slate-500">{status}</span>}
+      {status && <span className="ml-1 text-[11px] text-neutral">{status}</span>}
     </div>
   );
 }
