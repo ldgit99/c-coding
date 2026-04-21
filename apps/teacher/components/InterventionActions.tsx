@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
-import { DEMO_TEACHER_USER } from "@cvibe/db";
+/**
+ * packages/db의 DEMO_TEACHER_USER.id와 동일값. 클라이언트 번들에서 db의
+ * postgres/drizzle까지 끌고 오지 않도록 의도적으로 복제. Supabase Auth
+ * 연결 후에는 실제 세션 user.id로 교체.
+ */
+const DEMO_TEACHER_ID = "00000000-0000-0000-0000-000000000001";
 
 interface Props {
   studentId: string;
@@ -31,7 +36,7 @@ export function InterventionActions({ studentId, displayName }: Props) {
           studentId,
           type,
           payload,
-          teacherId: DEMO_TEACHER_USER.id,
+          teacherId: DEMO_TEACHER_ID,
         }),
       });
       if (res.ok) setStatus(`[${type}] ${displayName}에게 전달됨`);

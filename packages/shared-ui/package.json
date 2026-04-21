@@ -11,6 +11,7 @@
     "./hooks/*": "./src/hooks/*.ts"
   },
   "scripts": {
+    "build": "tsc --noEmit",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
