@@ -43,7 +43,7 @@ interface ChatResponse {
   details?: Array<{ path?: (string | number)[]; message?: string; code?: string }>;
 }
 
-type Tab = "chat" | "hint" | "review";
+type Tab = "chat" | "review";
 
 interface AIPanelProps {
   editorCode: string;
@@ -71,22 +71,22 @@ function buildWelcomeMessage(params: {
   if (mode === "silent") return null;
 
   if (mode === "observer") {
-    return `"${title}" 문제를 여는구나. 나는 지켜볼게. 막히면 힌트 탭을 눌러.`;
+    return `"${title}" 문제를 여는구나. 지켜볼게 — 필요하면 힌트 탭이나 채팅으로 말 걸어.`;
   }
 
   const objLines =
     objectives && objectives.length > 0
-      ? `\n\n이 문제는 다음을 연습하는 자리야:\n${objectives
+      ? `\n\n오늘의 연습 포인트:\n${objectives
           .map((o, i) => `  ${["①", "②", "③"][i] ?? "•"} ${o}`)
           .join("\n")}`
       : "";
 
   if (mode === "tutor") {
-    return `안녕! "${title}"을(를) 같이 풀어보자.${objLines}\n\n먼저 입력·출력이 뭔지, 그리고 어떤 자료구조·제어 흐름이 필요할지 함께 정리해볼까? 네가 먼저 한 문장으로 말해봐 — 접근 방향을 잡아주는 게 내 역할이야.`;
+    return `안녕! "${title}"을(를) 같이 해볼게.${objLines}\n\n준비되면 네가 먼저 움직여봐. 도움이 필요하면 힌트 탭이나 채팅으로 말해 — 요청한 만큼만 줄게.`;
   }
 
   // pair (기본)
-  return `안녕! "${title}" 문제를 시작하는구나.${objLines}\n\n시작하기 전에 — 문제에서 원하는 입력과 출력이 정확히 뭐야? 한 문장으로 정리해봐. 옆에서 지켜볼게.`;
+  return `안녕! "${title}" 시작이구나.${objLines}\n\n나는 옆에 있을게. 힌트는 네가 요청할 때만 건네줄 테니 편하게 먼저 시도해봐.`;
 }
 
 type HistoryEntry =
@@ -109,31 +109,63 @@ export function AIPanel({
   const [selfExplainTarget, setSelfExplainTarget] = useState<number | null>(null);
   const [selfExplainText, setSelfExplainText] = useState("");
   const welcomedAssignmentRef = useRef<string | null>(null);
+  const hydratedAssignmentRef = useRef<string | null>(null);
 
-  // 과제 전환 시 환영 턴 1회 주입. 학생이 이미 대화 시작했으면(= history 비어있지 않음) 생략.
+  // 과제 전환 시 서버(/api/conversations)에서 기존 대화 복원 → 재로그인·탭 이동 후에도 유지.
+  // 성공적으로 복원하면 환영 턴 주입은 건너뛴다.
+  useEffect(() => {
+    if (!assignmentCode || !studentId) return;
+    if (hydratedAssignmentRef.current === assignmentCode) return;
+    hydratedAssignmentRef.current = assignmentCode;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/conversations?studentId=${encodeURIComponent(studentId)}&assignmentId=${encodeURIComponent(assignmentCode)}&limit=200`,
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { turns: ServerTurn[] };
+        if (cancelled) return;
+        if (!data.turns || data.turns.length === 0) return;
+        setHistory(data.turns.map(toHistoryEntry));
+        welcomedAssignmentRef.current = assignmentCode; // 복원됐으면 환영 턴 스킵
+      } catch {
+        // ignore — 복원 실패 시 환영 턴이 정상적으로 주입됨
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [assignmentCode, studentId]);
+
+  // 과제 전환 시 환영 턴 1회 주입. 기존 대화가 복원됐으면 생략.
   useEffect(() => {
     if (!assignmentCode || !assignmentTitle) return;
     if (welcomedAssignmentRef.current === assignmentCode) return;
-    welcomedAssignmentRef.current = assignmentCode;
     const message = buildWelcomeMessage({
       title: assignmentTitle,
       objectives: learningObjectives,
       mode,
     });
     if (!message) return;
-    setHistory((h) => {
-      // 이미 같은 과제의 환영 턴이 있거나 학생 발화가 있으면 스킵
-      if (h.some((e) => e.kind === "text" && e.role === "student")) return h;
-      return [
-        ...h,
-        {
-          kind: "text",
-          role: "ai",
-          text: message,
-          meta: `welcome · ${mode}`,
-        },
-      ];
-    });
+    // hydration이 먼저 반영되도록 짧은 딜레이
+    const timer = setTimeout(() => {
+      setHistory((h) => {
+        if (h.length > 0) return h; // 이미 복원된 대화 있으면 스킵
+        welcomedAssignmentRef.current = assignmentCode;
+        return [
+          ...h,
+          {
+            kind: "text",
+            role: "ai",
+            text: message,
+            meta: `welcome · ${mode}`,
+          },
+        ];
+      });
+    }, 250);
+    return () => clearTimeout(timer);
   }, [assignmentCode, assignmentTitle, learningObjectives, mode]);
 
   const callChat = useCallback(
@@ -260,7 +292,7 @@ export function AIPanel({
   return (
     <aside aria-label="ai-panel" className="flex h-full flex-col overflow-hidden bg-surface">
       <div className="flex border-b border-border-soft">
-        {(["chat", "hint", "review"] as Tab[]).map((t) => (
+        {(["chat", "review"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -285,27 +317,54 @@ export function AIPanel({
         )}
         {history.map((msg, i) =>
           msg.kind === "text" ? (
-            <div key={i} className="mb-4">
-              <div className="mb-1 flex items-baseline gap-2 text-[10px] uppercase tracking-wider text-neutral">
-                <span className={msg.role === "student" ? "text-text-primary" : "text-primary"}>
-                  {msg.role === "student" ? "나" : "Pedagogy Coach"}
-                </span>
-                {msg.meta && <span className="font-mono text-neutral">· {msg.meta}</span>}
-              </div>
-              <div className="whitespace-pre-wrap leading-relaxed text-text-primary">{msg.text}</div>
-              {msg.role === "ai" && msg.requiresSelfExplanation && !msg.accepted && (
-                <button
-                  onClick={() => {
-                    setSelfExplainTarget(i);
-                    setSelfExplainText("");
-                  }}
-                  className="mt-2 rounded-md border border-error/30 bg-error/5 px-3 py-1.5 text-[11px] font-medium text-error transition-colors hover:bg-error/10"
-                >
-                  💭 이 예시를 반영하려면 → 자기 설명 필요
-                </button>
+            <div
+              key={i}
+              className={`mb-4 flex gap-2 ${msg.role === "student" ? "justify-end" : "justify-start"}`}
+            >
+              {msg.role === "ai" && (
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                  AI
+                </div>
               )}
-              {msg.role === "ai" && msg.accepted && (
-                <div className="mt-1 text-[11px] text-success">✓ 자기 설명 제출됨 · 수락됨</div>
+              <div className={`max-w-[82%] ${msg.role === "student" ? "items-end" : "items-start"} flex flex-col`}>
+                <div
+                  className={`mb-1 flex items-baseline gap-2 text-[10px] uppercase tracking-wider ${
+                    msg.role === "student" ? "flex-row-reverse text-neutral" : "text-neutral"
+                  }`}
+                >
+                  <span className={msg.role === "student" ? "text-text-primary" : "text-primary"}>
+                    {msg.role === "student" ? "나" : "Pedagogy Coach"}
+                  </span>
+                  {msg.meta && <span className="font-mono text-neutral">· {msg.meta}</span>}
+                </div>
+                <div
+                  className={`whitespace-pre-wrap rounded-xl px-3.5 py-2.5 leading-relaxed ${
+                    msg.role === "student"
+                      ? "rounded-br-sm bg-primary text-white"
+                      : "rounded-bl-sm border border-border-soft bg-bg text-text-primary"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+                {msg.role === "ai" && msg.requiresSelfExplanation && !msg.accepted && (
+                  <button
+                    onClick={() => {
+                      setSelfExplainTarget(i);
+                      setSelfExplainText("");
+                    }}
+                    className="mt-2 self-start rounded-md border border-error/30 bg-error/5 px-3 py-1.5 text-[11px] font-medium text-error transition-colors hover:bg-error/10"
+                  >
+                    💭 이 예시를 반영하려면 → 자기 설명 필요
+                  </button>
+                )}
+                {msg.role === "ai" && msg.accepted && (
+                  <div className="mt-1 text-[11px] text-success">✓ 자기 설명 제출됨 · 수락됨</div>
+                )}
+              </div>
+              {msg.role === "student" && (
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-text-primary text-[11px] font-semibold text-white">
+                  나
+                </div>
               )}
             </div>
           ) : (
@@ -314,26 +373,6 @@ export function AIPanel({
         )}
         {loading && <div className="text-[12px] text-neutral">생각 중…</div>}
       </div>
-
-      {tab === "hint" && (
-        <div className="border-t border-border-soft bg-bg px-4 py-3">
-          <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
-            계단식 힌트 요청 (게이팅이 레벨 결정)
-          </div>
-          <div className="flex gap-1">
-            {([1, 2, 3, 4] as const).map((lvl) => (
-              <button
-                key={lvl}
-                disabled={loading}
-                onClick={() => void callChat("", { requestedLevel: lvl })}
-                className="flex-1 rounded-md border border-border-soft bg-white px-2 py-1.5 text-[11px] font-medium text-text-primary transition-all hover:-translate-y-px hover:border-primary hover:text-primary disabled:opacity-50 disabled:hover:translate-y-0"
-              >
-                L{lvl}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {tab === "review" && (
         <div className="border-t border-border-soft bg-bg px-4 py-3">
@@ -479,9 +518,40 @@ function tabLabel(t: Tab): string {
   switch (t) {
     case "chat":
       return "대화";
-    case "hint":
-      return "힌트";
     case "review":
       return "코드리뷰";
   }
+}
+
+interface ServerTurn {
+  id: string;
+  studentId: string;
+  role: "student" | "ai";
+  text: string;
+  timestamp: string;
+  assignmentId?: string;
+  meta?: {
+    hintLevel?: 1 | 2 | 3 | 4;
+    hintType?: string;
+    mode?: string;
+    usedModel?: string;
+    blockedBySafety?: boolean;
+    kind?: string;
+  };
+}
+
+function toHistoryEntry(turn: ServerTurn): HistoryEntry {
+  const meta =
+    turn.meta?.hintLevel && turn.meta?.hintType
+      ? `${turn.meta.usedModel ?? "model"} · L${turn.meta.hintLevel} ${turn.meta.hintType}`
+      : turn.meta?.kind === "code-review"
+        ? `${turn.meta.usedModel ?? "model"} · review`
+        : undefined;
+  return {
+    kind: "text",
+    role: turn.role,
+    text: turn.text,
+    meta,
+    level: turn.meta?.hintLevel,
+  };
 }
