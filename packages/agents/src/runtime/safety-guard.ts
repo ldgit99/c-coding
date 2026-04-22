@@ -21,7 +21,8 @@ export interface SafetyCheckInput {
   /** 현재 과제의 reference_solution 텍스트 (있는 경우만). */
   referenceSolution?: string;
   /** 모드(평가 중이면 더 엄격하게). */
-  mode?: "silent" | "observer" | "pair" | "tutor" | "exam";
+  /** 3단계 모드 (solo/pair/coach) + exam. 레거시 값도 호환. */
+  mode?: "solo" | "pair" | "coach" | "silent" | "observer" | "tutor" | "exam";
 }
 
 export interface SafetyCheckOutput {

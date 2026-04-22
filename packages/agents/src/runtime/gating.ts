@@ -1,4 +1,4 @@
-import type { SessionState } from "../state";
+import { HINT_CEILING, normalizeMode, type SessionState } from "../state";
 
 /**
  * socratic-hinting 스킬의 게이팅 규칙을 코드로 고정.
@@ -26,6 +26,8 @@ export interface GatingResult {
 export function computeAllowedLevel(ctx: GatingContext): GatingResult {
   const requested = (ctx.requestedLevel ?? 1) as HintLevel;
   const state = ctx.state;
+  const mode = normalizeMode(state.mode);
+  const ceiling = HINT_CEILING[mode];
   const learning = state.learningSignals ?? {
     attemptCount: 0,
     errorTypes: [],
@@ -35,9 +37,13 @@ export function computeAllowedLevel(ctx: GatingContext): GatingResult {
     aiDependencyScore: 0,
   };
 
-  // mode=silent: 명시 요청 아니면 응답 없음 (호출부에서 미리 거름). 여기서는 Level 1 고정.
-  if (state.mode === "silent") {
-    return { grantedLevel: 1, failedConditions: ["mode=silent"] };
+  // 3단계 모드 상한: solo=L1, pair=L3, coach=L4. 상한을 넘는 요청은 즉시 ceiling 으로 축소.
+  if (requested > ceiling) {
+    const failed = [
+      `현재 모드(${mode})에서는 L${ceiling}까지만 받을 수 있어요. 더 깊은 도움이 필요하면 모드를 올려주세요.`,
+    ];
+    // ceiling 으로 축소한 요청을 기준으로 아래 단계별 검증을 계속 진행하지 않고 그대로 반환.
+    return { grantedLevel: ceiling, failedConditions: failed };
   }
 
   const failed: string[] = [];
@@ -67,11 +73,11 @@ export function computeAllowedLevel(ctx: GatingContext): GatingResult {
   // L3 → L4
   const l4Allowed =
     learning.attemptCount >= 3 &&
-    state.mode === "tutor" &&
+    mode === "coach" &&
     ctx.namedStuckPoint === true;
   if (requested >= 4 && !l4Allowed) {
     if (learning.attemptCount < 3) failed.push(`L3→L4: attemptCount≥3 필요 (현재 ${learning.attemptCount})`);
-    if (state.mode !== "tutor") failed.push(`L3→L4: mode=tutor 필요 (현재 ${state.mode})`);
+    if (mode !== "coach") failed.push(`L3→L4: mode=coach 필요 (현재 ${mode})`);
     if (!ctx.namedStuckPoint) failed.push("L3→L4: 구체적 막힌 지점 지목 필요");
     return { grantedLevel: 3, failedConditions: failed };
   }

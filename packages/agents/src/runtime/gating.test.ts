@@ -40,7 +40,7 @@ describe("computeAllowedLevel — socratic-hinting 게이팅", () => {
     expect(result.failedConditions[0]).toMatch(/L1→L2/);
   });
 
-  it("pair 모드에서 L4 요청은 L3로 막힘 (mode=tutor 필요)", () => {
+  it("pair 모드에서 L4 요청은 L3 ceiling 에 막힘", () => {
     const result = computeAllowedLevel({
       state: baseState({
         mode: "pair",
@@ -58,13 +58,13 @@ describe("computeAllowedLevel — socratic-hinting 게이팅", () => {
       namedStuckPoint: true,
     });
     expect(result.grantedLevel).toBe(3);
-    expect(result.failedConditions.some((c) => /mode=tutor/.test(c))).toBe(true);
+    expect(result.failedConditions.some((c) => /pair/.test(c))).toBe(true);
   });
 
-  it("tutor 모드 + 모든 조건 충족 시 L4 허용", () => {
+  it("coach 모드 + 모든 조건 충족 시 L4 허용", () => {
     const result = computeAllowedLevel({
       state: baseState({
-        mode: "tutor",
+        mode: "coach",
         currentKC: ["arrays-indexing"],
         learningSignals: {
           attemptCount: 3,
@@ -83,10 +83,10 @@ describe("computeAllowedLevel — socratic-hinting 게이팅", () => {
     expect(result.failedConditions).toEqual([]);
   });
 
-  it("silent 모드는 항상 L1 고정", () => {
+  it("solo 모드는 L2 이상 요청 시 L1 ceiling 고정", () => {
     const result = computeAllowedLevel({
       state: baseState({
-        mode: "silent",
+        mode: "solo",
         learningSignals: {
           attemptCount: 5,
           errorTypes: [],
@@ -99,7 +99,7 @@ describe("computeAllowedLevel — socratic-hinting 게이팅", () => {
       requestedLevel: 3,
     });
     expect(result.grantedLevel).toBe(1);
-    expect(result.failedConditions).toContain("mode=silent");
+    expect(result.failedConditions.some((c) => /solo/.test(c))).toBe(true);
   });
 });
 

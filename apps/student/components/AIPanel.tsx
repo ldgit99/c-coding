@@ -76,11 +76,7 @@ function buildWelcomeMessage(params: {
 }): string | null {
   const { title, objectives, mode } = params;
   if (!title) return null;
-  if (mode === "silent") return null;
-
-  if (mode === "observer") {
-    return `"${title}" 문제를 여는구나. 지켜볼게 — 필요하면 힌트 탭이나 채팅으로 말 걸어.`;
-  }
+  if (mode === "solo") return null;
 
   const objLines =
     objectives && objectives.length > 0
@@ -89,17 +85,48 @@ function buildWelcomeMessage(params: {
           .join("\n")}`
       : "";
 
-  if (mode === "tutor") {
-    return `안녕! "${title}"을(를) 같이 해볼게.${objLines}\n\n준비되면 네가 먼저 움직여봐. 도움이 필요하면 힌트 탭이나 채팅으로 말해 — 요청한 만큼만 줄게.`;
+  if (mode === "coach") {
+    return `안녕! "${title}"을(를) 같이 해볼게.${objLines}\n\n준비되면 네가 먼저 움직여봐. 도움이 필요하면 자연스럽게 말해 — 예시 코드까지 보여줄 수 있어. 수락 전 자기 설명은 필수야.`;
   }
 
   // pair (기본)
-  return `안녕! "${title}" 시작이구나.${objLines}\n\n나는 옆에 있을게. 힌트는 네가 요청할 때만 건네줄 테니 편하게 먼저 시도해봐.`;
+  return `안녕! "${title}" 시작이구나.${objLines}\n\n나는 옆에 있을게. 힌트는 네가 요청할 때만 원리·접근법까지 건네줄게. 먼저 편하게 시도해봐.`;
 }
 
 type HistoryEntry =
-  | { kind: "text"; role: "student" | "ai"; text: string; meta?: string; level?: 1 | 2 | 3 | 4; requiresSelfExplanation?: boolean; accepted?: boolean }
+  | {
+      kind: "text";
+      role: "student" | "ai" | "system";
+      text: string;
+      meta?: string;
+      level?: 1 | 2 | 3 | 4;
+      requiresSelfExplanation?: boolean;
+      accepted?: boolean;
+    }
   | { kind: "review"; review: ReviewPayload; meta?: string };
+
+const MODE_PLACEHOLDER: Record<Mode, string> = {
+  solo: "현재 Solo 모드 — 힌트 받으려면 Pair 이상으로 바꿔요",
+  pair: "질문 또는 힌트 요청 (원리·접근법까지)",
+  coach: "편하게 물어봐 — 예시 코드도 가능",
+};
+
+const MODE_CEILING_HINT: Record<Mode, string> = {
+  solo: "Solo · L1 상한",
+  pair: "Pair · L3 상한",
+  coach: "Coach · L4 + Accept Gate",
+};
+
+function buildModeTransitionMessage(from: Mode, to: Mode): string {
+  if (from === to) return "";
+  const labels: Record<Mode, string> = { solo: "Solo", pair: "Pair", coach: "Coach" };
+  const ceiling: Record<Mode, string> = {
+    solo: "AI가 거의 침묵해요. 힌트 L1(방향 잡아주는 질문)까지만 가능.",
+    pair: "원리·접근법·의사코드까지 받을 수 있어요. 예시 코드는 제공 안 함.",
+    coach: "예시 코드까지 받을 수 있어요. 수락 전 자기 설명이 필요해요.",
+  };
+  return `🔄 ${labels[from]} → ${labels[to]} 로 전환. ${ceiling[to]}`;
+}
 
 export function AIPanel({
   editorCode,
@@ -121,7 +148,26 @@ export function AIPanel({
   const [selfExplainText, setSelfExplainText] = useState("");
   const welcomedAssignmentRef = useRef<string | null>(null);
   const hydratedAssignmentRef = useRef<string | null>(null);
+  const previousModeRef = useRef<Mode>(mode);
   const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
+
+  // 모드 변경 감지 → 시스템 메시지 턴 주입 (첫 마운트는 스킵)
+  useEffect(() => {
+    const prev = previousModeRef.current;
+    if (prev === mode) return;
+    const msg = buildModeTransitionMessage(prev, mode);
+    previousModeRef.current = mode;
+    if (!msg) return;
+    setHistory((h) => [
+      ...h,
+      {
+        kind: "text",
+        role: "system",
+        text: msg,
+        meta: MODE_CEILING_HINT[mode],
+      },
+    ]);
+  }, [mode]);
 
   // 과제 전환 시 walkthrough 재활성
   useEffect(() => {
@@ -342,6 +388,22 @@ export function AIPanel({
         )}
         {history.map((msg, i) =>
           msg.kind === "text" ? (
+            msg.role === "system" ? (
+              <div
+                key={i}
+                className="mb-4 rounded-md border border-dashed border-border-soft bg-bg px-3 py-2 text-[11px] text-text-secondary"
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] uppercase tracking-wider text-neutral">
+                    System
+                  </span>
+                  {msg.meta && (
+                    <span className="font-mono text-[10px] text-neutral">· {msg.meta}</span>
+                  )}
+                </div>
+                <div className="mt-1 whitespace-pre-wrap">{msg.text}</div>
+              </div>
+            ) : (
             <div
               key={i}
               className={`mb-4 flex gap-2 ${msg.role === "student" ? "justify-end" : "justify-start"}`}
@@ -392,6 +454,7 @@ export function AIPanel({
                 </div>
               )}
             </div>
+            )
           ) : (
             <ReviewCard key={i} review={msg.review} meta={msg.meta} />
           ),
@@ -438,7 +501,7 @@ export function AIPanel({
                 void callChat(input);
               }
             }}
-            placeholder="질문 또는 힌트 요청…"
+            placeholder={MODE_PLACEHOLDER[mode]}
             className="flex-1 rounded-md border border-border-soft bg-white px-3 py-1.5 text-[13px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring"
             disabled={loading}
           />

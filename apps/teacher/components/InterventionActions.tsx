@@ -51,25 +51,28 @@ export function InterventionActions({ studentId, displayName }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <button
-        onClick={() => void send("mode_change", { mode: "tutor" })}
+        onClick={() => void send("mode_change", { mode: "solo" })}
         disabled={busy}
-        className={`${baseBtn} hover:border-error/40 hover:bg-error/5 hover:text-error`}
+        className={`${baseBtn} hover:border-success/40 hover:bg-success/5 hover:text-success`}
+        title="혼자 풀기 락 — 힌트 L1까지만"
       >
-        → tutor
+        → solo
       </button>
       <button
         onClick={() => void send("mode_change", { mode: "pair" })}
         disabled={busy}
         className={`${baseBtn} hover:border-primary/40 hover:bg-primary/5 hover:text-primary`}
+        title="기본 짝 프로그래밍 — 힌트 L3까지"
       >
         → pair
       </button>
       <button
-        onClick={() => void send("mode_change", { mode: "observer" })}
+        onClick={() => void send("mode_change", { mode: "coach" })}
         disabled={busy}
         className={`${baseBtn} hover:border-warning/40 hover:bg-warning/5 hover:text-warning`}
+        title="튜터링 — 예시 코드까지 허용"
       >
-        → observer
+        → coach
       </button>
       <button
         onClick={() => void sendMessage()}
@@ -80,6 +83,7 @@ export function InterventionActions({ studentId, displayName }: Props) {
       </button>
       <button
         onClick={() => void send("mode_change", { mode: "pair", unlock: true })}
+        // unlock 시 pair 로 되돌림 — 학생 기본값
         disabled={busy}
         className="rounded-md border border-success/30 bg-success/5 px-2.5 py-1 text-[11px] font-medium text-success transition-all hover:-translate-y-px hover:bg-success/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
         title="학생이 모드를 다시 선택할 수 있게 풀어줌"

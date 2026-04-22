@@ -33,7 +33,14 @@ export function InterventionBanner({ studentId, onModeChange }: Props) {
 
         const modeChanges = data.interventions.filter((i) => i.type === "mode_change");
         for (const mc of modeChanges) {
-          const next = (mc.payload["mode"] as Mode | undefined) ?? "pair";
+          const raw = mc.payload["mode"] as string | undefined;
+          // legacy 값(silent/observer/tutor) 자동 정규화.
+          const next: Mode =
+            raw === "silent" || raw === "observer" || raw === "solo"
+              ? "solo"
+              : raw === "tutor" || raw === "coach"
+                ? "coach"
+                : "pair";
           const unlock = mc.payload["unlock"] === true;
           onModeChange?.(next, unlock);
           void fetch("/api/interventions", {

@@ -1,6 +1,30 @@
 import { z } from "zod";
 
 /**
+ * AI 개입 강도 3단계 (2026-04-22 재설계).
+ *
+ * - solo  : 혼자 푸는 시간. 힌트 L1 상한. 선제 발화 없음. Safety 엄격.
+ * - pair  : 기본 짝 프로그래밍. L3 상한 (의사코드·원리까지). 예시 코드 금지.
+ * - coach : 적극 도움. L4 상한 (예시 코드 허용). Accept Gate 필수.
+ *
+ * 레거시 silent/observer → solo, tutor → coach 로 정규화.
+ */
+export type NormalizedMode = "solo" | "pair" | "coach";
+
+export function normalizeMode(m: string | undefined | null): NormalizedMode {
+  if (!m) return "pair";
+  if (m === "silent" || m === "observer" || m === "solo") return "solo";
+  if (m === "tutor" || m === "coach") return "coach";
+  return "pair";
+}
+
+export const HINT_CEILING: Record<NormalizedMode, 1 | 2 | 3 | 4> = {
+  solo: 1,
+  pair: 3,
+  coach: 4,
+};
+
+/**
  * SessionState — research.md §5.4
  *
  * 에이전트 간 공유 상태의 공식 스키마. Supervisor가 delta 머지를 담당하며,
@@ -44,7 +68,11 @@ export const SessionStateSchema = z.object({
   supportLevel: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]).default(0),
   selfExplanationRequired: z.boolean().default(false),
   teacherInterventionLevel: z.enum(["weak", "medium", "strong"]).optional(),
-  mode: z.enum(["silent", "observer", "pair", "tutor"]).default("pair"),
+  // 입력은 레거시 값도 허용하지만 normalizeMode 로 solo/pair/coach 로 통일.
+  mode: z
+    .enum(["solo", "pair", "coach", "silent", "observer", "tutor"])
+    .default("pair")
+    .transform((m) => normalizeMode(m)),
 });
 
 export type SessionState = z.infer<typeof SessionStateSchema>;
