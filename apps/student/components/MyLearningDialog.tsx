@@ -1,6 +1,6 @@
 "use client";
 
-import { computeProficiency } from "@/lib/proficiency";
+import { computeProficiency, computeWeeklyGrowth } from "@/lib/proficiency";
 
 interface SubmissionRow {
   id: string;
@@ -72,6 +72,7 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
         </div>
 
         <div className="flex-1 overflow-auto px-6 py-5 text-[13px]">
+          <WeeklyGrowthCard submissions={submissions} />
           <div className="grid grid-cols-3 gap-4">
             <StatCard label="총 제출" value={attempts.toString()} />
             <StatCard
@@ -106,11 +107,17 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
                         reflection: best.rubricScores.reflection ?? null,
                       })
                     : null;
+                  const attempts = byAssignment.get(code)?.length ?? 0;
                   return (
                     <li key={code} className="flex items-center justify-between px-4 py-3">
                       <div className="flex items-baseline gap-3">
                         <span className="font-mono text-[11px] text-neutral">{code}</span>
                         <span className="text-text-primary">{title ?? code}</span>
+                        {attempts > 1 && (
+                          <span className="rounded border border-border-soft px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">
+                            {attempts}회 시도
+                          </span>
+                        )}
                       </div>
                       {prof ? (
                         <span
@@ -215,5 +222,87 @@ function StatCard({
       </div>
       {sub && <div className="mt-0.5 text-[11px] text-text-secondary">{sub}</div>}
     </div>
+  );
+}
+
+function WeeklyGrowthCard({ submissions }: { submissions: SubmissionRow[] }) {
+  const growth = computeWeeklyGrowth(
+    submissions.map((s) => ({
+      submittedAt: s.submittedAt,
+      rubricScores: s.rubricScores
+        ? {
+            correctness: s.rubricScores.correctness ?? null,
+            style: s.rubricScores.style ?? null,
+            memory_safety: s.rubricScores.memory_safety ?? null,
+            reflection: s.rubricScores.reflection ?? null,
+          }
+        : null,
+    })),
+  );
+
+  if (growth.thisWeekCount === 0 && growth.lastWeekCount === 0) return null;
+
+  const icon =
+    growth.direction === "up"
+      ? "↑"
+      : growth.direction === "down"
+        ? "↓"
+        : growth.direction === "new"
+          ? "✨"
+          : "→";
+  const tone =
+    growth.direction === "up"
+      ? "text-success"
+      : growth.direction === "down"
+        ? "text-warning"
+        : growth.direction === "new"
+          ? "text-primary"
+          : "text-neutral";
+
+  const message =
+    growth.direction === "new"
+      ? "이번 주 첫 기록이에요. 계속 쌓아봐요."
+      : growth.direction === "up"
+        ? "지난 주보다 좋아지고 있어요."
+        : growth.direction === "down"
+          ? "지난 주보다 조금 내려갔어요. 괜찮아요, 다시 쌓으면 돼요."
+          : "지난 주와 비슷한 흐름이에요.";
+
+  return (
+    <section className="mb-6 rounded-xl border border-border-soft bg-bg p-5">
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+            Weekly Growth
+          </div>
+          <h3 className="mt-0.5 font-display text-lg font-semibold tracking-tighter text-text-primary">
+            내 성장 (자기 비교)
+          </h3>
+        </div>
+        <span className={`font-display text-3xl font-semibold tracking-tighter ${tone}`}>
+          {icon}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-[12px]">
+        <div className="rounded-md border border-border-soft bg-surface px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-neutral">지난 주</div>
+          <div className="mt-1 font-mono text-[16px] text-text-primary">
+            {growth.lastWeekAvg != null ? (growth.lastWeekAvg * 100).toFixed(0) : "—"}
+          </div>
+          <div className="text-[10px] text-neutral">{growth.lastWeekCount}회 제출</div>
+        </div>
+        <div className="rounded-md border border-border-soft bg-surface px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-neutral">이번 주</div>
+          <div className={`mt-1 font-mono text-[16px] ${tone}`}>
+            {growth.thisWeekAvg != null ? (growth.thisWeekAvg * 100).toFixed(0) : "—"}
+          </div>
+          <div className="text-[10px] text-neutral">{growth.thisWeekCount}회 제출</div>
+        </div>
+      </div>
+      <p className="mt-3 text-[12px] leading-relaxed text-text-secondary">{message}</p>
+      <p className="mt-1 text-[10px] text-neutral">
+        다른 학생과 비교하지 않아요 — 오직 내 과거와만.
+      </p>
+    </section>
   );
 }

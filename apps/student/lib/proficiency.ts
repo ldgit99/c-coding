@@ -193,3 +193,160 @@ export function proficiencyLabel(level: ProficiencyLevel): string {
 export function proficiencyBadgeClass(level: ProficiencyLevel): string {
   return LEVELS[level].badgeClass;
 }
+
+// =============================================================================
+// 제안 4 — Dependency-aware flag (감점 없음, 맥락만 표시)
+// =============================================================================
+
+export type DependencyFlag = "independent" | "guided" | "assisted";
+
+export interface DependencyFlagInfo {
+  flag: DependencyFlag;
+  icon: string;
+  label: string;
+  description: string;
+  badgeClass: string;
+}
+
+const DEPENDENCY_FLAGS: Record<DependencyFlag, DependencyFlagInfo> = {
+  independent: {
+    flag: "independent",
+    icon: "🎯",
+    label: "스스로 풀어냈어요",
+    description: "힌트를 거의 사용하지 않고 해결했어요.",
+    badgeClass: "bg-success/10 text-success border border-success/30",
+  },
+  guided: {
+    flag: "guided",
+    icon: "👣",
+    label: "힌트 따라 풀어냈어요",
+    description: "L1·L2 가벼운 힌트를 참고하며 스스로 완성했어요.",
+    badgeClass: "bg-primary/10 text-primary border border-primary/30",
+  },
+  assisted: {
+    flag: "assisted",
+    icon: "🤝",
+    label: "AI와 함께 풀어냈어요",
+    description: "깊은 힌트와 예시 코드를 수용해 완성했어요.",
+    badgeClass: "bg-warning/10 text-warning border border-warning/30",
+  },
+};
+
+/**
+ * 해당 과제 세션에서 사용한 최대 hint level로 flag 산출.
+ * 0 또는 undefined → independent (힌트 안 씀).
+ * 1~2 → guided.
+ * 3~4 → assisted.
+ *
+ * 세 상태 모두 동등한 학습 완료로 인정. 감점 없음.
+ * Paper 3 (Cognitive Offloading) 연구 데이터와도 연결됨.
+ */
+export function computeDependencyFlag(maxHintLevel: number | undefined): DependencyFlagInfo {
+  if (!maxHintLevel || maxHintLevel <= 0) return DEPENDENCY_FLAGS.independent;
+  if (maxHintLevel <= 2) return DEPENDENCY_FLAGS.guided;
+  return DEPENDENCY_FLAGS.assisted;
+}
+
+// =============================================================================
+// 제안 3 — Multi-attempt 정보
+// =============================================================================
+
+export interface AttemptDelta {
+  attemptNumber: number;
+  previousBestCorrectness: number | null;
+  currentCorrectness: number | null;
+  delta: number | null;
+  improved: boolean;
+}
+
+/**
+ * 과제별 제출 이력을 기반으로 현재 시도 번호와 이전 최고점 대비 delta 계산.
+ */
+export function computeAttemptDelta(params: {
+  previousSubmissions: Array<{ rubricScores: Record<string, number | null> | null }>;
+  currentCorrectness: number | null;
+}): AttemptDelta {
+  const prev = params.previousSubmissions
+    .map((s) => s.rubricScores?.correctness ?? null)
+    .filter((v): v is number => v !== null);
+  const previousBest = prev.length > 0 ? Math.max(...prev) : null;
+  const current = params.currentCorrectness;
+  const delta = current != null && previousBest != null ? current - previousBest : null;
+  return {
+    attemptNumber: params.previousSubmissions.length + 1,
+    previousBestCorrectness: previousBest,
+    currentCorrectness: current,
+    delta,
+    improved: delta != null && delta > 0.001,
+  };
+}
+
+// =============================================================================
+// 제안 5 — 자기 비교 (주간 성장)
+// =============================================================================
+
+export interface WeeklyGrowth {
+  thisWeekAvg: number | null;
+  lastWeekAvg: number | null;
+  delta: number | null;
+  direction: "up" | "down" | "flat" | "new";
+  thisWeekCount: number;
+  lastWeekCount: number;
+}
+
+/**
+ * 이번 주 vs 지난 주 correctness 평균 비교.
+ * Anchor: 월요일 시작 ISO week. cohort 비교 없음 — 오직 자기 자신.
+ */
+export function computeWeeklyGrowth(
+  submissions: Array<{
+    submittedAt: string;
+    rubricScores: Record<string, number | null> | null;
+  }>,
+): WeeklyGrowth {
+  const now = new Date();
+  const thisWeekStart = mondayStart(now);
+  const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 86400000);
+
+  const thisWeek: number[] = [];
+  const lastWeek: number[] = [];
+  for (const s of submissions) {
+    const t = new Date(s.submittedAt);
+    const c = s.rubricScores?.correctness;
+    if (c == null) continue;
+    if (t >= thisWeekStart) thisWeek.push(c);
+    else if (t >= lastWeekStart) lastWeek.push(c);
+  }
+
+  const thisWeekAvg = thisWeek.length > 0 ? avg(thisWeek) : null;
+  const lastWeekAvg = lastWeek.length > 0 ? avg(lastWeek) : null;
+  const delta =
+    thisWeekAvg != null && lastWeekAvg != null ? thisWeekAvg - lastWeekAvg : null;
+  let direction: WeeklyGrowth["direction"];
+  if (lastWeekAvg == null && thisWeekAvg != null) direction = "new";
+  else if (delta == null) direction = "flat";
+  else if (delta > 0.03) direction = "up";
+  else if (delta < -0.03) direction = "down";
+  else direction = "flat";
+
+  return {
+    thisWeekAvg,
+    lastWeekAvg,
+    delta,
+    direction,
+    thisWeekCount: thisWeek.length,
+    lastWeekCount: lastWeek.length,
+  };
+}
+
+function mondayStart(d: Date): Date {
+  const c = new Date(d);
+  c.setHours(0, 0, 0, 0);
+  const dow = c.getDay() === 0 ? 7 : c.getDay(); // Sun=7
+  c.setDate(c.getDate() - (dow - 1));
+  return c;
+}
+
+function avg(xs: number[]): number {
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}

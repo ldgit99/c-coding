@@ -53,6 +53,9 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   const [assignmentStartedAt, setAssignmentStartedAt] = useState<number | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
 
+  // 현재 과제 세션에서 사용한 최고 hint level (dependency flag 산출용)
+  const [maxHintLevel, setMaxHintLevel] = useState<number>(0);
+
   const refreshSubmissions = useCallback(async () => {
     try {
       const res = await fetch("/api/my/submissions");
@@ -69,11 +72,12 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
     void refreshSubmissions();
   }, [refreshSubmissions]);
 
-  // 과제가 바뀌면 타이머 리셋 + 경과 시간 재시작
+  // 과제가 바뀌면 타이머 리셋 + 경과 시간 재시작 + hint level 리셋
   useEffect(() => {
     if (!assignment) return;
     setAssignmentStartedAt(Date.now());
     setElapsedSec(0);
+    setMaxHintLevel(0);
   }, [assignment?.code]);
 
   useEffect(() => {
@@ -225,6 +229,9 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             learningObjectives={assignment?.learningObjectives}
             assignmentKcTags={assignment?.kcTags}
             elapsedSec={elapsedSec}
+            onMaxHintLevelChange={(lvl) =>
+              setMaxHintLevel((prev) => Math.max(prev, lvl))
+            }
           />
           <FocusMode
             active={focusActive}
@@ -246,6 +253,10 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
         <SubmitDialog
           editorCode={editorCode}
           assignmentCode={assignment?.code ?? null}
+          previousSubmissions={submissions.filter(
+            (s) => s.assignmentCode === assignment?.code,
+          )}
+          maxHintLevelUsed={maxHintLevel}
           onClose={() => setShowSubmit(false)}
           onSubmitted={handleSubmitSuccess}
         />

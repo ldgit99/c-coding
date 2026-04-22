@@ -2,7 +2,20 @@
 
 import { useCallback, useState } from "react";
 
-import { computeProficiency } from "@/lib/proficiency";
+import {
+  computeAttemptDelta,
+  computeDependencyFlag,
+  computeProficiency,
+  type AttemptDelta,
+  type DependencyFlagInfo,
+} from "@/lib/proficiency";
+
+interface PreviousSubmission {
+  id: string;
+  assignmentCode: string | null;
+  rubricScores: Record<string, number | null> | null;
+  submittedAt: string;
+}
 
 interface RubricScores {
   correctness: number | null;
@@ -43,11 +56,15 @@ type ReflectionState = Record<(typeof REFLECTION_PROMPTS)[number]["key"], string
 export function SubmitDialog({
   editorCode,
   assignmentCode,
+  previousSubmissions = [],
+  maxHintLevelUsed,
   onClose,
   onSubmitted,
 }: {
   editorCode: string;
   assignmentCode: string | null;
+  previousSubmissions?: PreviousSubmission[];
+  maxHintLevelUsed?: number;
   onClose: () => void;
   onSubmitted?: (passed: boolean) => void;
 }) {
@@ -161,7 +178,14 @@ export function SubmitDialog({
               </div>
             </form>
           ) : (
-            <ScoreCard result={result} />
+            <ScoreCard
+              result={result}
+              attempt={computeAttemptDelta({
+                previousSubmissions,
+                currentCorrectness: result.assessment.rubricScores.correctness,
+              })}
+              dependencyFlag={computeDependencyFlag(maxHintLevelUsed)}
+            />
           )}
         </div>
       </div>
@@ -169,7 +193,15 @@ export function SubmitDialog({
   );
 }
 
-function ScoreCard({ result }: { result: SubmitResponse }) {
+function ScoreCard({
+  result,
+  attempt,
+  dependencyFlag,
+}: {
+  result: SubmitResponse;
+  attempt: AttemptDelta;
+  dependencyFlag: DependencyFlagInfo;
+}) {
   const s = result.assessment.rubricScores;
   const prof = computeProficiency(s);
   const evidenceByCriterion = new Map<string, Array<{ note: string; partial: boolean }>>();
@@ -181,6 +213,29 @@ function ScoreCard({ result }: { result: SubmitResponse }) {
 
   return (
     <div className="space-y-5">
+      {/* 시도 정보 + Dependency flag — 두 개 나란히 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-border-soft bg-bg px-2.5 py-1 text-[11px] text-text-primary">
+          <span className="text-neutral">시도 </span>
+          <span className="font-mono font-medium">{attempt.attemptNumber}회차</span>
+          {attempt.delta != null && (
+            <span
+              className={`ml-2 ${attempt.improved ? "text-success" : attempt.delta < 0 ? "text-warning" : "text-neutral"}`}
+            >
+              {attempt.improved ? "↑" : attempt.delta < 0 ? "↓" : "→"}{" "}
+              {(Math.abs(attempt.delta) * 100).toFixed(0)}p
+            </span>
+          )}
+        </span>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${dependencyFlag.badgeClass}`}
+          title={dependencyFlag.description}
+        >
+          <span>{dependencyFlag.icon}</span>
+          <span>{dependencyFlag.label}</span>
+        </span>
+      </div>
+
       {/* 상단 — Proficiency 레벨 배지 + 다음 레벨 가이드 */}
       <div className="rounded-xl border border-border-soft bg-bg p-5">
         <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">

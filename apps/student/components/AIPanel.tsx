@@ -60,6 +60,8 @@ interface AIPanelProps {
   assignmentKcTags?: string[];
   /** 과제 열고 경과한 시간(초). Walkthrough prompt 트리거 기준. */
   elapsedSec?: number;
+  /** 최고 hint level 변화를 상위로 통지 — SubmitDialog dependency flag 산출. */
+  onMaxHintLevelChange?: (level: 1 | 2 | 3 | 4) => void;
 }
 
 /**
@@ -108,6 +110,7 @@ export function AIPanel({
   learningObjectives,
   assignmentKcTags,
   elapsedSec = 0,
+  onMaxHintLevelChange,
 }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
@@ -254,6 +257,7 @@ export function AIPanel({
         },
       ]);
       setSupportLevel((prev) => Math.max(prev, data.hint!.hintLevel) as 0 | 1 | 2 | 3);
+      onMaxHintLevelChange?.(data.hint!.hintLevel);
     } else if (data.review) {
       const meta = data.mocked ? `[mock] ${data.review.analysisMode}` : `${data.usedModel} · ${data.review.analysisMode}`;
       setHistory((h) => [...h, { kind: "review", review: data.review!, meta }]);
@@ -273,7 +277,7 @@ export function AIPanel({
         },
       ]);
     }
-  }, []);
+  }, [onMaxHintLevelChange]);
 
   const requestReview = useCallback(async () => {
     if (editorCode.trim().length === 0) {
