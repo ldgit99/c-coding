@@ -80,7 +80,12 @@ begin
   values (
     new.id,
     new.email,
-    split_part(new.email, '@', 1),
+    -- 학생 로그인 화면의 '이름' input → signInWithOtp options.data.display_name 로 주입됨.
+    -- 미입력 시 이메일 접두사로 fallback (교사가 /students 에서 나중에 수정 가능).
+    coalesce(
+      nullif(trim(new.raw_user_meta_data->>'display_name'), ''),
+      split_part(new.email, '@', 1)
+    ),
     'student',
     (select id from public.cohorts order by created_at limit 1)
   );
@@ -91,6 +96,8 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 ```
+
+> 이미 기존 트리거가 있다면 `create or replace function` 과 `drop trigger if exists ... / create trigger` 조합으로 재적용하세요. 기존 가입자의 `display_name` 은 바뀌지 않으니 필요하면 교사가 `/students` 에서 수정.
 
 교사 계정은 이메일로 가입 후 **SQL Editor**에서 role 수동 승격:
 

@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("magic");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -37,10 +38,14 @@ export default function LoginPage() {
       );
 
       if (mode === "magic") {
+        const trimmedName = displayName.trim();
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
+            // 이름은 first-signup 때 트리거가 `raw_user_meta_data->>'display_name'` 으로 꺼내 저장.
+            // 이후 로그인에서도 metadata 는 갱신되지만 `profiles.display_name` 은 덮어쓰지 않음.
+            data: trimmedName ? { display_name: trimmedName } : undefined,
           },
         });
         if (error) throw error;
@@ -117,6 +122,26 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={submit} className="mt-5 space-y-4">
+          {mode === "magic" && (
+            <label className="block">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+                이름 (처음 로그인 시)
+              </span>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={!configured || isBusy}
+                placeholder="예: 홍길동"
+                maxLength={40}
+                className="mt-1 w-full rounded-md border border-border-soft bg-white px-3 py-2 text-[14px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring disabled:opacity-50"
+              />
+              <span className="mt-1 block text-[10px] leading-snug text-neutral">
+                교사 대시보드에 표시될 이름이에요. 기존 사용자는 비워둬도 됩니다.
+              </span>
+            </label>
+          )}
+
           <label className="block">
             <span className="text-[10px] font-medium uppercase tracking-wider text-neutral">
               Email
