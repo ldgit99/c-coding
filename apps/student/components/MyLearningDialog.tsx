@@ -1,5 +1,7 @@
 "use client";
 
+import { computeProficiency } from "@/lib/proficiency";
+
 interface SubmissionRow {
   id: string;
   assignmentCode: string | null;
@@ -27,8 +29,17 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
     byAssignment.set(s.assignmentCode, bucket);
   }
 
-  const passed = submissions.filter((s) => s.passed).length;
   const attempts = submissions.length;
+  const proficientCount = submissions.filter((s) => {
+    if (!s.rubricScores) return s.passed;
+    const p = computeProficiency({
+      correctness: s.rubricScores.correctness ?? null,
+      style: s.rubricScores.style ?? null,
+      memory_safety: s.rubricScores.memory_safety ?? null,
+      reflection: s.rubricScores.reflection ?? null,
+    });
+    return p.passed;
+  }).length;
   const bestScores = Array.from(byAssignment.entries())
     .map(([code, rows]) => {
       const best = rows.reduce(
@@ -63,7 +74,12 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
         <div className="flex-1 overflow-auto px-6 py-5 text-[13px]">
           <div className="grid grid-cols-3 gap-4">
             <StatCard label="총 제출" value={attempts.toString()} />
-            <StatCard label="통과" value={passed.toString()} accent="success" />
+            <StatCard
+              label="학습 완료"
+              value={proficientCount.toString()}
+              sub="능숙 이상"
+              accent="success"
+            />
             <StatCard
               label="과제 커버리지"
               value={`${byAssignment.size}개`}
@@ -73,7 +89,7 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
 
           <section className="mt-6">
             <div className="mb-3 text-[10px] font-medium uppercase tracking-wider text-neutral">
-              과제별 최고 점수
+              과제별 최고 수준
             </div>
             {bestScores.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
@@ -81,32 +97,36 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
               </p>
             ) : (
               <ul className="divide-y divide-border-soft rounded-lg border border-border-soft">
-                {bestScores.map(({ code, title, best }) => (
-                  <li key={code} className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-baseline gap-3">
-                      <span className="font-mono text-[11px] text-neutral">{code}</span>
-                      <span className="text-text-primary">{title ?? code}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`font-display text-xl font-semibold tracking-tighter ${
-                          best.passed ? "text-success" : "text-text-secondary"
-                        }`}
-                      >
-                        {best.finalScore != null ? (best.finalScore * 100).toFixed(0) : "—"}
-                      </span>
-                      <span
-                        className={`rounded-sm px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                          best.passed
-                            ? "bg-success/10 text-success"
-                            : "bg-warning/10 text-warning"
-                        }`}
-                      >
-                        {best.passed ? "통과" : "재도전"}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+                {bestScores.map(({ code, title, best }) => {
+                  const prof = best.rubricScores
+                    ? computeProficiency({
+                        correctness: best.rubricScores.correctness ?? null,
+                        style: best.rubricScores.style ?? null,
+                        memory_safety: best.rubricScores.memory_safety ?? null,
+                        reflection: best.rubricScores.reflection ?? null,
+                      })
+                    : null;
+                  return (
+                    <li key={code} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-baseline gap-3">
+                        <span className="font-mono text-[11px] text-neutral">{code}</span>
+                        <span className="text-text-primary">{title ?? code}</span>
+                      </div>
+                      {prof ? (
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${prof.badgeClass}`}
+                        >
+                          <span>{prof.icon}</span>
+                          <span>{prof.label}</span>
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-border-soft px-2.5 py-1 text-[11px] text-text-secondary">
+                          기록 없음
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
@@ -123,33 +143,43 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
               </p>
             ) : (
               <ul className="space-y-2">
-                {submissions.slice(0, 10).map((s) => (
-                  <li
-                    key={s.id}
-                    className="rounded-lg border border-border-soft bg-bg px-4 py-2.5"
-                  >
-                    <div className="flex items-baseline justify-between">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-mono text-[11px] text-neutral">
-                          {s.assignmentCode?.slice(0, 3)}
-                        </span>
-                        <span className="text-[13px] text-text-primary">
-                          {s.assignmentTitle ?? s.assignmentCode}
-                        </span>
+                {submissions.slice(0, 10).map((s) => {
+                  const prof = s.rubricScores
+                    ? computeProficiency({
+                        correctness: s.rubricScores.correctness ?? null,
+                        style: s.rubricScores.style ?? null,
+                        memory_safety: s.rubricScores.memory_safety ?? null,
+                        reflection: s.rubricScores.reflection ?? null,
+                      })
+                    : null;
+                  return (
+                    <li
+                      key={s.id}
+                      className="rounded-lg border border-border-soft bg-bg px-4 py-2.5"
+                    >
+                      <div className="flex items-baseline justify-between">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-mono text-[11px] text-neutral">
+                            {s.assignmentCode?.slice(0, 3)}
+                          </span>
+                          <span className="text-[13px] text-text-primary">
+                            {s.assignmentTitle ?? s.assignmentCode}
+                          </span>
+                        </div>
+                        {prof && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${prof.badgeClass}`}
+                          >
+                            {prof.icon} {prof.label}
+                          </span>
+                        )}
                       </div>
-                      <span
-                        className={`font-mono text-[12px] ${
-                          s.passed ? "text-success" : "text-warning"
-                        }`}
-                      >
-                        {s.finalScore != null ? (s.finalScore * 100).toFixed(0) : "—"}
-                      </span>
-                    </div>
-                    <div className="mt-1 font-mono text-[10px] text-neutral">
-                      {new Date(s.submittedAt).toLocaleString("ko-KR")}
-                    </div>
-                  </li>
-                ))}
+                      <div className="mt-1 font-mono text-[10px] text-neutral">
+                        {new Date(s.submittedAt).toLocaleString("ko-KR")}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
