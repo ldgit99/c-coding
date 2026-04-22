@@ -68,6 +68,8 @@ interface AIPanelProps {
    * 턴을 1회 주입한다. null 이면 발화 안 함.
    */
   lastRunError?: { id: string; errorType: string } | null;
+  /** 시험 모드 — AI 기능 전면 차단 오버레이. */
+  examMode?: boolean;
 }
 
 /**
@@ -158,6 +160,7 @@ export function AIPanel({
   elapsedSec = 0,
   onMaxHintLevelChange,
   lastRunError,
+  examMode = false,
 }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
@@ -399,6 +402,27 @@ export function AIPanel({
     setSelfExplainTarget(null);
     setSelfExplainText("");
   }, [selfExplainTarget, selfExplainText, studentId]);
+
+  if (examMode) {
+    return (
+      <aside
+        aria-label="ai-panel"
+        className="flex h-full flex-col items-center justify-center overflow-hidden bg-bg p-6 text-center"
+      >
+        <div className="rounded-xl border border-error/30 bg-surface px-6 py-5 shadow-sm">
+          <div className="text-4xl">🔒</div>
+          <div className="mt-2 font-display text-xl font-semibold tracking-tighter text-text-primary">
+            Exam 모드
+          </div>
+          <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
+            AI 튜터는 시험이 끝날 때까지 응답하지 않아요.
+            <br />
+            스스로 풀어내는 시간이에요.
+          </p>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside aria-label="ai-panel" className="flex h-full flex-col overflow-hidden bg-surface">

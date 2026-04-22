@@ -6,6 +6,7 @@ import type { AppUser } from "@cvibe/db";
 
 import { InterventionActions } from "@/components/InterventionActions";
 import { LiveEvents } from "@/components/LiveEvents";
+import { ModeDonut } from "@/components/ModeDonut";
 
 interface InterventionItem {
   studentId: string;
@@ -220,8 +221,9 @@ export function TeacherDashboard({ user }: { user: AppUser }) {
         </div>
       </section>
 
-      <div className="mb-10">
+      <div className="mb-10 grid gap-6 lg:grid-cols-[1fr_340px]">
         <LiveEvents />
+        <ModeDonut />
       </div>
 
       <section

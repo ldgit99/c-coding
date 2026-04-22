@@ -37,13 +37,22 @@ export function computeAllowedLevel(ctx: GatingContext): GatingResult {
     aiDependencyScore: 0,
   };
 
+  // exam: 힌트 전면 차단. requestHint 단계에서 응답 생성 전에 막는다.
+  if (mode === "exam") {
+    return {
+      grantedLevel: 1,
+      failedConditions: [
+        "시험(exam) 모드에서는 AI 힌트를 받을 수 없어요. 담당 교사만 해제할 수 있어요.",
+      ],
+    };
+  }
+
   // 3단계 모드 상한: solo=L1, pair=L3, coach=L4. 상한을 넘는 요청은 즉시 ceiling 으로 축소.
-  if (requested > ceiling) {
+  if (ceiling > 0 && requested > ceiling) {
     const failed = [
       `현재 모드(${mode})에서는 L${ceiling}까지만 받을 수 있어요. 더 깊은 도움이 필요하면 모드를 올려주세요.`,
     ];
-    // ceiling 으로 축소한 요청을 기준으로 아래 단계별 검증을 계속 진행하지 않고 그대로 반환.
-    return { grantedLevel: ceiling, failedConditions: failed };
+    return { grantedLevel: ceiling as 1 | 2 | 3 | 4, failedConditions: failed };
   }
 
   const failed: string[] = [];

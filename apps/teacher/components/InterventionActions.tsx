@@ -82,6 +82,22 @@ export function InterventionActions({ studentId, displayName }: Props) {
         쪽지
       </button>
       <button
+        onClick={() => void send("mode_change", { mode: "exam" })}
+        disabled={busy}
+        className="rounded-md border border-error/30 bg-error/5 px-2.5 py-1 text-[11px] font-medium text-error transition-all hover:-translate-y-px hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        title="시험 모드 — AI 기능 전면 차단"
+      >
+        🔒 시험
+      </button>
+      <button
+        onClick={() => void send("mode_change", { endExam: true, mode: "pair", unlock: true })}
+        disabled={busy}
+        className="rounded-md border border-border-soft bg-white px-2.5 py-1 text-[11px] font-medium text-text-primary transition-all hover:-translate-y-px hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        title="시험 모드 해제 + Pair 로 복구"
+      >
+        시험 해제
+      </button>
+      <button
         onClick={() => void send("mode_change", { mode: "pair", unlock: true })}
         // unlock 시 pair 로 되돌림 — 학생 기본값
         disabled={busy}

@@ -22,6 +22,14 @@ export const Verbs = {
   blockedBySafety: `${VERB_BASE}/blocked-by-safety`,
   teacherIntervened: `${VERB_BASE}/teacher-intervened`,
   modeChanged: `${VERB_BASE}/mode-changed`,
+  /**
+   * 자발적 모드 하향 — coach→pair 또는 pair→solo 로 학생이 스스로 내렸을 때.
+   * Self-Regulated Learning 성숙도의 novel indicator.
+   */
+  modeDecreased: `${VERB_BASE}/mode-decreased`,
+  /** 시험 모드 진입 — 교사가 전체 또는 특정 학생에게 적용. */
+  examStarted: `${VERB_BASE}/exam-started`,
+  examEnded: `${VERB_BASE}/exam-ended`,
   masteryUpdated: `${VERB_BASE}/mastery-updated`,
   interventionFlagged: `${VERB_BASE}/intervention-flagged`,
 } as const;

@@ -17,9 +17,11 @@ interface Intervention {
 interface Props {
   studentId: string;
   onModeChange?: (next: Mode, unlock: boolean) => void;
+  /** exam 모드 활성/비활성 요청 — 교사 intervention 전용. */
+  onExamChange?: (active: boolean) => void;
 }
 
-export function InterventionBanner({ studentId, onModeChange }: Props) {
+export function InterventionBanner({ studentId, onModeChange, onExamChange }: Props) {
   const [pending, setPending] = useState<Intervention[]>([]);
 
   useEffect(() => {
@@ -34,15 +36,21 @@ export function InterventionBanner({ studentId, onModeChange }: Props) {
         const modeChanges = data.interventions.filter((i) => i.type === "mode_change");
         for (const mc of modeChanges) {
           const raw = mc.payload["mode"] as string | undefined;
-          // legacy 값(silent/observer/tutor) 자동 정규화.
-          const next: Mode =
-            raw === "silent" || raw === "observer" || raw === "solo"
-              ? "solo"
-              : raw === "tutor" || raw === "coach"
-                ? "coach"
-                : "pair";
           const unlock = mc.payload["unlock"] === true;
-          onModeChange?.(next, unlock);
+          if (raw === "exam") {
+            onExamChange?.(true);
+          } else if (mc.payload["endExam"] === true) {
+            onExamChange?.(false);
+          } else {
+            // legacy 값(silent/observer/tutor) 자동 정규화.
+            const next: Mode =
+              raw === "silent" || raw === "observer" || raw === "solo"
+                ? "solo"
+                : raw === "tutor" || raw === "coach"
+                  ? "coach"
+                  : "pair";
+            onModeChange?.(next, unlock);
+          }
           void fetch("/api/interventions", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },

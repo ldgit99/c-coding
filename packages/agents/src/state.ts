@@ -9,19 +9,34 @@ import { z } from "zod";
  *
  * 레거시 silent/observer → solo, tutor → coach 로 정규화.
  */
-export type NormalizedMode = "solo" | "pair" | "coach";
+export type NormalizedMode = "solo" | "pair" | "coach" | "exam";
 
 export function normalizeMode(m: string | undefined | null): NormalizedMode {
   if (!m) return "pair";
+  if (m === "exam") return "exam";
   if (m === "silent" || m === "observer" || m === "solo") return "solo";
   if (m === "tutor" || m === "coach") return "coach";
   return "pair";
 }
 
-export const HINT_CEILING: Record<NormalizedMode, 1 | 2 | 3 | 4> = {
+/**
+ * 모드별 최대 허용 힌트 레벨. exam=0 (AI 응답 전면 차단).
+ */
+export const HINT_CEILING: Record<NormalizedMode, 0 | 1 | 2 | 3 | 4> = {
   solo: 1,
   pair: 3,
   coach: 4,
+  exam: 0,
+};
+
+/**
+ * 모드 간 서열 — 자발적 모드 하향(SRL 신호) 감지에 사용.
+ * exam 은 서열 밖 (교사 강제).
+ */
+export const MODE_RANK: Record<Exclude<NormalizedMode, "exam">, number> = {
+  solo: 0,
+  pair: 1,
+  coach: 2,
 };
 
 /**
@@ -68,9 +83,9 @@ export const SessionStateSchema = z.object({
   supportLevel: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]).default(0),
   selfExplanationRequired: z.boolean().default(false),
   teacherInterventionLevel: z.enum(["weak", "medium", "strong"]).optional(),
-  // 입력은 레거시 값도 허용하지만 normalizeMode 로 solo/pair/coach 로 통일.
+  // 입력은 레거시 값도 허용하지만 normalizeMode 로 solo/pair/coach/exam 로 통일.
   mode: z
-    .enum(["solo", "pair", "coach", "silent", "observer", "tutor"])
+    .enum(["solo", "pair", "coach", "exam", "silent", "observer", "tutor"])
     .default("pair")
     .transform((m) => normalizeMode(m)),
 });

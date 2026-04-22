@@ -38,6 +38,34 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   const [showSubmit, setShowSubmit] = useState(false);
   const [mode, setMode] = useState<Mode>("pair");
   const [modeLocked, setModeLocked] = useState(false);
+  const [examMode, setExamMode] = useState(false);
+  const MODE_RANK: Record<Mode, number> = { solo: 0, pair: 1, coach: 2 };
+
+  // 모드 전환 시 xAPI 이벤트 기록 — 하향(SRL novel indicator) 구분 표시.
+  const handleModeChange = useCallback(
+    (next: Mode) => {
+      setMode((prev) => {
+        if (prev === next) return prev;
+        const decreased = MODE_RANK[next] < MODE_RANK[prev];
+        const verb = decreased
+          ? "https://cvibe.app/verbs/mode-decreased"
+          : "https://cvibe.app/verbs/mode-changed";
+        void fetch("/api/events/record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            verb,
+            object: { type: "assignment", id: assignment?.code ?? "ungoverned" },
+            result: { from: prev, to: next, decreased },
+            context: { mode: next },
+          }),
+        });
+        return next;
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assignment?.code],
+  );
 
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [submissionsSource, setSubmissionsSource] = useState<"supabase" | "memory">("memory");
@@ -154,7 +182,35 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
           setMode(next);
           setModeLocked(!unlock);
         }}
+        onExamChange={(active) => {
+          setExamMode(active);
+          if (active) setModeLocked(true);
+          void fetch("/api/events/record", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              verb: active
+                ? "https://cvibe.app/verbs/exam-started"
+                : "https://cvibe.app/verbs/exam-ended",
+              object: { type: "assignment", id: assignment?.code ?? "ungoverned" },
+              result: { examMode: active },
+            }),
+          });
+        }}
       />
+      {examMode && (
+        <div className="border-b border-error/40 bg-error/10 px-6 py-3 text-[13px]">
+          <div className="flex items-center gap-3">
+            <span className="rounded-sm bg-error/90 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white">
+              🔒 Exam
+            </span>
+            <span className="font-medium text-text-primary">시험 모드</span>
+            <span className="text-text-secondary">
+              AI 힌트·채팅·코드리뷰 모두 차단돼요. 교사만 해제할 수 있어요.
+            </span>
+          </div>
+        </div>
+      )}
       <header className="sticky top-0 z-20 border-b border-border-soft bg-surface/80 px-6 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-baseline gap-3">
@@ -174,7 +230,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             </span>
           </div>
           <div className="flex items-center gap-3 text-[11px] text-text-secondary">
-            <ModeSwitch mode={mode} onChange={setMode} locked={modeLocked} />
+            <ModeSwitch mode={mode} onChange={handleModeChange} locked={modeLocked} />
             <button
               type="button"
               onClick={() => setFocusActive((v) => !v)}
@@ -235,7 +291,8 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
           <AIPanel
             editorCode={editorCode}
             studentId={user.id}
-            mode={mode}
+            mode={examMode ? "pair" : mode}
+            examMode={examMode}
             assignmentCode={assignment?.code ?? null}
             assignmentTitle={assignment?.title}
             learningObjectives={assignment?.learningObjectives}
