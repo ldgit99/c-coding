@@ -62,6 +62,12 @@ interface AIPanelProps {
   elapsedSec?: number;
   /** 최고 hint level 변화를 상위로 통지 — SubmitDialog dependency flag 산출. */
   onMaxHintLevelChange?: (level: 1 | 2 | 3 | 4) => void;
+  /**
+   * Coach 모드에서 컴파일·런타임 에러 발생 시 AI 가 먼저 말을 거는 트리거.
+   * 부모가 새로운 error 이벤트마다 고유 id 를 올려주면 AIPanel 이 proactive
+   * 턴을 1회 주입한다. null 이면 발화 안 함.
+   */
+  lastRunError?: { id: string; errorType: string } | null;
 }
 
 /**
@@ -117,6 +123,19 @@ const MODE_CEILING_HINT: Record<Mode, string> = {
   coach: "Coach · L4 + Accept Gate",
 };
 
+function proactiveErrorMessage(errorType: string): string {
+  const MAP: Record<string, string> = {
+    compile: "컴파일이 실패했네. 어느 줄에서 빨간 밑줄이 떴는지 알려줄래? 같이 에러 메시지를 읽어보자.",
+    timeout: "실행이 제한 시간을 넘겼어. 무한 루프이거나 반복 횟수가 너무 큰 건 아닐까? 루프 종료 조건을 같이 점검해볼까?",
+    signal: "프로그램이 비정상 종료했어. 포인터 접근이나 배열 인덱스 범위를 확인해보면 좋을 것 같아. 의심되는 부분을 짚어줄래?",
+    environment: "실행 환경 문제인 것 같아. 한 번 더 실행해보고 같은 에러가 나면 알려줘.",
+  };
+  return (
+    MAP[errorType] ??
+    `실행 결과에 문제가 보여 (${errorType}). 어느 지점부터 예상과 다르게 동작하는지 짚어주면 같이 들여다볼게.`
+  );
+}
+
 function buildModeTransitionMessage(from: Mode, to: Mode): string {
   if (from === to) return "";
   const labels: Record<Mode, string> = { solo: "Solo", pair: "Pair", coach: "Coach" };
@@ -138,6 +157,7 @@ export function AIPanel({
   assignmentKcTags,
   elapsedSec = 0,
   onMaxHintLevelChange,
+  lastRunError,
 }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
@@ -168,6 +188,26 @@ export function AIPanel({
       },
     ]);
   }, [mode]);
+
+  // Coach 모드에서 새 run error 발생 시 AI 가 먼저 말 걸기 (proactivity 축).
+  // lastRunError.id 가 바뀔 때만 1회 주입 → 같은 에러가 유지되면 중복 없음.
+  const proactiveErrorIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (mode !== "coach") return;
+    if (!lastRunError) return;
+    if (proactiveErrorIdRef.current === lastRunError.id) return;
+    proactiveErrorIdRef.current = lastRunError.id;
+    const typeLabel = proactiveErrorMessage(lastRunError.errorType);
+    setHistory((h) => [
+      ...h,
+      {
+        kind: "text",
+        role: "ai",
+        text: typeLabel,
+        meta: `proactive · ${lastRunError.errorType}`,
+      },
+    ]);
+  }, [lastRunError, mode]);
 
   // 과제 전환 시 walkthrough 재활성
   useEffect(() => {

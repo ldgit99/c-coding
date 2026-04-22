@@ -5,6 +5,7 @@ import {
   classifyOffloading,
   computeDependencyTrajectories,
   computeLinguisticProfilePerStudent,
+  computeModeDistribution,
   type ConversationTurn,
   type XApiStatementT,
 } from "@cvibe/xapi";
@@ -92,10 +93,14 @@ export async function GET() {
     profile: p,
   }));
 
+  // 모드 분포 (전체 cohort)
+  const modeDistribution = computeModeDistribution(dump.turns);
+
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     trajectories: enrichedTrajectories,
     quadrants: enrichedQuadrants,
     linguisticProfiles: enrichedProfiles,
+    modeDistribution,
   });
 }

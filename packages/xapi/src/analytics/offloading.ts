@@ -155,6 +155,40 @@ export function buildGamingInputs(params: {
  * 학생별 대화 turns → 언어 프로파일.
  * `turns`는 role=student만 포함되어야 한다 (AI 응답은 제외).
  */
+/**
+ * 모드 분포 집계 — 대화 턴의 meta.mode 를 센다.
+ * 학생 별로 어느 모드에서 얼마나 상호작용했는지 도넛·막대 차트 재료.
+ * 레거시 값(silent/observer/tutor) 은 solo/coach 로 정규화.
+ */
+export interface ModeDistribution {
+  solo: number;
+  pair: number;
+  coach: number;
+  total: number;
+}
+
+export function computeModeDistribution(
+  turns: Array<{ meta?: { mode?: string } }>,
+): ModeDistribution {
+  const out: ModeDistribution = { solo: 0, pair: 0, coach: 0, total: 0 };
+  for (const t of turns) {
+    const raw = t.meta?.mode;
+    if (!raw) continue;
+    const m =
+      raw === "silent" || raw === "observer" || raw === "solo"
+        ? "solo"
+        : raw === "tutor" || raw === "coach"
+          ? "coach"
+          : raw === "pair"
+            ? "pair"
+            : null;
+    if (!m) continue;
+    out[m]++;
+    out.total++;
+  }
+  return out;
+}
+
 export function computeLinguisticProfilePerStudent(
   turns: Array<{ studentId: string; role: "student" | "ai"; text: string }>,
 ): Map<string, LinguisticProfile> {

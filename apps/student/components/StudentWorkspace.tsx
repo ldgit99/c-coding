@@ -56,6 +56,9 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   // 현재 과제 세션에서 사용한 최고 hint level (dependency flag 산출용)
   const [maxHintLevel, setMaxHintLevel] = useState<number>(0);
 
+  // 마지막 실행 에러 — Coach 모드에서 AI 선제 개입 트리거
+  const [lastRunError, setLastRunError] = useState<{ id: string; errorType: string } | null>(null);
+
   const refreshSubmissions = useCallback(async () => {
     try {
       const res = await fetch("/api/my/submissions");
@@ -100,6 +103,15 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
           title: "컴파일 통과",
           body: "첫 실행이 정상 종료됐어. visible test 도 맞춰보자.",
         });
+      }
+      // Coach 모드 proactive 트리거 — 에러 있을 때마다 id 갱신해 AIPanel 이 감지
+      if (result.errorType) {
+        setLastRunError({
+          id: `${assignment.code}:${Date.now()}`,
+          errorType: result.errorType,
+        });
+      } else {
+        setLastRunError(null);
       }
     },
     [assignment, user.id],
@@ -232,6 +244,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             onMaxHintLevelChange={(lvl) =>
               setMaxHintLevel((prev) => Math.max(prev, lvl))
             }
+            lastRunError={lastRunError}
           />
           <FocusMode
             active={focusActive}

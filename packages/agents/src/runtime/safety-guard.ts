@@ -42,8 +42,28 @@ const STUDENT_FACING_AGENTS = new Set([
   "student-modeler",
 ]);
 
-/** reference_solution 유사도 임계 — 초과 시 block. */
-const SIMILARITY_THRESHOLD = 0.7;
+/**
+ * reference_solution 유사도 임계 — 모드별로 차등.
+ * solo 는 AI 응답이 참조 해답과 어휘만 살짝 겹쳐도 차단 → 학생 독립성 극대화.
+ * coach 는 예시 코드 제공을 허용하므로 임계 완화.
+ * exam 은 사실상 모든 코드 유사 표현 금지.
+ * 레거시 값은 normalizeMode 범위와 일치.
+ */
+const SIMILARITY_THRESHOLD_BY_MODE: Record<string, number> = {
+  solo: 0.1,
+  silent: 0.1,
+  observer: 0.1,
+  pair: 0.25,
+  coach: 0.4,
+  tutor: 0.4,
+  exam: 0.05,
+};
+const SIMILARITY_THRESHOLD_DEFAULT = 0.25;
+
+function thresholdFor(mode: string | undefined): number {
+  if (!mode) return SIMILARITY_THRESHOLD_DEFAULT;
+  return SIMILARITY_THRESHOLD_BY_MODE[mode] ?? SIMILARITY_THRESHOLD_DEFAULT;
+}
 
 /** 한국어 이름·전화·이메일 간이 패턴 — Week 11에 더 정교한 패턴으로 확장. */
 const PII_PATTERNS: Array<{ name: string; regex: RegExp }> = [
@@ -64,8 +84,11 @@ export function checkSafety(input: SafetyCheckInput): SafetyCheckOutput {
   //     payload 안에 solution이 그대로 들어있는지 점검
   if (input.direction === "outbound" && STUDENT_FACING_AGENTS.has(input.agent) && input.referenceSolution) {
     const sim = tokenOverlap(input.payload, input.referenceSolution);
-    if (sim >= SIMILARITY_THRESHOLD) {
-      reasons.push(`reference_solution 유사도 ${sim.toFixed(2)} ≥ ${SIMILARITY_THRESHOLD}`);
+    const threshold = thresholdFor(input.mode);
+    if (sim >= threshold) {
+      reasons.push(
+        `reference_solution 유사도 ${sim.toFixed(2)} ≥ ${threshold} (mode=${input.mode ?? "default"})`,
+      );
       verdict = "block";
       return {
         verdict,

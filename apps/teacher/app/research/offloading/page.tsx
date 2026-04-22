@@ -42,11 +42,19 @@ interface LinguisticEntry {
   profile: LinguisticProfile;
 }
 
+interface ModeDistribution {
+  solo: number;
+  pair: number;
+  coach: number;
+  total: number;
+}
+
 interface OffloadingResponse {
   generatedAt: string;
   trajectories: StudentTrajectory[];
   quadrants: OffloadingDatum[];
   linguisticProfiles: LinguisticEntry[];
+  modeDistribution?: ModeDistribution;
 }
 
 const QUADRANT_LABEL: Record<
@@ -128,6 +136,35 @@ export default function OffloadingPage() {
           {sumUtterances(data.linguisticProfiles)} utterances
         </div>
       </header>
+
+      {/* Mode Distribution — cohort 수준 AI 개입 강도 분포 */}
+      {data.modeDistribution && data.modeDistribution.total > 0 && (
+        <section className="mb-10 overflow-hidden rounded-xl border border-border-soft bg-surface">
+          <div className="border-b border-border-soft px-6 py-4">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-primary">
+              Cohort
+            </div>
+            <h2 className="mt-0.5 font-display text-xl font-semibold tracking-tighter text-text-primary">
+              AI Mode 분포
+            </h2>
+            <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
+              대화 턴의 meta.mode 를 센 결과. coach 비율이 높으면 수업 AI 의존
+              경향을 의심. solo 는 학생 독립 시도 신호.
+            </p>
+          </div>
+          <div className="px-6 py-5">
+            <ModeDistributionBar data={data.modeDistribution} />
+            <div className="mt-4 grid grid-cols-3 gap-3 text-[12px]">
+              <ModeStat label="Solo" value={data.modeDistribution.solo} total={data.modeDistribution.total} color="bg-success" />
+              <ModeStat label="Pair" value={data.modeDistribution.pair} total={data.modeDistribution.total} color="bg-primary" />
+              <ModeStat label="Coach" value={data.modeDistribution.coach} total={data.modeDistribution.total} color="bg-warning" />
+            </div>
+            <div className="mt-3 font-mono text-[10px] text-neutral">
+              총 {data.modeDistribution.total} turns 집계
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Fig 1 — Dependency Trajectory */}
       <FigureFrame
@@ -499,4 +536,44 @@ function offloadingBadge(score: number): string {
 
 function sumUtterances(profiles: LinguisticEntry[]): number {
   return profiles.reduce((a, p) => a + p.profile.totalUtterances, 0);
+}
+
+function ModeDistributionBar({ data }: { data: ModeDistribution }) {
+  const total = Math.max(1, data.total);
+  const soloPct = (data.solo / total) * 100;
+  const pairPct = (data.pair / total) * 100;
+  const coachPct = (data.coach / total) * 100;
+  return (
+    <div className="flex h-3 w-full overflow-hidden rounded-full bg-border-soft">
+      <div className="bg-success" style={{ width: `${soloPct}%` }} title={`Solo ${soloPct.toFixed(0)}%`} />
+      <div className="bg-primary" style={{ width: `${pairPct}%` }} title={`Pair ${pairPct.toFixed(0)}%`} />
+      <div className="bg-warning" style={{ width: `${coachPct}%` }} title={`Coach ${coachPct.toFixed(0)}%`} />
+    </div>
+  );
+}
+
+function ModeStat({
+  label,
+  value,
+  total,
+  color,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  color: string;
+}) {
+  const pct = total > 0 ? (value / total) * 100 : 0;
+  return (
+    <div className="rounded-lg border border-border-soft bg-bg p-3">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${color}`} />
+        <span className="text-[11px] uppercase tracking-wider text-neutral">{label}</span>
+      </div>
+      <div className="mt-2 font-display text-2xl font-semibold tracking-tighter text-text-primary">
+        {pct.toFixed(0)}%
+      </div>
+      <div className="mt-1 font-mono text-[10px] text-neutral">{value} turns</div>
+    </div>
+  );
 }
