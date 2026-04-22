@@ -199,11 +199,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="mt-6 text-center text-[11px] uppercase tracking-wider text-neutral">
-          <a href="/" className="transition-colors hover:text-primary">
-            데모 모드로 돌아가기
-          </a>
-        </div>
       </div>
     </main>
   );
