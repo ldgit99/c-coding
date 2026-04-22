@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface CelebrationMessage {
   id: string;
@@ -17,19 +17,26 @@ interface Props {
 /**
  * 작은 성공 축하 토스트 — 우측 하단에 slide-in, 4초 후 자동 dismiss.
  * 과하지 않은 편집 미학 — 뱃지·점수·애니메이션 남발 금지.
+ *
+ * 주의: onDismiss 를 deps 에 넣으면 부모 리렌더마다 타이머가 리셋되어 토스트가
+ * 영구 잔류하는 버그가 생긴다. ref 로 최신 함수를 보존하고, message.id 에만
+ * 반응하도록 deps 를 고정한다.
  */
 export function Celebration({ message, onDismiss }: Props) {
   const [visible, setVisible] = useState(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   useEffect(() => {
     if (!message) return;
     setVisible(true);
-    const t = setTimeout(() => {
-      setVisible(false);
-      setTimeout(onDismiss, 300);
-    }, 4000);
-    return () => clearTimeout(t);
-  }, [message, onDismiss]);
+    const fadeOut = setTimeout(() => setVisible(false), 4000);
+    const dismiss = setTimeout(() => onDismissRef.current?.(), 4300);
+    return () => {
+      clearTimeout(fadeOut);
+      clearTimeout(dismiss);
+    };
+  }, [message?.id]);
 
   if (!message) return null;
 
