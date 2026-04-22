@@ -4,7 +4,7 @@ import { ASSIGNMENTS, getAssignmentByCode } from "./assignments";
 
 describe("ASSIGNMENTS — 카탈로그 무결성", () => {
   it("정확히 10개 과제가 있음", () => {
-    expect(ASSIGNMENTS).toHaveLength(10);
+    expect(ASSIGNMENTS).toHaveLength(11);
   });
 
   it("assignment code는 중복 없음", () => {

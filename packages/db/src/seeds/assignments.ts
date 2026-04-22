@@ -78,6 +78,45 @@ const DEFAULT_REFLECTION_PROMPTS = [
 
 export const ASSIGNMENTS: AssignmentSeed[] = [
   {
+    code: "A00_pilot_average",
+    version: 1,
+    title: "파일럿 문항",
+    template:
+      "코드에 이미 선언된 배열 `int base[5] = {3, 7, 2, 4, 5};` 의 **평균을 계산하는** `double average(int x[])` 함수를 작성하라. main 은 그대로 두고, `average` 함수 내부만 채우면 된다.\n\n**출력 형식**:\n\n```\nbase average = 4.200\n```\n\n- 소수점 **3자리** (`printf` 형식 `%.3f`) 로 출력\n- 합을 5.0 으로 나눠 double 로 반환 (정수 나눗셈 주의)\n- 이 과제는 **파일럿(시범) 문항** 입니다. 가볍게 사용성을 익혀보고, 이후 A01 부터 본격 진행하세요.",
+    kcTags: ["functions-params", "arrays-indexing", "io-formatting"],
+    difficulty: 1,
+    rubric: DEFAULT_RUBRIC,
+    constraints: DEFAULT_CONSTRAINTS,
+    starterCode: `#include <stdio.h>
+
+double average(int x[]);
+
+int main(void) {
+    double avg;
+    int base[5] = {3, 7, 2, 4, 5};
+
+    avg = average(base);
+    printf("base average = %.3f\\n", avg);
+
+    return 0;
+}
+
+double average(int x[]) {
+    // TODO: x[0] ~ x[4] 의 합을 5.0 으로 나눠 double 로 반환한다.
+    return 0.0;
+}
+`,
+    visibleTests: [
+      {
+        input: "",
+        expected: "base average = 4.200\n",
+        note: "배열 {3,7,2,4,5} 의 평균 = 4.2",
+      },
+    ],
+    hiddenTestsPath: "supabase/seed-private/A00_hidden.json",
+    reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
+  },
+  {
     code: "A01_bubble_sort",
     version: 2,
     title: "배열과 버블정렬",

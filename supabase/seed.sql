@@ -16,6 +16,61 @@ insert into public.cohorts (id, name, term, teacher_id) values
 on conflict (id) do nothing;
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
+  'A00_pilot_average',
+  1,
+  $$파일럿 문항$$,
+  $$코드에 이미 선언된 배열 `int base[5] = {3, 7, 2, 4, 5};` 의 **평균을 계산하는** `double average(int x[])` 함수를 작성하라. main 은 그대로 두고, `average` 함수 내부만 채우면 된다.
+
+**출력 형식**:
+
+```
+base average = 4.200
+```
+
+- 소수점 **3자리** (`printf` 형식 `%.3f`) 로 출력
+- 합을 5.0 으로 나눠 double 로 반환 (정수 나눗셈 주의)
+- 이 과제는 **파일럿(시범) 문항** 입니다. 가볍게 사용성을 익혀보고, 이후 A01 부터 본격 진행하세요.$$,
+  $$["functions-params","arrays-indexing","io-formatting"]$$::jsonb,
+  1,
+  $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
+  $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
+  $$#include <stdio.h>
+
+double average(int x[]);
+
+int main(void) {
+    double avg;
+    int base[5] = {3, 7, 2, 4, 5};
+
+    avg = average(base);
+    printf("base average = %.3f\n", avg);
+
+    return 0;
+}
+
+double average(int x[]) {
+    // TODO: x[0] ~ x[4] 의 합을 5.0 으로 나눠 double 로 반환한다.
+    return 0.0;
+}
+$$,
+  $$[{"input":"","expected":"base average = 4.200\n","note":"배열 {3,7,2,4,5} 의 평균 = 4.2"}]$$::jsonb,
+  $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
+  '00000000-0000-4000-8000-000000000010',
+  true,
+  '00000000-0000-4000-8000-000000000001'
+) on conflict (code) do update set
+  version = excluded.version,
+  title = excluded.title,
+  template = excluded.template,
+  kc_tags = excluded.kc_tags,
+  difficulty = excluded.difficulty,
+  rubric = excluded.rubric,
+  constraints = excluded.constraints,
+  starter_code = excluded.starter_code,
+  visible_tests = excluded.visible_tests,
+  reflection_prompts = excluded.reflection_prompts;
+
+insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A01_bubble_sort',
   2,
   $$배열과 버블정렬$$,
