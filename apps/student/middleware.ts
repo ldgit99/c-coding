@@ -32,16 +32,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Supabase 세션 쿠키 — @supabase/ssr 은 토큰이 길면 chunked cookie 로 저장한다:
+  // Supabase 세션 쿠키 — @supabase/ssr 은 토큰이 길면 chunked cookie 로 저장:
   //   sb-<ref>-auth-token       (작은 토큰)
   //   sb-<ref>-auth-token.0     (chunk 0)
   //   sb-<ref>-auth-token.1     (chunk 1)
-  // endsWith 로만 체크하면 chunked 케이스를 놓쳐서 로그인 직후에도 /login 으로
-  // 되돌려보내는 버그가 생긴다. includes 로 완화.
-  const hasSessionCookie = request.cookies.getAll().some((c) => {
-    if (!c.name.startsWith("sb-")) return false;
-    return c.name.includes("-auth-token");
-  });
+  // PKCE 진행용 sb-<ref>-auth-token-code-verifier 는 세션 아님 — 제외해야
+  // 로그인 실패 상태에서 인증된 것처럼 통과되는 버그 없음.
+  const AUTH_TOKEN_RE = /^sb-[^-]+-auth-token(\.\d+)?$/;
+  const hasSessionCookie = request.cookies.getAll().some((c) => AUTH_TOKEN_RE.test(c.name));
   if (!hasSessionCookie) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);

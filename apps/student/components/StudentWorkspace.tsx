@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AppUser } from "@cvibe/db";
+import { UserMenu } from "@cvibe/shared-ui";
 
 import { AIPanel } from "@/components/AIPanel";
 import { AssignmentPanel, type AssignmentPublic } from "@/components/AssignmentPanel";
@@ -243,14 +244,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             <span className="text-[10px] uppercase tracking-wider text-neutral">
               C Pair Programming
             </span>
-            <span className="text-[12px] text-text-secondary">
-              {user.displayName}
-              {user.mocked && (
-                <span className="ml-2 rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">
-                  demo
-                </span>
-              )}
-            </span>
+            {/* 사용자 라벨은 우측 UserMenu 로 이동. 헤더 좌측은 브랜드만 유지. */}
           </div>
           <div className="flex items-center gap-3 text-[11px] text-text-secondary">
             <ModeSwitch mode={mode} onChange={handleModeChange} locked={modeLocked} />
@@ -315,6 +309,12 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             >
               제출
             </button>
+            <UserMenu
+              displayName={user.displayName}
+              mocked={user.mocked}
+              email={user.email}
+              loginPath="/login"
+            />
           </div>
         </div>
       </header>

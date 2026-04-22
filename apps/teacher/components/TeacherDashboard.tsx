@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import type { AppUser } from "@cvibe/db";
 
 import { InterventionActions } from "@/components/InterventionActions";
+import { UserMenu } from "@cvibe/shared-ui";
+
 import { LiveEvents } from "@/components/LiveEvents";
 import { ModeDonut } from "@/components/ModeDonut";
 
@@ -70,12 +72,12 @@ export function TeacherDashboard({ user }: { user: AppUser }) {
               Classroom Overview
             </h1>
             <div className="mt-2 flex items-center gap-3 text-[13px] text-text-secondary">
-              <span>{user.displayName}</span>
-              {user.mocked && (
-                <span className="rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">
-                  demo
-                </span>
-              )}
+              <UserMenu
+                displayName={user.displayName}
+                mocked={user.mocked}
+                email={user.email}
+                loginPath="/login"
+              />
             </div>
           </div>
           <div className="flex items-start gap-5">
