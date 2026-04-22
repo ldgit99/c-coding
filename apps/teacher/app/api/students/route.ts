@@ -36,18 +36,56 @@ export async function GET() {
   }
 
   try {
-    const { data: profiles, error } = await supabase
-      .from("profiles")
-      .select("id, display_name, email, cohort_id, role, status, created_at")
-      .eq("cohort_id", DEMO_COHORT_ID)
-      .eq("role", "student")
-      .order("display_name", { ascending: true });
+    // 1차: status 컬럼 포함 조회. 컬럼 미적용(마이그레이션 전)이면 42703 에러 → 재시도.
+    let profiles: Array<Record<string, unknown>> | null = null;
+    let statusColumnMissing = false;
+    {
+      const full = await supabase
+        .from("profiles")
+        .select("id, display_name, email, cohort_id, role, status, created_at")
+        .eq("cohort_id", DEMO_COHORT_ID)
+        .eq("role", "student")
+        .order("display_name", { ascending: true });
+      if (full.error) {
+        const msg = full.error.message ?? "";
+        const code = (full.error as unknown as { code?: string }).code;
+        if (code === "42703" || /status/.test(msg)) {
+          statusColumnMissing = true;
+        } else {
+          return NextResponse.json(
+            {
+              cohortId: DEMO_COHORT_ID,
+              source: "supabase",
+              students: [],
+              error: full.error.message,
+            },
+            { status: 200 },
+          );
+        }
+      } else {
+        profiles = full.data;
+      }
+    }
 
-    if (error) {
-      return NextResponse.json(
-        { cohortId: DEMO_COHORT_ID, source: "supabase", students: [], error: error.message },
-        { status: 200 },
-      );
+    if (statusColumnMissing) {
+      const fallback = await supabase
+        .from("profiles")
+        .select("id, display_name, email, cohort_id, role, created_at")
+        .eq("cohort_id", DEMO_COHORT_ID)
+        .eq("role", "student")
+        .order("display_name", { ascending: true });
+      if (fallback.error) {
+        return NextResponse.json(
+          {
+            cohortId: DEMO_COHORT_ID,
+            source: "supabase",
+            students: [],
+            error: fallback.error.message,
+          },
+          { status: 200 },
+        );
+      }
+      profiles = fallback.data;
     }
 
     const studentIds = (profiles ?? []).map((p) => p.id as string);
@@ -158,7 +196,18 @@ export async function PATCH(request: Request) {
 
   const { error } = await supabase.from("profiles").update(patch).eq("id", body.id);
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    const code = (error as unknown as { code?: string }).code;
+    const missingCol = code === "42703" || /status/.test(error.message ?? "");
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message,
+        hint: missingCol
+          ? "profiles.status 컬럼이 없습니다. supabase/migrations/20260422000000_profile_status.sql 을 적용하세요."
+          : undefined,
+      },
+      { status: 500 },
+    );
   }
   return NextResponse.json({ ok: true, id: body.id, patch });
 }
