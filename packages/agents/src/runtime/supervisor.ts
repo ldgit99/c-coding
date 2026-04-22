@@ -1,9 +1,14 @@
 import type { SessionState } from "../state";
+import { cacheSystemPrompt, createAnthropicClient, MODELS } from "./client";
 
 /**
  * Supervisor — 학생/교사 발화를 분류해 적합한 전문가로 라우팅.
- * MVP 구현: 단순 키워드 + 패턴 기반 분류. Week 4~5 범위.
- * 향후 Haiku 4.5 기반 LLM 분류로 업그레이드 예정.
+ *
+ * 기본: Haiku 4.5 를 호출해 intent 분류. ANTHROPIC_API_KEY 없거나 LLM 실패 시
+ * regex 휴리스틱으로 폴백. 반환 인터페이스는 동일.
+ *
+ * 추가 intent: 'general_chat' — 개념 탐색·감정·상황 공유. Pedagogy Coach
+ * 탐색 대화(PEDAGOGY_COACH_CHAT_PROMPT) 로 라우팅.
  */
 
 export type RouteTarget =
@@ -60,7 +65,7 @@ export function classify(input: ClassifyInput): ClassifyResult {
     return { intent: "general_chat", route: "teacher-copilot", reason: "교사 기본 라우팅" };
   }
 
-  // 학생 경로
+  // 학생 경로 — 안전 우선 키워드 먼저 (submit/run 은 항상 regex)
   if (SUBMIT_PATTERNS.some((p) => p.test(text))) {
     return { intent: "grade_submit", route: "assessment", reason: "학생 + 제출 키워드" };
   }
@@ -82,10 +87,107 @@ export function classify(input: ClassifyInput): ClassifyResult {
     return { intent: "hint_request", route: "pedagogy-coach", reason: "학생 + 힌트 키워드" };
   }
 
-  // 분류 모호 → Pedagogy Coach 기본 (질문-먼저 원칙)
+  // 분류 모호 → Pedagogy Coach 탐색 대화 (자연 대화 모드)
   return {
     intent: "general_chat",
     route: "pedagogy-coach",
-    reason: "분류 모호 — 기본 라우팅 (question-first)",
+    reason: "분류 모호 — 탐색 대화 라우팅",
   };
+}
+
+/**
+ * LLM 기반 분류 — Haiku 4.5 사용, prompt caching 으로 비용 ~1/10.
+ * env 없거나 네트워크 실패 시 regex classify() 로 자동 폴백.
+ */
+const CLASSIFY_SYSTEM_PROMPT = `
+당신은 CS1 프로그래밍 튜터 플랫폼의 발화 분류기입니다.
+학생 입력을 아래 6 intent 중 정확히 하나로 분류하세요.
+
+intents:
+  hint_request        — 학생이 힌트·도움·단계적 안내를 명시적으로 요청
+  code_review_request — "내 코드 봐줘/검토/리뷰" 류 (코드가 이미 있을 때만 유효)
+  run_request         — "실행/돌려줘/컴파일" 류
+  grade_submit        — "제출/채점"
+  general_chat        — 개념 탐색, "이게 뭐야/왜 이래", 감정·상황 공유, 일반 대화
+  hint_request_implicit — 학생이 문제를 헤매는 정황("모르겠어", "왜 안 되지")
+
+명확히 힌트를 요청한 경우만 hint_request. 막연한 혼란은 general_chat.
+
+응답 형식 (JSON 한 덩어리만):
+{"intent": "<name>", "confidence": 0.0-1.0}
+`.trim();
+
+export async function classifyLLM(
+  input: ClassifyInput,
+  opts: { anthropicApiKey?: string; timeoutMs?: number } = {},
+): Promise<ClassifyResult> {
+  if (!(opts.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY)) {
+    return classify(input);
+  }
+
+  try {
+    const client = createAnthropicClient(opts.anthropicApiKey);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 2500);
+    const res = await client.messages.create(
+      {
+        model: MODELS.haiku,
+        max_tokens: 80,
+        system: cacheSystemPrompt(CLASSIFY_SYSTEM_PROMPT),
+        messages: [
+          {
+            role: "user",
+            content: [
+              `<actor>${input.actor}</actor>`,
+              `<editor_has_code>${input.editorHasCode}</editor_has_code>`,
+              `<utterance>${input.utterance}</utterance>`,
+            ].join("\n"),
+          },
+        ],
+      },
+      { signal: controller.signal },
+    );
+    clearTimeout(timer);
+    const text = res.content.map((b) => ("text" in b ? b.text : "")).join("\n");
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return classify(input);
+    const parsed = JSON.parse(m[0]) as { intent?: string; confidence?: number };
+    return mapLLMIntent(parsed.intent ?? "", input);
+  } catch {
+    return classify(input);
+  }
+}
+
+function mapLLMIntent(intent: string, input: ClassifyInput): ClassifyResult {
+  switch (intent) {
+    case "grade_submit":
+      return { intent: "grade_submit", route: "assessment", reason: "LLM 분류 · 제출" };
+    case "run_request":
+      return { intent: "run_request", route: "runtime-debugger", reason: "LLM 분류 · 실행" };
+    case "code_review_request":
+      if (!input.editorHasCode) {
+        return {
+          intent: "hint_request",
+          route: "pedagogy-coach",
+          reason: "LLM 분류 · 리뷰 요청이나 코드 미작성 → 힌트로 재라우팅",
+          blockedByCodeFirstGate: true,
+        };
+      }
+      return {
+        intent: "code_review_request",
+        route: "code-reviewer",
+        reason: "LLM 분류 · 코드 리뷰",
+      };
+    case "hint_request":
+    case "hint_request_implicit":
+      return { intent: "hint_request", route: "pedagogy-coach", reason: "LLM 분류 · 힌트" };
+    case "general_chat":
+      return {
+        intent: "general_chat",
+        route: "pedagogy-coach",
+        reason: "LLM 분류 · 탐색 대화",
+      };
+    default:
+      return classify(input);
+  }
 }

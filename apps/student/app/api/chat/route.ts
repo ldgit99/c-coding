@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   checkSafety,
-  classify,
+  classifyLLM,
   requestHint,
   reviewCode,
   SessionStateSchema,
@@ -20,6 +20,7 @@ import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, recordTurn, Verbs } from "@cvibe/xapi";
 
+import { computeServerSideSignals } from "@/lib/learning-signals-server";
 import { loadReferenceSolution } from "@/lib/seed-private";
 
 // /api/chat 기본 제한: 학생당 분당 20건. Anthropic 비용 폭발 방지.
@@ -76,13 +77,26 @@ export async function POST(request: Request) {
     );
   }
 
-  // SessionState 기본값 병합 후 검증
+  // 서버가 신뢰 소스: assignment catalog 에서 kcTags 가져와 currentKC 강제.
+  const catalog = body.assignmentCode ? getAssignmentByCode(body.assignmentCode) : undefined;
+  const enforcedKC = catalog?.kcTags ?? body.sessionState.currentKC ?? [];
+
+  // 서버에서 실 learning signals 계산 (submissions + xAPI 이벤트 + 최근 발화)
+  const supabaseForWrites = createServiceRoleClientIfAvailable();
+  const { signals, priorTurns, recentError } = await computeServerSideSignals({
+    supabase: supabaseForWrites,
+    studentId: body.sessionState.studentId,
+    assignmentCode: body.assignmentCode,
+    editorCodeLength: body.editorCode?.length ?? 0,
+  });
+
+  // SessionState 기본값 병합 후 검증 — 클라이언트가 보낸 가짜 signals 는 무시
   const parsed = SessionStateSchema.safeParse({
     studentId: body.sessionState.studentId,
     assignmentId: body.sessionState.assignmentId,
-    currentKC: body.sessionState.currentKC ?? [],
+    currentKC: enforcedKC,
     mastery: body.sessionState.mastery ?? {},
-    learningSignals: body.sessionState.learningSignals,
+    learningSignals: signals,
     dependency: body.sessionState.dependency,
     conversation: body.sessionState.conversation ?? [],
     editorSnapshot: body.sessionState.editorSnapshot,
@@ -100,7 +114,8 @@ export async function POST(request: Request) {
   }
   const sessionState = parsed.data;
 
-  const route = classify({
+  // Haiku 기반 LLM 분류 — 실패 시 regex fallback.
+  const route = await classifyLLM({
     actor: "student",
     utterance: body.utterance,
     sessionState,
@@ -108,7 +123,7 @@ export async function POST(request: Request) {
   });
 
   // 대화 로그 — 학생 발화 원문 기록 (교사 전용 열람)
-  const supabaseForWrites = createServiceRoleClientIfAvailable();
+  // supabaseForWrites 는 이미 상단에서 생성됨 (learning-signals 계산에 재사용)
   const conversationAssignmentId =
     body.assignmentCode ?? sessionState.assignmentId;
   recordTurn({
@@ -142,8 +157,14 @@ export async function POST(request: Request) {
     : undefined;
 
   if (route.route === "pedagogy-coach") {
-    // 현재 과제의 템플릿·KC 조회 — 힌트 context 강화
-    const catalog = body.assignmentCode ? getAssignmentByCode(body.assignmentCode) : undefined;
+    // catalog 는 이미 상단에서 조회됨 — 재사용
+    // 에디터 코드에 lintC 실행해 findings 주입
+    const lintFindings = body.editorCode && body.editorCode.trim().length > 0
+      ? await safeLint(body.editorCode)
+      : [];
+
+    const pedagogyMode =
+      route.intent === "hint_request" || body.requestedLevel != null ? "hint" : "chat";
 
     let hintResult;
     try {
@@ -156,6 +177,13 @@ export async function POST(request: Request) {
         editorCode: body.editorCode,
         assignmentTemplate: catalog?.template,
         assignmentKC: catalog?.kcTags,
+        assignmentDifficulty: catalog?.difficulty,
+        assignmentTitle: catalog?.title,
+        visibleTests: catalog?.visibleTests,
+        lintFindings,
+        recentError,
+        priorTurns,
+        pedagogyMode,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -323,14 +351,53 @@ export async function POST(request: Request) {
   );
 }
 
-/** 단순 휴리스틱 — 학생 발화에 문제 재진술 신호가 있는가. */
+/** 문제 재진술 감지 — 입력·출력 언급이나 문제 요약 형태. */
 function detectRestatement(utterance: string): boolean {
-  const patterns = [/입력은/, /출력은/, /목표는/, /해야\s*할\s*일/, /요구되는/];
+  const patterns = [
+    /입력은/,
+    /출력은/,
+    /목표는/,
+    /해야\s*할\s*일/,
+    /요구되는/,
+    /문제(는|가)/,
+    /(주어진|n개의)\s*(배열|정수|값)/,
+    /평균|합계|최대|최소|정렬/,
+  ];
   return patterns.some((p) => p.test(utterance));
 }
 
-/** 단순 휴리스틱 — 구체적 막힌 지점 지목. */
+/** 구체적 막힌 지점 지목 — 변수명·라인 번호·함수명·에러 타입. */
 function detectStuckPoint(utterance: string): boolean {
-  const patterns = [/\d+\s*번\s*줄/, /line\s*\d+/i, /루프에서/, /변수\s*\w+에서/, /이 부분/];
+  const patterns = [
+    /\d+\s*번\s*줄/,
+    /line\s*\d+/i,
+    /루프에서/,
+    /변수\s*\w+/,
+    /함수\s*\w+/,
+    /이\s*(부분|줄|라인|함수|변수)/,
+    /(세그폴트|segfault|segmentation)/i,
+    /(null|undefined)\s*(참조|에러)?/i,
+    /(out of bounds|경계)/i,
+    /(컴파일|런타임)\s*(에러|오류)/,
+    /어떻게\s*(접근|수정|고쳐)/,
+  ];
   return patterns.some((p) => p.test(utterance));
+}
+
+/** lintC 결과를 LintFinding[] 으로 좁혀서 반환. 실패 시 빈 배열. */
+async function safeLint(
+  code: string,
+): Promise<Array<{ line?: number; severity: "error" | "warning" | "info"; message: string }>> {
+  try {
+    const result = await lintC(code);
+    const warnings = (result.warnings ?? []).slice(0, 10);
+    return warnings.map((w) => ({
+      line: w.line,
+      severity:
+        w.severity === "error" ? "error" : w.severity === "warning" ? "warning" : "info",
+      message: w.message,
+    }));
+  } catch {
+    return [];
+  }
 }

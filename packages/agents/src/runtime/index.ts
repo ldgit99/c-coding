@@ -2,6 +2,7 @@ export * from "./assessment";
 export * from "./client";
 export * from "./code-reviewer";
 export * from "./gating";
+export * from "./learning-signals";
 export * from "./observability";
 export * from "./pedagogy-coach";
 export * from "./problem-architect";

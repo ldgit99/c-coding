@@ -67,27 +67,32 @@ export function computeAllowedLevel(ctx: GatingContext): GatingResult {
     return { grantedLevel: 1, failedConditions: failed };
   }
 
-  // L2 → L3
+  // L2 → L3 : 두 번 이상 시도했거나, 충분히 머물렀거나(≥120s), 에러 반복(≥2)
   const l3Allowed =
-    learning.attemptCount >= 2 &&
-    (learning.stagnationSec >= 180 || learning.repeatedErrorCount >= 2);
+    learning.attemptCount >= 2 ||
+    learning.stagnationSec >= 120 ||
+    learning.repeatedErrorCount >= 2 ||
+    learning.hintRequests >= 2;
   if (requested >= 3 && !l3Allowed) {
     failed.push(
-      `L2→L3: attemptCount≥2 + (stagnation≥180s 또는 repeatedError≥2) 필요 ` +
-        `(현재 attempt=${learning.attemptCount}, stagnation=${learning.stagnationSec}s, repeated=${learning.repeatedErrorCount})`,
+      `L2→L3: attemptCount≥2 또는 stagnation≥120s 또는 repeatedError≥2 또는 hintRequests≥2 중 하나 필요 ` +
+        `(현재 attempt=${learning.attemptCount}, stagnation=${learning.stagnationSec}s, repeated=${learning.repeatedErrorCount}, hints=${learning.hintRequests})`,
     );
     return { grantedLevel: 2, failedConditions: failed };
   }
 
-  // L3 → L4
+  // L3 → L4 : mode=coach + (namedStuckPoint OR 충분한 시도/힌트) 중 하나
+  const l4StruggledEnough =
+    learning.attemptCount >= 3 ||
+    learning.hintRequests >= 3 ||
+    learning.repeatedErrorCount >= 2;
   const l4Allowed =
-    learning.attemptCount >= 3 &&
-    mode === "coach" &&
-    ctx.namedStuckPoint === true;
+    mode === "coach" && (ctx.namedStuckPoint === true || l4StruggledEnough);
   if (requested >= 4 && !l4Allowed) {
-    if (learning.attemptCount < 3) failed.push(`L3→L4: attemptCount≥3 필요 (현재 ${learning.attemptCount})`);
     if (mode !== "coach") failed.push(`L3→L4: mode=coach 필요 (현재 ${mode})`);
-    if (!ctx.namedStuckPoint) failed.push("L3→L4: 구체적 막힌 지점 지목 필요");
+    if (!ctx.namedStuckPoint && !l4StruggledEnough) {
+      failed.push("L3→L4: 구체적 막힌 지점 지목 또는 충분한 시도(attempt≥3/hints≥3/repeat≥2) 필요");
+    }
     return { grantedLevel: 3, failedConditions: failed };
   }
 
