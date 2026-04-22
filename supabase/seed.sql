@@ -53,24 +53,39 @@ $$,
   reflection_prompts = excluded.reflection_prompts;
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
-  'A02_grade_if',
+  'A02_pointer_swap_fn',
   1,
-  $$점수 등급 분류$$,
-  $$표준 입력으로 받은 점수(0~100)에 대해 등급을 출력하라. 90+ A, 80+ B, 70+ C, 60+ D, 그 외 F.$$,
-  $$["control-flow-if","variables-types","io-formatting"]$$::jsonb,
-  2,
+  $$포인터와 함수$$,
+  $$두 정수 a, b 를 공백으로 구분해 입력받아, 포인터 매개변수를 사용하는 `void swap(int *a, int *b)` 함수로 두 값을 교환한 뒤 전후를 다음 형식으로 출력하라.
+
+```
+before swap() : a=<a>, b=<b>
+after swap() : a=<b>, b=<a>
+```
+
+값 복사(pass by value)로는 교환되지 않는 이유를 코드에서 확인하는 것이 목적. main 에서는 `&a`, `&b` 로 주소를 넘기고, swap 내부에서는 `*a`, `*b` 로 역참조해 서로 교환한다.$$,
+  $$["pointer-basics","functions-params"]$$::jsonb,
+  3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
+void swap(int *a, int *b);
+
 int main(void) {
-    int score;
-    scanf("%d", &score);
-    // TODO: 등급 분기
+    int a, b;
+    scanf("%d %d", &a, &b);
+    printf("before swap() : a=%d, b=%d\n", a, b);
+    swap(&a, &b);
+    printf("after swap() : a=%d, b=%d\n", a, b);
     return 0;
 }
+
+void swap(int *a, int *b) {
+    // TODO: 포인터 역참조(*a, *b)로 두 변수의 값을 교환한다.
+}
 $$,
-  $$[{"input":"92","expected":"A\n"},{"input":"78","expected":"C\n"},{"input":"45","expected":"F\n"}]$$::jsonb,
+  $$[{"input":"10 20","expected":"before swap() : a=10, b=20\nafter swap() : a=20, b=10\n","note":"기본 교환"},{"input":"7 7","expected":"before swap() : a=7, b=7\nafter swap() : a=7, b=7\n","note":"같은 값 (교환해도 동일)"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,
@@ -279,7 +294,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
   1,
   $$반복문으로 팩토리얼$$,
   $$정수 n (0 ≤ n ≤ 12) 을 입력받아 n!을 반복문으로 계산해 출력하라. 재귀 금지.$$,
-  $$["functions-params","control-flow-loop","variables-types"]$$::jsonb,
+  $$["functions-params","control-flow-loop","control-flow-if","variables-types"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,

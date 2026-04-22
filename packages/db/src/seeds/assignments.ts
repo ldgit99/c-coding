@@ -106,28 +106,43 @@ int main(void) {
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {
-    code: "A02_grade_if",
+    code: "A02_pointer_swap_fn",
     version: 1,
-    title: "점수 등급 분류",
+    title: "포인터와 함수",
     template:
-      "표준 입력으로 받은 점수(0~100)에 대해 등급을 출력하라. 90+ A, 80+ B, 70+ C, 60+ D, 그 외 F.",
-    kcTags: ["control-flow-if", "variables-types", "io-formatting"],
-    difficulty: 2,
+      "두 정수 a, b 를 공백으로 구분해 입력받아, 포인터 매개변수를 사용하는 `void swap(int *a, int *b)` 함수로 두 값을 교환한 뒤 전후를 다음 형식으로 출력하라.\n\n```\nbefore swap() : a=<a>, b=<b>\nafter swap() : a=<b>, b=<a>\n```\n\n값 복사(pass by value)로는 교환되지 않는 이유를 코드에서 확인하는 것이 목적. main 에서는 `&a`, `&b` 로 주소를 넘기고, swap 내부에서는 `*a`, `*b` 로 역참조해 서로 교환한다.",
+    kcTags: ["pointer-basics", "functions-params"],
+    difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
+void swap(int *a, int *b);
+
 int main(void) {
-    int score;
-    scanf("%d", &score);
-    // TODO: 등급 분기
+    int a, b;
+    scanf("%d %d", &a, &b);
+    printf("before swap() : a=%d, b=%d\\n", a, b);
+    swap(&a, &b);
+    printf("after swap() : a=%d, b=%d\\n", a, b);
     return 0;
+}
+
+void swap(int *a, int *b) {
+    // TODO: 포인터 역참조(*a, *b)로 두 변수의 값을 교환한다.
 }
 `,
     visibleTests: [
-      { input: "92", expected: "A\n" },
-      { input: "78", expected: "C\n" },
-      { input: "45", expected: "F\n" },
+      {
+        input: "10 20",
+        expected: "before swap() : a=10, b=20\nafter swap() : a=20, b=10\n",
+        note: "기본 교환",
+      },
+      {
+        input: "7 7",
+        expected: "before swap() : a=7, b=7\nafter swap() : a=7, b=7\n",
+        note: "같은 값 (교환해도 동일)",
+      },
     ],
     hiddenTestsPath: "supabase/seed-private/A02_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
@@ -283,7 +298,7 @@ int main(void) {
     title: "반복문으로 팩토리얼",
     template:
       "정수 n (0 ≤ n ≤ 12) 을 입력받아 n!을 반복문으로 계산해 출력하라. 재귀 금지.",
-    kcTags: ["functions-params", "control-flow-loop", "variables-types"],
+    kcTags: ["functions-params", "control-flow-loop", "control-flow-if", "variables-types"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
