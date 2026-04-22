@@ -87,6 +87,29 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   // 마지막 실행 에러 — Coach 모드에서 AI 선제 개입 트리거
   const [lastRunError, setLastRunError] = useState<{ id: string; errorType: string } | null>(null);
 
+  // 반응형 패널 토글 — 좁은 화면에서 CEditor 가 가려지지 않도록 AssignmentPanel 과
+  // AIPanel 을 독립 drawer 로 관리.
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  useEffect(() => {
+    const apply = () => {
+      const w = window.innerWidth;
+      if (w < 900) {
+        setShowLeftPanel(false);
+        setShowRightPanel(false);
+      } else if (w < 1200) {
+        setShowLeftPanel(false);
+        setShowRightPanel(true);
+      } else {
+        setShowLeftPanel(true);
+        setShowRightPanel(true);
+      }
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  }, []);
+
   const refreshSubmissions = useCallback(async () => {
     try {
       const res = await fetch("/api/my/submissions");
@@ -254,6 +277,32 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             </span>
             <button
               type="button"
+              onClick={() => setShowLeftPanel((v) => !v)}
+              className={`inline-flex h-8 items-center rounded-md border px-2.5 text-[11px] font-medium transition-all ${
+                showLeftPanel
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border-soft text-text-primary hover:border-primary hover:text-primary"
+              }`}
+              title="과제 패널 열기/닫기"
+              aria-pressed={showLeftPanel}
+            >
+              📋 과제
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRightPanel((v) => !v)}
+              className={`inline-flex h-8 items-center rounded-md border px-2.5 text-[11px] font-medium transition-all ${
+                showRightPanel
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border-soft text-text-primary hover:border-primary hover:text-primary"
+              }`}
+              title="AI 튜터 패널 열기/닫기"
+              aria-pressed={showRightPanel}
+            >
+              💬 AI
+            </button>
+            <button
+              type="button"
               onClick={() => setShowMyLearning(true)}
               className="inline-flex h-8 items-center rounded-md border border-border-soft bg-white px-2.5 text-[11px] font-medium text-text-primary transition-all hover:-translate-y-px hover:border-primary hover:text-primary"
             >
@@ -270,53 +319,74 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-[320px_1fr_380px] divide-x divide-border-soft overflow-hidden">
-        <AssignmentPanel
-          selectedCode={assignment?.code ?? null}
-          submissions={submissions}
-          onSelect={(a) => {
-            setAssignment(a);
-            setEditorCode(a.starterCode);
-          }}
-        />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left drawer — AssignmentPanel */}
+        <aside
+          className={`shrink-0 overflow-hidden border-r border-border-soft transition-[width] duration-200 ease-out ${
+            showLeftPanel ? "w-[clamp(260px,22vw,340px)]" : "w-0"
+          }`}
+          aria-hidden={!showLeftPanel}
+        >
+          <div className="h-full w-[clamp(260px,22vw,340px)]">
+            <AssignmentPanel
+              selectedCode={assignment?.code ?? null}
+              submissions={submissions}
+              onSelect={(a) => {
+                setAssignment(a);
+                setEditorCode(a.starterCode);
+              }}
+            />
+          </div>
+        </aside>
 
-        <CEditor
-          key={assignment?.code ?? "none"}
-          starterCode={assignment?.starterCode}
-          onCodeChange={setEditorCode}
-          onRunComplete={handleRunComplete}
-        />
-
-        <div className="relative flex flex-col overflow-hidden">
-          <AIPanel
-            editorCode={editorCode}
-            studentId={user.id}
-            mode={examMode ? "pair" : mode}
-            examMode={examMode}
-            assignmentCode={assignment?.code ?? null}
-            assignmentTitle={assignment?.title}
-            learningObjectives={assignment?.learningObjectives}
-            assignmentKcTags={assignment?.kcTags}
-            elapsedSec={elapsedSec}
-            onMaxHintLevelChange={(lvl) =>
-              setMaxHintLevel((prev) => Math.max(prev, lvl))
-            }
-            lastRunError={lastRunError}
-          />
-          <FocusMode
-            active={focusActive}
-            minutes={focusMinutes}
-            onEnd={(summary) => {
-              setFocusActive(false);
-              setCelebration({
-                id: `focus:${Date.now()}`,
-                kind: "visible-test",
-                title: summary.completed ? "집중 시간 완주" : "집중 시간 종료",
-                body: `AI 없이 ${Math.floor(summary.elapsedSec / 60)}분 ${summary.elapsedSec % 60}초 혼자 풀었어.`,
-              });
-            }}
+        {/* Center — CEditor 항상 표시 */}
+        <div className="min-w-0 flex-1">
+          <CEditor
+            key={assignment?.code ?? "none"}
+            starterCode={assignment?.starterCode}
+            onCodeChange={setEditorCode}
+            onRunComplete={handleRunComplete}
           />
         </div>
+
+        {/* Right drawer — AIPanel */}
+        <aside
+          className={`relative shrink-0 overflow-hidden border-l border-border-soft transition-[width] duration-200 ease-out ${
+            showRightPanel ? "w-[clamp(320px,26vw,400px)]" : "w-0"
+          }`}
+          aria-hidden={!showRightPanel}
+        >
+          <div className="flex h-full w-[clamp(320px,26vw,400px)] flex-col">
+            <AIPanel
+              editorCode={editorCode}
+              studentId={user.id}
+              mode={examMode ? "pair" : mode}
+              examMode={examMode}
+              assignmentCode={assignment?.code ?? null}
+              assignmentTitle={assignment?.title}
+              learningObjectives={assignment?.learningObjectives}
+              assignmentKcTags={assignment?.kcTags}
+              elapsedSec={elapsedSec}
+              onMaxHintLevelChange={(lvl) =>
+                setMaxHintLevel((prev) => Math.max(prev, lvl))
+              }
+              lastRunError={lastRunError}
+            />
+            <FocusMode
+              active={focusActive}
+              minutes={focusMinutes}
+              onEnd={(summary) => {
+                setFocusActive(false);
+                setCelebration({
+                  id: `focus:${Date.now()}`,
+                  kind: "visible-test",
+                  title: summary.completed ? "집중 시간 완주" : "집중 시간 종료",
+                  body: `AI 없이 ${Math.floor(summary.elapsedSec / 60)}분 ${summary.elapsedSec % 60}초 혼자 풀었어.`,
+                });
+              }}
+            />
+          </div>
+        </aside>
       </div>
 
       {showSubmit && (
