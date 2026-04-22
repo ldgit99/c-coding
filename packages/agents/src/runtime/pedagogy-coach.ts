@@ -282,34 +282,52 @@ function parseHintResponse(text: string, level: HintLevel, relatedKC: string[]):
   if (jsonMatch) {
     try {
       const parsed = HintSchema.parse(JSON.parse(jsonMatch[0]));
-      return parsed;
+      return { ...parsed, message: sanitizeHintMessage(parsed.message) };
     } catch {
       // fall through
     }
   }
   // 파싱 실패 — 안전 폴백
+  const fallback = text.trim().slice(0, 500) || "죄송, 힌트를 생성하지 못했어. 다시 시도해볼래?";
   return {
     hintLevel: level,
     hintType: HINT_LEVEL_TYPE[level],
-    message: text.trim().slice(0, 500) || "죄송, 힌트를 생성하지 못했어. 다시 시도해볼래?",
+    message: sanitizeHintMessage(fallback),
     relatedKC,
     requiresSelfExplanation: false,
   };
 }
 
-function mockHint(level: HintLevel, relatedKC: string[], failed: string[]): Hint {
+function mockHint(level: HintLevel, relatedKC: string[], _failed: string[]): Hint {
   const fallbackMessages: Record<HintLevel, string> = {
     1: "[mock] 지금 해결하려는 문제가 정확히 뭐라고 생각해? 입력이 뭐고 출력이 뭐인지 네 말로 설명해줄래?",
     2: "[mock] 관련 개념을 잠깐 짚어보자. 배열을 순회할 때 유효한 인덱스 범위가 어디까지인지 다시 확인해보면 어떨까?",
     3: "[mock] 의사코드로 접근해볼까? 1) 합계 변수 초기화 → 2) 각 요소 누적 → 3) 종료 조건 검토. 이 흐름에서 어느 단계가 네 코드와 다른지 비교해볼 수 있어?",
     4: "[mock] 예시 코드 한 줄 힌트: `for (int i = 0; i < n; i++)` — 경계 조건에 주의. 왜 `<=`가 아니라 `<`인지 설명해줄 수 있을까?",
   };
-  const suffix = failed.length > 0 ? `\n(게이팅: ${failed[0]})` : "";
   return {
     hintLevel: level,
     hintType: HINT_LEVEL_TYPE[level],
-    message: fallbackMessages[level] + suffix,
+    message: fallbackMessages[level],
     relatedKC,
     requiresSelfExplanation: level === 4,
   };
+}
+
+/**
+ * 실수로라도 message 에 내부 게이팅 디버그 문자열("(게이팅: ...)" 등)이 섞이면
+ * 제거. LLM 이 system instruction 의 gating note 를 echo 하거나, 과거 캐시된
+ * 응답이 그대로 노출되는 경우 방지.
+ */
+const INTERNAL_DEBUG_PATTERNS: RegExp[] = [
+  /\(게이팅[^)]*\)\s*/g,
+  /L\d+→L\d+:[^\n]+/g,
+  /\bGating failures:[^\n]+/gi,
+  /\bGranted level:[^\n]+/gi,
+];
+
+function sanitizeHintMessage(message: string): string {
+  let out = message;
+  for (const re of INTERNAL_DEBUG_PATTERNS) out = out.replace(re, "");
+  return out.replace(/\n{3,}/g, "\n\n").trim();
 }
