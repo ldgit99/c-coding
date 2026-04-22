@@ -65,6 +65,32 @@ describe("runHiddenTests", () => {
     expect(res.passed).toBe(3);
   });
 
+  it("관대 모드: 공백·개행 차이가 있어도 토큰 순서가 맞으면 통과", async () => {
+    const spacyTests: HiddenTest[] = [
+      {
+        id: 10,
+        input: "",
+        expected: "초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n",
+      },
+    ];
+    const backend = new StubBackend([
+      // 학생 출력: 공백 squash + Windows 개행 + trailing 불일치
+      okResult("초기 상태 배열:   [ 7  4 5 ]\r\n정렬된 배열: [ 4 5 7 ]\r\n\r\n"),
+    ]);
+    const res = await runHiddenTests({ backend, code: "x", tests: spacyTests });
+    expect(res.passed).toBe(1);
+  });
+
+  it("관대 모드: 토큰 순서가 다르면 불합격 (로직 오류 감지 유지)", async () => {
+    const spacyTests: HiddenTest[] = [
+      { id: 11, input: "", expected: "1 2 3\n" },
+    ];
+    // 학생이 잘못 정렬
+    const backend = new StubBackend([okResult("2 1 3\n")]);
+    const res = await runHiddenTests({ backend, code: "x", tests: spacyTests });
+    expect(res.passed).toBe(0);
+  });
+
   it("backend 예외는 environment 에러로 기록", async () => {
     class FailingBackend implements Backend {
       readonly id = "judge0";

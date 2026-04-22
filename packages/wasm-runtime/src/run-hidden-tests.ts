@@ -86,8 +86,15 @@ export async function runHiddenTests(input: RunHiddenTestsInput): Promise<RunHid
       continue;
     }
 
-    const actual = test.trimTrailingNewline === false ? result.stdout : result.stdout.replace(/\n*$/, "\n");
-    const expected = test.trimTrailingNewline === false ? test.expected : test.expected.replace(/\n*$/, "\n");
+    // 관대(lenient) 모드 비교 — 2026-04-22 전환.
+    // 학생이 공백·개행 실수로 감점당하지 않도록, 로직 정확성만 평가한다.
+    // - \r\n → \n 정규화 (Windows · Judge0 출력 차이 흡수)
+    // - 라인별로 양끝 트림 + 여러 공백을 하나로 squash
+    // - 빈 줄은 모두 제거
+    // - 최종 비교는 정규화된 문자열 간 === . trimTrailingNewline 옵션은 유지
+    //   (test 단위로 엄격 모드 복원 가능) 하지만 기본 동작이 관대.
+    const actual = lenientNormalize(result.stdout, test.trimTrailingNewline);
+    const expected = lenientNormalize(test.expected, test.trimTrailingNewline);
     results.push({
       id: test.id,
       passed: actual === expected,
@@ -104,4 +111,37 @@ export async function runHiddenTests(input: RunHiddenTestsInput): Promise<RunHid
     total: results.length,
     passedRatio: results.length > 0 ? passed / results.length : 0,
   };
+}
+
+/**
+ * 관대 정규화 — 공백·개행에 둔감한 비교를 위한 전처리.
+ *
+ * 적용:
+ *   "초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n"
+ *   → "초기 상태 배열: [ 7 4 5 ]\n정렬된 배열: [ 4 5 7 ]"
+ *
+ *   "초기 상태 배열:[ 7 4 5 ]\r\n정렬된 배열:[ 4 5 7 ]\r\n\r\n"
+ *   → "초기 상태 배열: [ 7 4 5 ]\n정렬된 배열: [ 4 5 7 ]"
+ *
+ * 둘 다 같은 정규화 결과 → 통과. 학생이 출력 형식(공백·개행)에서 소소한
+ * 실수를 해도 로직이 맞으면 인정. 대신 토큰 순서와 한국어·기호는 그대로
+ * 유지돼야 통과.
+ */
+export function lenientNormalize(
+  s: string,
+  trimTrailingNewline: boolean | undefined = true,
+): string {
+  let out = s.replace(/\r\n/g, "\n"); // Windows → Unix 개행
+  // 라인별: 양끝 트림 + 내부 공백(스페이스·탭) squash
+  out = out
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n");
+  // 연속된 빈 줄 → 단일 빈 줄
+  out = out.replace(/\n{3,}/g, "\n\n");
+  // trailing newline 정규화 — 기본 true: 모든 trailing \n 제거
+  if (trimTrailingNewline !== false) {
+    out = out.replace(/\n+$/, "");
+  }
+  return out;
 }
