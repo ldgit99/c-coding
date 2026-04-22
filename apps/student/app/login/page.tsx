@@ -152,7 +152,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={!configured || isBusy}
-              placeholder="you@ewha.ac.kr"
+              placeholder="you@gmail.com"
               className="mt-1 w-full rounded-md border border-border-soft bg-white px-3 py-2 text-[14px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring disabled:opacity-50"
             />
           </label>
