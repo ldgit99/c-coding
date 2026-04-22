@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "lint": "eslint src/",
+    "lint": "eslint src/ --no-error-on-unmatched-pattern",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist .turbo"

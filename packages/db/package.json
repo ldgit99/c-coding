@@ -17,7 +17,7 @@
     "studio": "drizzle-kit studio",
     "seed:export": "tsx scripts/export-seed.ts",
     "build": "tsc --noEmit",
-    "lint": "eslint src/",
+    "lint": "eslint src/ --no-error-on-unmatched-pattern",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "clean": "rm -rf .turbo"

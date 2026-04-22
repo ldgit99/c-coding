@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "eslint src/",
+    "lint": "eslint src/ --no-error-on-unmatched-pattern",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "promptfoo": "promptfoo eval -c promptfoo.config.yaml",
