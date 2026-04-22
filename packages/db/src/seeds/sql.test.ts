@@ -17,8 +17,8 @@ describe("renderCohortInsert", () => {
 describe("renderAssignmentInsert", () => {
   it("한국어 제목·템플릿이 dollar-quoted로 escape 없이 포함", () => {
     const sql = renderAssignmentInsert(ASSIGNMENTS[0]!, "c-demo");
-    expect(sql).toContain("'A01_sort_five'");
-    expect(sql).toContain("배열과 정렬");
+    expect(sql).toContain("'A01_bubble_sort'");
+    expect(sql).toContain("배열과 버블정렬");
     expect(sql).toContain("'c-demo'");
     expect(sql).toContain("on conflict (code) do update set");
   });

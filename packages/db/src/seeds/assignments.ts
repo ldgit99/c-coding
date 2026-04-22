@@ -78,29 +78,60 @@ const DEFAULT_REFLECTION_PROMPTS = [
 
 export const ASSIGNMENTS: AssignmentSeed[] = [
   {
-    code: "A01_sort_five",
-    version: 1,
-    title: "배열과 정렬",
+    code: "A01_bubble_sort",
+    version: 2,
+    title: "배열과 버블정렬",
     template:
-      "한 자리 양의 정수(1~9) 5개를 공백으로 구분해 입력받아 오름차순으로 정렬한 뒤, 공백으로 구분해 한 줄로 출력하라. 입력은 항상 5개가 주어지며 중복 값이 있을 수 있다.",
+      "정수 3개를 공백으로 구분해 입력받아 오름차순으로 **버블 정렬** 한 뒤 정렬 전과 후를 다음 형식으로 출력하라.\n\n```\n초기 상태 배열: [ <a> <b> <c>  ] \n정렬된 배열: [ <min> <mid> <max>  ] \n```\n\n- for 이중 반복으로 구현 (외부 i: 0 ≤ i < n-1, 내부 j: 0 ≤ j < n-i-1)\n- 인접한 두 원소를 비교해 앞이 크면 교환\n- 표준 라이브러리 qsort 사용 금지, 본인이 작성한 반복문으로만 해결\n- 출력 형식의 공백(대괄호 양옆 · 숫자 사이)을 정확히 맞출 것",
     kcTags: ["arrays-indexing", "control-flow-loop"],
     difficulty: 2,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
+void bubbleSortAscending(int arr[], int n) {
+    // TODO: for 이중 반복으로 오름차순 버블 정렬.
+    //   외부 for: i = 0 ~ n-2
+    //   내부 for: j = 0 ~ n-i-2, arr[j] > arr[j+1] 이면 교환
+}
+
 int main(void) {
-    int arr[5];
-    for (int i = 0; i < 5; i++) {
-        scanf("%d", &arr[i]);
-    }
-    // TODO: arr 를 오름차순으로 정렬한 뒤 공백으로 구분해 한 줄로 출력한다.
+    int arr[3];
+    int n = 3;
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+
+    printf("초기 상태 배열: [ ");
+    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
+    printf(" ] \\n");
+
+    bubbleSortAscending(arr, n);
+
+    printf("정렬된 배열: [ ");
+    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
+    printf(" ] \\n");
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "5 3 1 4 2", expected: "1 2 3 4 5\n", note: "서로 다른 5개" },
-      { input: "9 9 1 5 3", expected: "1 3 5 9 9\n", note: "중복 포함" },
+      {
+        input: "7 4 5",
+        expected:
+          "초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n",
+        note: "서로 다른 3개",
+      },
+      {
+        input: "1 2 3",
+        expected:
+          "초기 상태 배열: [ 1 2 3  ] \n정렬된 배열: [ 1 2 3  ] \n",
+        note: "이미 정렬된 경우 (교환 0회)",
+      },
+      {
+        input: "3 3 1",
+        expected:
+          "초기 상태 배열: [ 3 3 1  ] \n정렬된 배열: [ 1 3 3  ] \n",
+        note: "중복 포함",
+      },
     ],
     hiddenTestsPath: "supabase/seed-private/A01_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
