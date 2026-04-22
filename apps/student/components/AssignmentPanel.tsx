@@ -43,7 +43,11 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
         const res = await fetch("/api/assignments");
         const data = (await res.json()) as { assignments: AssignmentPublic[] };
         setAssignments(data.assignments);
-        if (!selectedCode && data.assignments[0]) onSelect(data.assignments[0]);
+        // 순차적 공개 — locked 아닌 첫 과제를 기본 선택.
+        if (!selectedCode) {
+          const firstUnlocked = data.assignments.find((a) => !isLocked(a.code));
+          if (firstUnlocked) onSelect(firstUnlocked);
+        }
       } finally {
         setLoading(false);
       }
@@ -120,22 +124,37 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
         {assignments.map((a) => {
           const st = statusByCode.get(a.code) ?? "untried";
           const active = a.code === selectedCode;
+          const locked = isLocked(a.code);
           return (
             <li key={a.code}>
               <button
                 type="button"
-                onClick={() => onSelect(a)}
+                onClick={() => {
+                  if (!locked) onSelect(a);
+                }}
+                disabled={locked}
                 className={`flex w-full items-center gap-2 px-4 py-2 text-left text-[12px] transition-colors ${
-                  active
-                    ? "bg-primary/5 text-text-primary"
-                    : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                  locked
+                    ? "cursor-not-allowed text-neutral opacity-60"
+                    : active
+                      ? "bg-primary/5 text-text-primary"
+                      : "text-text-secondary hover:bg-surface hover:text-text-primary"
                 }`}
+                title={locked ? "순차적 공개 — 이전 과제 통과 후 열려요" : a.title}
               >
-                <StatusDot status={st} />
+                {locked ? (
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border-soft text-[9px] text-neutral">
+                    🔒
+                  </span>
+                ) : (
+                  <StatusDot status={st} />
+                )}
                 <span className="font-mono text-[10px] text-neutral">
                   {a.code.slice(0, 3)}
                 </span>
-                <span className="flex-1 truncate">{a.title}</span>
+                <span className="flex-1 truncate">
+                  {locked ? "순차적 공개" : a.title}
+                </span>
                 <span className="shrink-0 font-mono text-[10px] text-neutral">
                   D{a.difficulty}
                 </span>
@@ -220,6 +239,16 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
       </div>
     </aside>
   );
+}
+
+/**
+ * 순차적 공개 정책 — 파일럿 첫 주는 A01 만 열고 나머지는 잠금.
+ * 교수가 다음 주차 공개할 때 해당 prefix 추가. 추후 cohort 별로 동적 제어
+ * 하려면 Supabase `assignments.active` 필드 또는 별도 release schedule 테이블로.
+ */
+const UNLOCKED_PREFIXES = ["A01"];
+function isLocked(code: string): boolean {
+  return !UNLOCKED_PREFIXES.some((p) => code.startsWith(p));
 }
 
 function StatusDot({ status }: { status: Status }) {

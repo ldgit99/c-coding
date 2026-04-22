@@ -224,12 +224,17 @@ export function AIPanel({
     elapsedSec >= STAGNATION_THRESHOLD_SEC &&
     !!assignmentCode;
 
-  // 과제 전환 시 서버(/api/conversations)에서 기존 대화 복원 → 재로그인·탭 이동 후에도 유지.
-  // 성공적으로 복원하면 환영 턴 주입은 건너뛴다.
+  // 과제 전환 시 대화 히스토리는 해당 과제 것만 보이도록 초기화.
+  // 서버(/api/conversations)에서 해당 assignmentId 로 필터된 턴을 복원.
+  // 복원된 턴이 있으면 환영 턴 주입은 스킵, 없으면 empty 상태에서 welcome 주입.
   useEffect(() => {
     if (!assignmentCode || !studentId) return;
     if (hydratedAssignmentRef.current === assignmentCode) return;
     hydratedAssignmentRef.current = assignmentCode;
+
+    // 새 과제로 전환 즉시 이전 대화 지우기
+    setHistory([]);
+    welcomedAssignmentRef.current = null;
 
     let cancelled = false;
     void (async () => {
@@ -240,9 +245,10 @@ export function AIPanel({
         if (!res.ok) return;
         const data = (await res.json()) as { turns: ServerTurn[] };
         if (cancelled) return;
-        if (!data.turns || data.turns.length === 0) return;
-        setHistory(data.turns.map(toHistoryEntry));
-        welcomedAssignmentRef.current = assignmentCode; // 복원됐으면 환영 턴 스킵
+        if (data.turns && data.turns.length > 0) {
+          setHistory(data.turns.map(toHistoryEntry));
+          welcomedAssignmentRef.current = assignmentCode; // 복원됐으면 환영 턴 스킵
+        }
       } catch {
         // ignore — 복원 실패 시 환영 턴이 정상적으로 주입됨
       }

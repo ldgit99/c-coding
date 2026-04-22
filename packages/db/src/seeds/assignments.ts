@@ -78,22 +78,30 @@ const DEFAULT_REFLECTION_PROMPTS = [
 
 export const ASSIGNMENTS: AssignmentSeed[] = [
   {
-    code: "A01_hello_variables",
+    code: "A01_sort_five",
     version: 1,
-    title: "변수와 출력",
-    template: "정수 변수 2개를 선언하고 그 합을 출력하는 프로그램을 작성하라. 출력 형식: `sum = <값>`",
-    kcTags: ["variables-types", "io-formatting"],
-    difficulty: 1,
+    title: "배열과 정렬",
+    template:
+      "한 자리 양의 정수(1~9) 5개를 공백으로 구분해 입력받아 오름차순으로 정렬한 뒤, 공백으로 구분해 한 줄로 출력하라. 입력은 항상 5개가 주어지며 중복 값이 있을 수 있다.",
+    kcTags: ["arrays-indexing", "control-flow-loop"],
+    difficulty: 2,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
 int main(void) {
-    // TODO: 두 정수 변수를 선언하고 그 합을 출력한다.
+    int arr[5];
+    for (int i = 0; i < 5; i++) {
+        scanf("%d", &arr[i]);
+    }
+    // TODO: arr 를 오름차순으로 정렬한 뒤 공백으로 구분해 한 줄로 출력한다.
     return 0;
 }
 `,
-    visibleTests: [{ input: "", expected: "sum = 7\n", note: "a=3, b=4" }],
+    visibleTests: [
+      { input: "5 3 1 4 2", expected: "1 2 3 4 5\n", note: "서로 다른 5개" },
+      { input: "9 9 1 5 3", expected: "1 3 5 9 9\n", note: "중복 포함" },
+    ],
     hiddenTestsPath: "supabase/seed-private/A01_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
