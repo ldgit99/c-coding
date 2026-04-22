@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { createServiceRoleClientIfAvailable, resolveUserFromRequest } from "@cvibe/db";
+import { createServiceRoleClientIfAvailable } from "@cvibe/db";
+
+import { getRouteHandlerUser } from "@/lib/session";
 
 /**
  * GET /api/my/submissions — 현재 로그인 학생 본인의 제출 이력.
@@ -12,7 +14,7 @@ import { createServiceRoleClientIfAvailable, resolveUserFromRequest } from "@cvi
  * research.md §6.3 낙인 방지.
  */
 export async function GET(request: Request) {
-  const user = resolveUserFromRequest(request, { preferredRole: "student" });
+  const user = await getRouteHandlerUser(request, { preferredRole: "student" });
   const supabase = createServiceRoleClientIfAvailable();
 
   if (!supabase) {

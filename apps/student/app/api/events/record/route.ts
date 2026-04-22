@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { resolveUserFromRequest } from "@cvibe/db";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
+
+import { getRouteHandlerUser } from "@/lib/session";
 
 /**
  * POST /api/events/record — 클라이언트가 발생시킨 xAPI 이벤트를 in-memory
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "verb not allowed" }, { status: 400 });
   }
 
-  const user = resolveUserFromRequest(request, { preferredRole: "student" });
+  const user = await getRouteHandlerUser(request, { preferredRole: "student" });
   const object: NonNullable<Parameters<typeof buildStatement>[0]["object"]> =
     body.object?.type === "assignment"
       ? { type: "assignment", id: body.object.id ?? "ungoverned" }

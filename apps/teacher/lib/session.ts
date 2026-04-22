@@ -1,12 +1,14 @@
 import { cookies } from "next/headers";
 
-import { resolveUserFromCookies, type AppUser } from "@cvibe/db";
+import { resolveUserFromCookies, type AppUser, type Role } from "@cvibe/db";
 
 /**
  * 교사 앱 Server Component·Route Handler에서 사용.
- * 학생 앱과 구조 동일, preferredRole만 teacher로.
+ * 학생 앱과 구조 동일, 기본 preferredRole은 teacher.
  */
-export async function getSessionUser(): Promise<AppUser> {
+export async function getSessionUser(
+  opts: { preferredRole?: Role } = { preferredRole: "teacher" },
+): Promise<AppUser> {
   const cookieStore = await cookies();
   return resolveUserFromCookies(
     {
@@ -21,6 +23,6 @@ export async function getSessionUser(): Promise<AppUser> {
         }
       },
     },
-    { preferredRole: "teacher" },
+    opts,
   );
 }

@@ -11,12 +11,12 @@ import {
   createServiceRoleClientIfAvailable,
   getAssignmentByCode,
   insertSubmission,
-  resolveUserFromRequest,
 } from "@cvibe/db";
 import { Judge0Backend, lintC, runHiddenTests } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
 import { loadHiddenTests } from "@/lib/seed-private";
+import { getRouteHandlerUser } from "@/lib/session";
 
 /**
  * POST /api/submit — 학생 제출물을 채점 파이프라인으로 처리.
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
   });
 
   // xAPI: submission 결과 + reflection 제출 이벤트
-  const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
+  const sid = (await getRouteHandlerUser(request, { preferredRole: "student" })).id;
   recordEvent(
     buildStatement({
       actor: { type: "student", id: sid },

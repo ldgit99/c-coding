@@ -27,12 +27,7 @@ export default function ResearchLabPage() {
   ];
 
   return (
-    <main className="mx-auto max-w-[1280px] px-6 py-10">
-      <nav className="mb-6 text-[11px] uppercase tracking-wider">
-        <a href="/" className="text-neutral transition-colors hover:text-primary">
-          ← 대시보드
-        </a>
-      </nav>
+    <main className="mx-auto max-w-[1280px] px-8 py-8">
       <header className="mb-10 border-b border-border-soft pb-6">
         <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
           Research Lab
