@@ -31,19 +31,46 @@ export function StudentsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [pending, setPending] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const res = await fetch("/api/students", { cache: "no-store" });
       setData((await res.json()) as StudentsResponse);
+      setLastFetchedAt(Date.now());
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     void load();
+    // 탭이 가려져 있을 때는 폴링을 멈춰서 네트워크 낭비 방지.
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => void load({ silent: true }), 15_000);
+    };
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+    start();
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else {
+        void load({ silent: true });
+        start();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -177,6 +204,17 @@ export function StudentsPage() {
             </button>
           ))}
         </div>
+        <span
+          className="inline-flex items-center gap-1.5 rounded-md border border-border-soft bg-surface px-2.5 py-1 text-[11px] text-text-secondary"
+          title={
+            lastFetchedAt
+              ? `마지막 갱신 ${new Date(lastFetchedAt).toLocaleTimeString("ko-KR")}`
+              : undefined
+          }
+        >
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+          15초마다 자동 갱신
+        </span>
         <button
           type="button"
           onClick={() => void load()}
