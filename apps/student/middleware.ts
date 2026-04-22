@@ -32,8 +32,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Supabase 세션 쿠키 — @supabase/ssr이 `sb-<project-ref>-auth-token` 형식으로 저장
-  const hasSessionCookie = request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+  // Supabase 세션 쿠키 — @supabase/ssr 은 토큰이 길면 chunked cookie 로 저장한다:
+  //   sb-<ref>-auth-token       (작은 토큰)
+  //   sb-<ref>-auth-token.0     (chunk 0)
+  //   sb-<ref>-auth-token.1     (chunk 1)
+  // endsWith 로만 체크하면 chunked 케이스를 놓쳐서 로그인 직후에도 /login 으로
+  // 되돌려보내는 버그가 생긴다. includes 로 완화.
+  const hasSessionCookie = request.cookies.getAll().some((c) => {
+    if (!c.name.startsWith("sb-")) return false;
+    return c.name.includes("-auth-token");
+  });
   if (!hasSessionCookie) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
