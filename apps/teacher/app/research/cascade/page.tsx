@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { CsvExportButton, ReproFooter, SampleBadge } from "@/components/research/SampleBadge";
+
 interface CascadeRecord {
   studentId: string;
   displayName: string;
@@ -33,6 +35,29 @@ interface CascadeResponse {
   latencyCdf: Array<{ x: number; p: number }>;
   latencyByLevel: Record<number, Array<{ x: number; p: number }>>;
   latencySample: Array<{ studentId: string; hintLevel: number; latencySec: number }>;
+  contingency?: Array<{
+    level: 1 | 2 | 3 | 4;
+    requested: number;
+    received: number;
+    acceptedL4: number;
+    ledToPass: number;
+    ledToQuit: number;
+  }>;
+  latencyStats?: {
+    n: number;
+    mean: number;
+    sd: number;
+    median: number;
+    q1: number;
+    q3: number;
+    min: number;
+    max: number;
+  };
+  latencyMedianCI?: { estimate: number; lo: number; hi: number; n: number };
+  latencyCIByLevel?: Record<
+    number,
+    { median: number; lo: number; hi: number; n: number }
+  >;
 }
 
 const CLUSTER_LABEL: Record<ClusterAssignment["cluster"], { label: string; color: string }> = {
@@ -309,6 +334,158 @@ export default function CascadePage() {
           파일의 SHA로 pin하면 됩니다.
         </p>
       </section>
+
+      {/* SSCI-ready additions — Table 1 contingency + eCDF bootstrap CI */}
+      {data.contingency && (
+        <section className="mb-8 rounded-xl border border-border-soft bg-surface p-5">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+                Table 1
+              </div>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-text-primary">
+                Hint Level × Outcome Contingency
+              </h2>
+              <p className="mt-0.5 text-[11px] text-text-secondary">
+                per-level request counts & downstream outcomes (pass within 5 min)
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <SampleBadge
+                n={data.records.length}
+                label="students"
+                note={`total requests: ${data.contingency.reduce((a, r) => a + r.requested, 0)}`}
+              />
+              <CsvExportButton
+                filename="paper1_table1_contingency.csv"
+                rows={data.contingency.map((r) => ({
+                  hint_level: r.level,
+                  requested: r.requested,
+                  received: r.received,
+                  accepted_l4: r.acceptedL4,
+                  led_to_pass_5min: r.ledToPass,
+                  pass_rate: r.requested === 0 ? 0 : Number((r.ledToPass / r.requested).toFixed(3)),
+                }))}
+              />
+            </div>
+          </div>
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-border-soft text-left text-[10px] uppercase tracking-wider text-neutral">
+                <th className="py-2 pr-4 font-medium">Hint level</th>
+                <th className="py-2 pr-4 text-right font-medium">Requested</th>
+                <th className="py-2 pr-4 text-right font-medium">Received</th>
+                <th className="py-2 pr-4 text-right font-medium">Accepted (L4)</th>
+                <th className="py-2 pr-4 text-right font-medium">Pass ≤5min</th>
+                <th className="py-2 text-right font-medium">Pass rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.contingency.map((r) => (
+                <tr key={r.level} className="border-b border-border-soft last:border-0">
+                  <td className="py-1.5 pr-4 font-mono text-text-primary">L{r.level}</td>
+                  <td className="py-1.5 pr-4 text-right font-mono">{r.requested}</td>
+                  <td className="py-1.5 pr-4 text-right font-mono">{r.received}</td>
+                  <td className="py-1.5 pr-4 text-right font-mono">
+                    {r.level === 4 ? r.acceptedL4 : "—"}
+                  </td>
+                  <td className="py-1.5 pr-4 text-right font-mono">{r.ledToPass}</td>
+                  <td className="py-1.5 text-right font-mono text-text-primary">
+                    {r.requested === 0
+                      ? "—"
+                      : `${((r.ledToPass / r.requested) * 100).toFixed(0)}%`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-3 text-[10px] italic text-text-secondary">
+            Caption: Hint requests per gated level with downstream submission outcomes observed
+            within a 5-minute window. Pass rate = led_to_pass / requested.
+          </p>
+        </section>
+      )}
+
+      {data.latencyMedianCI && data.latencyCIByLevel && (
+        <section className="mb-8 rounded-xl border border-border-soft bg-surface p-5">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-wider text-neutral">
+                Table 2
+              </div>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-text-primary">
+                Hint-to-Pass Latency with Bootstrap 95% CI
+              </h2>
+              <p className="mt-0.5 text-[11px] text-text-secondary">
+                Per-level median latency (sec) + percentile bootstrap CI (B=500, seeded).
+              </p>
+            </div>
+            <CsvExportButton
+              filename="paper1_table2_latency_ci.csv"
+              rows={[1, 2, 3, 4].map((lvl) => {
+                const ci = data.latencyCIByLevel![lvl]!;
+                return {
+                  level: lvl,
+                  n: ci.n,
+                  median_sec: Number(ci.median.toFixed(1)),
+                  ci95_lo: Number(ci.lo.toFixed(1)),
+                  ci95_hi: Number(ci.hi.toFixed(1)),
+                };
+              })}
+            />
+          </div>
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-border-soft text-left text-[10px] uppercase tracking-wider text-neutral">
+                <th className="py-2 pr-4 font-medium">Level</th>
+                <th className="py-2 pr-4 text-right font-medium">N</th>
+                <th className="py-2 pr-4 text-right font-medium">Median (s)</th>
+                <th className="py-2 text-right font-medium">95% CI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3, 4].map((lvl) => {
+                const ci = data.latencyCIByLevel![lvl];
+                if (!ci) return null;
+                return (
+                  <tr key={lvl} className="border-b border-border-soft last:border-0">
+                    <td className="py-1.5 pr-4 font-mono text-text-primary">L{lvl}</td>
+                    <td className="py-1.5 pr-4 text-right font-mono">{ci.n}</td>
+                    <td className="py-1.5 pr-4 text-right font-mono text-text-primary">
+                      {ci.n === 0 ? "—" : ci.median.toFixed(1)}
+                    </td>
+                    <td className="py-1.5 text-right font-mono">
+                      {ci.n === 0
+                        ? "—"
+                        : `[${ci.lo.toFixed(1)}, ${ci.hi.toFixed(1)}]`}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-border-soft bg-bg">
+                <td className="py-1.5 pr-4 font-medium text-text-primary">Overall</td>
+                <td className="py-1.5 pr-4 text-right font-mono">
+                  {data.latencyMedianCI.n}
+                </td>
+                <td className="py-1.5 pr-4 text-right font-mono text-text-primary">
+                  {data.latencyMedianCI.estimate.toFixed(1)}
+                </td>
+                <td className="py-1.5 text-right font-mono">
+                  [{data.latencyMedianCI.lo.toFixed(1)},{" "}
+                  {data.latencyMedianCI.hi.toFixed(1)}]
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-3 text-[10px] italic text-text-secondary">
+            Caption: Median latency from a hint request to the first passing submission, with 95%
+            percentile bootstrap CIs. Non-overlapping CIs indicate a statistically discernible
+            difference between levels at the α = .05 level.
+          </p>
+        </section>
+      )}
+
+      <ReproFooter snapshot={data.generatedAt} />
     </main>
   );
 }

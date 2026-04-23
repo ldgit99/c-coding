@@ -6,15 +6,15 @@ export default function ResearchLabPage() {
       title: "Hint Cascade Analyzer",
       venue: "Computers & Education / JCAL / ICER",
       figures: [
+        "T1 Hint-level × outcome contingency (pass within 5 min)",
+        "T2 Hint-to-pass latency with bootstrap 95% CI",
         "Sankey L1 → L2 → L3 → L4 → Accept/Submit/Quit",
-        "Student cluster histogram (4 types)",
-        "Hint-to-Correct latency eCDF",
       ],
       dataNeeded: "xAPI requestedHint / receivedHint / submissionPassed",
     },
     {
       href: "/research/offloading",
-      tag: "Paper 3",
+      tag: "Paper 2",
       title: "Cognitive Offloading Detector",
       venue: "CHI / CSCW / IJAIED",
       figures: [
@@ -23,6 +23,56 @@ export default function ResearchLabPage() {
         "Korean Utterance Linguistic Profile",
       ],
       dataNeeded: "conversations turns + self-explanation axes + submissions",
+    },
+    {
+      href: "/research/question-dynamics",
+      tag: "Paper 3",
+      title: "Question Type Dynamics",
+      venue: "Learning and Instruction / Computers & Education",
+      figures: [
+        "F1 5×5 Markov transition matrix heatmap",
+        "F2 Shannon entropy per student (bits)",
+        "T1 Dominant type × pass outcome · Cramér's V",
+        "F3 Type-rate trajectory (10-min bins)",
+      ],
+      dataNeeded: "conversations (real utterances) + submission events",
+    },
+    {
+      href: "/research/self-explanation",
+      tag: "Paper 4",
+      title: "Self-Explanation Quality & Transfer",
+      venue: "Computers & Education / JCAL",
+      figures: [
+        "T1 3-axis descriptives × Pearson r with score",
+        "F1 Score distribution per axis (histograms)",
+        "F2 Axis × finalScore scatter",
+        "T2 Submitted vs not: Cohen's d + bootstrap CI",
+      ],
+      dataNeeded: "selfExplanationSubmitted events + submission.finalScore",
+    },
+    {
+      href: "/research/conversation-arcs",
+      tag: "Paper 5",
+      title: "Conversation Arc Taxonomy",
+      venue: "CSCW / JCAL / Learning and Instruction",
+      figures: [
+        "T1 5 canonical arcs × outcome (N, pass rate, mean duration)",
+        "F1 PCA projection of type-frequency vectors",
+        "F2 Arc share × pass rate (proportional bar)",
+      ],
+      dataNeeded: "conversations (sequenced) + submission events",
+    },
+    {
+      href: "/research/variables",
+      tag: "Supplementary",
+      title: "Variable Registry",
+      venue: "Open Science — Zenodo / OSF",
+      figures: [
+        "Operational definitions for 11 measured variables",
+        "Formulas · source tables · code pointers · test coverage",
+        "CSV export for supplementary material",
+      ],
+      dataNeeded: "codebase",
     },
   ];
 

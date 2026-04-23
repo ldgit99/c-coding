@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [researchConsent, setResearchConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -55,7 +56,11 @@ export default function LoginPage() {
           email,
           password,
           options: {
-            data: { display_name: trimmedName },
+            data: {
+              display_name: trimmedName,
+              research_consent: researchConsent,
+              research_consent_at: researchConsent ? new Date().toISOString() : null,
+            },
           },
         });
         if (error) throw error;
@@ -194,6 +199,25 @@ export default function LoginPage() {
                 placeholder={action === "signup" ? "6자 이상" : "비밀번호 입력"}
                 className="mt-1 w-full rounded-md border border-border-soft bg-white px-3 py-2 text-[14px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring disabled:opacity-50"
               />
+            </label>
+          )}
+
+          {action === "signup" && (
+            <label className="flex items-start gap-2 rounded-md border border-border-soft bg-bg p-3 text-[11px] leading-relaxed text-text-secondary">
+              <input
+                type="checkbox"
+                checked={researchConsent}
+                onChange={(e) => setResearchConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+              />
+              <span>
+                <span className="font-medium text-text-primary">
+                  연구 데이터 사용에 동의합니다 (선택).
+                </span>
+                <br />
+                수업 중 대화·코드·제출 기록이 익명화(해시)된 형태로 학습 분석 연구에 활용될 수
+                있어요. 동의 여부는 성적·평가에 영향을 주지 않으며, 나중에 철회할 수 있습니다.
+              </span>
             </label>
           )}
 
