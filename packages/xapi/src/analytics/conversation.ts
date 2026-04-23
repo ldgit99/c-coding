@@ -54,6 +54,29 @@ const CONCEPT_PATTERNS = [
 ];
 
 /**
+ * 시스템이 자동 삽입하는 프리셋 발화 — 학생 실제 발화가 아니므로
+ * 분류·클러스터·프로파일 집계에서 제외해야 교사 분석이 정확해진다.
+ */
+const SYSTEM_PRESET_PATTERNS: RegExp[] = [
+  /^Level\s*\d+\s*힌트\s*요청/,
+  /^힌트\s*요청$/,
+  /^이\s*코드\s*검토해줘$/,
+  /^한\s*단계\s*더\s*힌트\s*줄래\??$/,
+  /^같은\s*레벨에서\s*다른\s*관점으로\s*다시\s*설명해줄래\??$/,
+  /^아직\s*헷갈려.\s*조금\s*더\s*쉬운\s*예시로\s*말해줄래\??$/,
+  /^이해했어.\s*잠깐\s*내가\s*더\s*해볼게/,
+  /^지금\s*말이\s*좀\s*헷갈려/,
+];
+
+/** 학생 실제 발화인지 — 시스템 프리셋이거나 너무 짧으면 false. */
+export function isRealUtterance(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 3) return false;
+  if (SYSTEM_PRESET_PATTERNS.some((p) => p.test(t))) return false;
+  return true;
+}
+
+/**
  * 한 학생 발화를 5-way 분류한다. 우선순위:
  *  1) metacognitive (강한 SRL 신호)
  *  2) answer_request (offloading — 교사 플래그 대상)
@@ -269,12 +292,38 @@ export function summarizeConversation(
  * 토큰 오버랩 (Jaccard) 기반 간이 클러스터링. 임베딩 없이 탑-k개 주제만
  * 교사에게 보여주면 충분. 한국어 공백 토큰화 + 2글자 이상 단어만.
  */
+/** 클러스터링 전 텍스트 정규화 — 구두점·공백·대소문자 정리. */
+function normalizeForClustering(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[.,!?~…]/g, "") // 구두점 제거 → "지금은 어때?" 와 "지금은 어때/" 통합
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function clusterCommonQuestions(
   utterances: string[],
-  opts: { minClusterSize?: number; topK?: number } = {},
+  opts: { minClusterSize?: number; topK?: number; excludeSystem?: boolean } = {},
 ): Array<{ representative: string; count: number; members: string[] }> {
   const minSize = opts.minClusterSize ?? 2;
   const topK = opts.topK ?? 5;
+  const excludeSystem = opts.excludeSystem ?? true;
+
+  // 시스템 프리셋 제외 + 정규화
+  const pool = excludeSystem
+    ? utterances.filter((u) => isRealUtterance(u))
+    : utterances;
+
+  // 완전 중복 (정규화 후) 은 먼저 합친다 — 구두점만 다른 케이스 통합
+  const exactGroups = new Map<string, string[]>();
+  for (const u of pool) {
+    const key = normalizeForClustering(u);
+    if (!key || key.length < 3) continue;
+    const arr = exactGroups.get(key) ?? [];
+    arr.push(u);
+    exactGroups.set(key, arr);
+  }
+  const dedupedMembers = Array.from(exactGroups.values());
 
   const tokenize = (s: string): Set<string> =>
     new Set(
@@ -293,19 +342,25 @@ export function clusterCommonQuestions(
     return uni === 0 ? 0 : inter / uni;
   };
 
-  const tokened = utterances.map((u) => ({ text: u, tokens: tokenize(u) }));
+  // 각 그룹을 대표 발화 1개로 취급해 Jaccard 그룹핑
+  const items = dedupedMembers.map((group) => ({
+    rep: group[0]!,
+    members: group,
+    tokens: tokenize(group[0]!),
+  }));
+
   const clusters: Array<{ center: Set<string>; members: string[] }> = [];
-  for (const t of tokened) {
-    if (t.tokens.size < 2) continue;
+  for (const it of items) {
+    if (it.tokens.size < 2) continue;
     let placed = false;
     for (const c of clusters) {
-      if (jaccard(c.center, t.tokens) >= 0.4) {
-        c.members.push(t.text);
+      if (jaccard(c.center, it.tokens) >= 0.4) {
+        c.members.push(...it.members);
         placed = true;
         break;
       }
     }
-    if (!placed) clusters.push({ center: t.tokens, members: [t.text] });
+    if (!placed) clusters.push({ center: it.tokens, members: [...it.members] });
   }
   return clusters
     .filter((c) => c.members.length >= minSize)

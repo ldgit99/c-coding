@@ -12,6 +12,7 @@ import {
   computeLinguisticProfile,
   detectStuckLoop,
   frustrationScore,
+  isRealUtterance,
   type QuestionType,
 } from "@cvibe/xapi";
 
@@ -80,10 +81,15 @@ export async function GET(request: Request) {
       ? turns
       : turns.filter((t) => (t.assignmentId ?? "unscoped") === requestedAssignment);
 
-  // 학생별 발화 그룹핑
+  // 학생별 발화 그룹핑 — 시스템 프리셋(단축 버튼·자동 메시지) 제외해야 통계 정확
   const byStudent = new Map<string, string[]>();
+  const byStudentAll = new Map<string, string[]>(); // 프리셋 포함 (총 턴 수 계산용)
   for (const t of filteredTurns) {
     if (t.role !== "student") continue;
+    const allArr = byStudentAll.get(t.studentId) ?? [];
+    allArr.push(t.text);
+    byStudentAll.set(t.studentId, allArr);
+    if (!isRealUtterance(t.text)) continue;
     const arr = byStudent.get(t.studentId) ?? [];
     arr.push(t.text);
     byStudent.set(t.studentId, arr);
@@ -170,6 +176,67 @@ export async function GET(request: Request) {
     }
   }
 
+  // 과제 × 질문유형 히트맵 — 전체 데이터 기준 (필터와 무관, 커리큘럼 관점)
+  type HeatmapCell = Record<QuestionType, number>;
+  const heatmap: Array<{ assignmentCode: string; title: string; counts: HeatmapCell; total: number }> = [];
+  for (const a of ASSIGNMENTS) {
+    const cell: HeatmapCell = {
+      concept: 0,
+      debug: 0,
+      answer_request: 0,
+      metacognitive: 0,
+      other: 0,
+    };
+    let total = 0;
+    for (const t of turns) {
+      if (t.role !== "student") continue;
+      if ((t.assignmentId ?? "") !== a.code) continue;
+      if (!isRealUtterance(t.text)) continue;
+      cell[classifyUtterance(t.text)] += 1;
+      total += 1;
+    }
+    heatmap.push({
+      assignmentCode: a.code,
+      title: a.title,
+      counts: cell,
+      total,
+    });
+  }
+
+  // 반 평균 (perStudent 기준)
+  const cohortAverages = (() => {
+    const n = perStudent.length;
+    if (n === 0) {
+      return { frustration: 0, offloadingScore: 0, metacognitiveRate: 0 };
+    }
+    const sum = perStudent.reduce(
+      (acc, s) => ({
+        frustration: acc.frustration + s.frustration,
+        offloadingScore: acc.offloadingScore + s.offloadingScore,
+        metacognitiveRate: acc.metacognitiveRate + s.metacognitiveRate,
+      }),
+      { frustration: 0, offloadingScore: 0, metacognitiveRate: 0 },
+    );
+    return {
+      frustration: Number((sum.frustration / n).toFixed(2)),
+      offloadingScore: Number((sum.offloadingScore / n).toFixed(2)),
+      metacognitiveRate: Number((sum.metacognitiveRate / n).toFixed(2)),
+    };
+  })();
+
+  // 요약 스트립 — 임계치 기반 학생 카운트
+  const summaryStrip = {
+    offloadingHigh: perStudent.filter((s) => s.offloadingScore >= 0.35).length,
+    offloadingMid: perStudent.filter(
+      (s) => s.offloadingScore >= 0.2 && s.offloadingScore < 0.35,
+    ).length,
+    offloadingLow: perStudent.filter((s) => s.offloadingScore < 0.2).length,
+    frustrationAlert: perStudent.filter((s) => s.frustration >= 0.3).length,
+    metacognitiveActive: perStudent.filter((s) => s.metacognitiveRate >= 0.15).length,
+    stuckLoop: perStudent.filter((s) => s.stuckLoop).length,
+    totalStudents: perStudent.length,
+  };
+
   // 드롭다운 옵션 — 과제 카탈로그 + "전체" + 과제당 턴 수.
   const assignmentOptions = [
     {
@@ -195,6 +262,9 @@ export async function GET(request: Request) {
     perStudent: perStudent.sort((a, b) => b.utteranceCount - a.utteranceCount),
     clusters,
     redFlags,
+    heatmap,
+    cohortAverages,
+    summaryStrip,
     generatedAt: new Date().toISOString(),
   });
 }
