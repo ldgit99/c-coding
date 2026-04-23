@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * SSCI-grade research figure 상단에 붙이는 sample-size gate.
  * N < 20 이면 "Pilot sample" 워터마크, missing 률 10% 이상이면 경고.
