@@ -137,9 +137,10 @@ export async function POST(request: Request) {
     }),
   );
 
-  // Supabase env 있으면 submission insert (service_role, RLS 우회). 실패 시 silent.
+  // Supabase env 있으면 submission insert (service_role, RLS 우회).
+  // 결과를 await 하고 응답에 포함 → silent-fail 재발 시 즉시 확인 가능.
   const supabaseWriter = createServiceRoleClientIfAvailable();
-  void insertSubmission(supabaseWriter, {
+  const dbWrite = await insertSubmission(supabaseWriter, {
     studentId: sid,
     assignmentCode: effectiveAssignment.id,
     code: body.code,
@@ -151,6 +152,12 @@ export async function POST(request: Request) {
     dependencyFactor: grade.assessment.dependencyFactor ?? undefined,
     teacherOnlyNotes: grade.assessment.teacherOnlyNotes,
   });
+  if (!dbWrite.ok && supabaseWriter) {
+    // 서버 로그 — Vercel Logs 에서 검색 가능. 학생 화면에는 노출하지 않음.
+    console.warn(
+      `[submit] insertSubmission failed · studentId=${sid} · assignmentCode=${effectiveAssignment.id} · error=${dbWrite.error}`,
+    );
+  }
 
   // teacherOnlyNotes와 dependencyFactor는 클라이언트 응답에서 제거 (학생 UI 노출 금지)
   const { teacherOnlyNotes: _omit1, dependencyFactor: _omit2, ...studentFacing } = grade.assessment;
@@ -162,5 +169,9 @@ export async function POST(request: Request) {
     assessment: studentFacing,
     review,
     hiddenTestsSource,
+    // 교사·개발자용 — 학생 UI 는 무시. supabaseWriter 가 null(데모 모드)이면 dbWrite 생략.
+    dbWrite: supabaseWriter
+      ? { ok: dbWrite.ok, error: dbWrite.error }
+      : undefined,
   });
 }
