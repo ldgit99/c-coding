@@ -406,11 +406,6 @@ function StudentCard({ card }: { card: HealthCard }) {
         </ul>
       )}
 
-      {card.reasons.length === 0 && card.minutesSinceActivity != null && (
-        <div className="mt-3 text-[11px] text-neutral">
-          {card.minutesSinceActivity}분 전 활동
-        </div>
-      )}
     </a>
   );
 }

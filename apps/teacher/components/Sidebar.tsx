@@ -85,7 +85,7 @@ export function Sidebar({ user }: { user: AppUser }) {
         {!collapsed && (
           <div>
             <div className="font-display text-sm font-semibold tracking-tight text-text-primary">
-              CVibe 교사
+              프로그래밍1
             </div>
             <div className="text-[10px] uppercase tracking-wider text-neutral">
               경북대 프로그래밍1

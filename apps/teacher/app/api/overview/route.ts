@@ -124,10 +124,7 @@ export async function GET() {
         reasons.push(`의존도 ${latestDep.toFixed(2)}`);
         status = "watch";
       }
-      if (minutesSinceActivity != null && minutesSinceActivity >= 15) {
-        reasons.push(`${minutesSinceActivity}분 무활동`);
-        status = "watch";
-      }
+      // "N분 무활동" 은 교실 밖 시간에도 쌓여 신호로 유용하지 않음 → 제거.
     }
 
     const passRate =
