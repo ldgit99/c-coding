@@ -8,9 +8,11 @@ export default function LoginPage() {
   const [action, setAction] = useState<Action>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [signupToast, setSignupToast] = useState(false);
 
   const configured =
     typeof process !== "undefined" &&
@@ -62,7 +64,11 @@ export default function LoginPage() {
         // Confirm email 이 꺼져있으면 session 이 즉시 발급됨.
         // 켜져있으면 session 이 null — 확인 메일 안내.
         if (data.session) {
-          window.location.href = "/";
+          setSignupToast(true);
+          // 토스트 2.2초 노출 후 홈으로 이동
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 2200);
         } else {
           setStatus("sent");
         }
@@ -184,16 +190,28 @@ export default function LoginPage() {
               <span className="text-[10px] font-medium uppercase tracking-wider text-neutral">
                 {action === "signup" ? "비밀번호 (6자 이상)" : "비밀번호"}
               </span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                disabled={!configured || isBusy}
-                placeholder={action === "signup" ? "6자 이상" : "비밀번호 입력"}
-                className="mt-1 w-full rounded-md border border-border-soft bg-white px-3 py-2 text-[14px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring disabled:opacity-50"
-              />
+              <div className="relative mt-1">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  disabled={!configured || isBusy}
+                  placeholder={action === "signup" ? "6자 이상" : "비밀번호 입력"}
+                  className="w-full rounded-md border border-border-soft bg-white px-3 py-2 pr-10 text-[14px] text-text-primary placeholder:text-neutral focus:border-primary focus:outline-none focus:shadow-ring disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={!configured || isBusy}
+                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+                  title={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-[14px] leading-none text-text-secondary hover:text-text-primary disabled:opacity-50"
+                >
+                  {showPassword ? "🙈" : "👁"}
+                </button>
+              </div>
             </label>
           )}
 
@@ -264,6 +282,27 @@ export default function LoginPage() {
           )}
         </div>
       </div>
+
+      {/* 가입 성공 토스트 — 홈 이동 전 2.2초 표시 */}
+      {signupToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4"
+        >
+          <div className="pointer-events-auto max-w-md rounded-xl border border-primary/30 bg-surface px-5 py-4 shadow-card">
+            <div className="flex items-start gap-3">
+              <span className="text-xl">🔑</span>
+              <div className="text-[13px] leading-relaxed text-text-primary">
+                <span className="font-medium">가입이 완료됐어요.</span> 비밀번호를
+                기억해두세요. 잊으면 로그인 화면의{" "}
+                <span className="font-mono text-primary">비밀번호 잊음?</span> 에서 이메일로
+                재설정할 수 있어요.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
