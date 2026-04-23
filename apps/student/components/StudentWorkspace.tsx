@@ -384,6 +384,8 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             onCodeChange={setEditorCode}
             onRunComplete={handleRunComplete}
             onFocusChange={setEditorFocus}
+            assignmentCode={assignment?.code ?? null}
+            visibleTests={assignment?.visibleTests ?? []}
           />
         </div>
 
