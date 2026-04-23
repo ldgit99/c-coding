@@ -40,6 +40,22 @@ interface ChatRequestBody {
   sessionState: Partial<SessionState> & { studentId: string };
   editorHasCode: boolean;
   editorCode?: string;
+  /** 커밋 직전 에디터 스냅샷 — diff 인지용. 5분 이상 이전이면 무시. */
+  previousCode?: string;
+  /** Monaco 커서 · 선택 영역. */
+  editorFocus?: {
+    line: number;
+    column?: number;
+    selectionText?: string;
+  };
+  /** 최신 run 결과 — 서버가 xAPI 에서 뽑는 것보다 정확. */
+  lastRunResult?: {
+    status: "ok" | "compile_error" | "runtime_error" | "timeout" | "signal";
+    stdout?: string;
+    stderr?: string;
+    exitCode?: number | null;
+    at?: string;
+  };
   /** 현재 과제의 code(예: "A03_arrays_basic"). Safety Guard reference_solution 로드에 사용. */
   assignmentCode?: string;
   requestedLevel?: 1 | 2 | 3 | 4;
@@ -83,7 +99,13 @@ export async function POST(request: Request) {
 
   // 서버에서 실 learning signals 계산 (submissions + xAPI 이벤트 + 최근 발화)
   const supabaseForWrites = createServiceRoleClientIfAvailable();
-  const { signals, priorTurns, recentError } = await computeServerSideSignals({
+  const {
+    signals,
+    priorTurns,
+    recentError,
+    learnerProfile,
+    hintTurnsSinceLastExplanation,
+  } = await computeServerSideSignals({
     supabase: supabaseForWrites,
     studentId: body.sessionState.studentId,
     assignmentCode: body.assignmentCode,
@@ -175,6 +197,8 @@ export async function POST(request: Request) {
         restatedProblem: detectRestatement(safeUtterance),
         namedStuckPoint: detectStuckPoint(safeUtterance),
         editorCode: body.editorCode,
+        previousCode: body.previousCode,
+        editorFocus: body.editorFocus,
         assignmentTemplate: catalog?.template,
         assignmentKC: catalog?.kcTags,
         assignmentDifficulty: catalog?.difficulty,
@@ -182,8 +206,11 @@ export async function POST(request: Request) {
         visibleTests: catalog?.visibleTests,
         lintFindings,
         recentError,
+        lastRunResult: body.lastRunResult,
+        learnerProfile,
         priorTurns,
         pedagogyMode,
+        requestMidExplanation: hintTurnsSinceLastExplanation >= 3,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -283,6 +310,7 @@ export async function POST(request: Request) {
       gating,
       usedModel,
       mocked,
+      pedagogyMode,
       safety: {
         inboundReasons: inbound.reasons,
         outboundVerdict: outbound.verdict,

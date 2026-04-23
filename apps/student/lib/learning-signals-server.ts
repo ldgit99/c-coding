@@ -28,6 +28,12 @@ export async function computeServerSideSignals(input: ComputeInput): Promise<{
   signals: LearningSignals;
   priorTurns: Array<{ role: "student" | "ai"; text: string }>;
   recentError: string | undefined;
+  learnerProfile: {
+    misconceptions: Array<{ kc: string; pattern: string }>;
+    strongKCs: string[];
+    recurringErrorTypes: string[];
+  };
+  hintTurnsSinceLastExplanation: number;
 }> {
   // Prior turns (최근 8 턴)
   const priorTurns = await fetchPriorTurns(input);
@@ -98,11 +104,68 @@ export async function computeServerSideSignals(input: ComputeInput): Promise<{
     editorCodeLength: input.editorCodeLength,
   };
 
+  // Student Modeler — 교사 전용 오개념/강한 KC 조회 (Supabase 연결 시만).
+  const learnerProfile = await fetchLearnerProfile(input);
+
+  // 누적 힌트 중 마지막 자기설명 이후 몇 턴인지 계산 (중간 자기설명 트리거용).
+  const hintTurnsSinceLastExplanation = countHintTurnsSinceExplanation(priorTurns);
+
   return {
     signals: computeLearningSignals(src),
     priorTurns,
     recentError: lastError,
+    learnerProfile,
+    hintTurnsSinceLastExplanation,
   };
+}
+
+async function fetchLearnerProfile(input: ComputeInput): Promise<{
+  misconceptions: Array<{ kc: string; pattern: string }>;
+  strongKCs: string[];
+  recurringErrorTypes: string[];
+}> {
+  if (!input.supabase) {
+    return { misconceptions: [], strongKCs: [], recurringErrorTypes: [] };
+  }
+  try {
+    const [miscRes, masteryRes] = await Promise.all([
+      input.supabase
+        .from("misconceptions")
+        .select("kc, pattern, occurrences")
+        .eq("student_id", input.studentId)
+        .order("occurrences", { ascending: false })
+        .limit(5),
+      input.supabase
+        .from("mastery")
+        .select("kc, value")
+        .eq("student_id", input.studentId)
+        .gte("value", 0.75),
+    ]);
+    const misconceptions = (miscRes.data ?? []).map((r) => ({
+      kc: r.kc as string,
+      pattern: r.pattern as string,
+    }));
+    const strongKCs = (masteryRes.data ?? []).map((r) => r.kc as string);
+    return { misconceptions, strongKCs, recurringErrorTypes: [] };
+  } catch {
+    return { misconceptions: [], strongKCs: [], recurringErrorTypes: [] };
+  }
+}
+
+/**
+ * priorTurns 에서 마지막 "자기설명" 신호 이후로 등장한 AI 힌트 턴 수.
+ * 자기설명 신호: student 턴의 text 에 "이해" / "정리" / "내 생각" 류 포함.
+ */
+function countHintTurnsSinceExplanation(
+  turns: Array<{ role: "student" | "ai"; text: string }>,
+): number {
+  let count = 0;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t = turns[i]!;
+    if (t.role === "student" && /(이해|정리|내\s*생각|요약|납득)/.test(t.text)) break;
+    if (t.role === "ai") count += 1;
+  }
+  return count;
 }
 
 async function fetchPriorTurns(input: ComputeInput) {

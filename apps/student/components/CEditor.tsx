@@ -1,10 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import type { DebugOutput, Hypothesis } from "@cvibe/agents";
 import type { RunCResult } from "@cvibe/wasm-runtime";
+
+export interface EditorFocus {
+  line: number;
+  column?: number;
+  selectionText?: string;
+}
 
 const Editor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -23,14 +29,22 @@ interface CEditorProps {
   starterCode?: string;
   onCodeChange?: (code: string) => void;
   onRunComplete?: (result: RunCResult) => void;
+  /** 커서·선택 영역 변화를 상위(AIPanel)로 전달 — 튜터 맥락 인지용. */
+  onFocusChange?: (focus: EditorFocus | null) => void;
 }
 
-export function CEditor({ starterCode, onCodeChange, onRunComplete }: CEditorProps) {
+export function CEditor({
+  starterCode,
+  onCodeChange,
+  onRunComplete,
+  onFocusChange,
+}: CEditorProps) {
   const [code, setCode] = useState(starterCode ?? DEFAULT_CODE);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunCResult | null>(null);
   const [debug, setDebug] = useState<DebugOutput | null>(null);
   const [debugging, setDebugging] = useState(false);
+  const editorRef = useRef<unknown>(null);
 
   const handleChange = useCallback(
     (value: string | undefined) => {
@@ -39,6 +53,41 @@ export function CEditor({ starterCode, onCodeChange, onRunComplete }: CEditorPro
       onCodeChange?.(next);
     },
     [onCodeChange],
+  );
+
+  const handleMount = useCallback(
+    (editor: unknown) => {
+      editorRef.current = editor;
+      if (!onFocusChange) return;
+      const e = editor as {
+        onDidChangeCursorPosition: (cb: (ev: { position: { lineNumber: number; column: number } }) => void) => void;
+        onDidChangeCursorSelection: (cb: (ev: { selection: unknown }) => void) => void;
+        getSelection: () => unknown;
+        getModel: () => { getValueInRange: (sel: unknown) => string } | null;
+        getPosition: () => { lineNumber: number; column: number } | null;
+      };
+      const report = () => {
+        const pos = e.getPosition();
+        const model = e.getModel();
+        const sel = e.getSelection();
+        let selectionText: string | undefined;
+        if (model && sel) {
+          try {
+            const text = model.getValueInRange(sel);
+            if (text && text.trim().length > 0) selectionText = text.slice(0, 300);
+          } catch {
+            // ignore
+          }
+        }
+        if (pos) {
+          onFocusChange({ line: pos.lineNumber, column: pos.column, selectionText });
+        }
+      };
+      e.onDidChangeCursorPosition(report);
+      e.onDidChangeCursorSelection(report);
+      report();
+    },
+    [onFocusChange],
   );
 
   const handleRun = useCallback(async () => {
@@ -112,6 +161,7 @@ export function CEditor({ starterCode, onCodeChange, onRunComplete }: CEditorPro
           language="c"
           value={code}
           onChange={handleChange}
+          onMount={handleMount}
           options={{
             minimap: { enabled: false },
             fontSize: 13,

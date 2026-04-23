@@ -51,6 +51,33 @@ export interface LintFinding {
   message: string;
 }
 
+export interface EditorFocus {
+  /** 커서가 위치한 줄 번호 (1-based). */
+  line: number;
+  /** 커서가 위치한 열 번호. */
+  column?: number;
+  /** 학생이 드래그 선택한 텍스트 (있으면 그 덩어리만). */
+  selectionText?: string;
+}
+
+export interface LastRunResult {
+  status: "ok" | "compile_error" | "runtime_error" | "timeout" | "signal";
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number | null;
+  /** ISO string. 이 시각 이후 에디터가 변경되었으면 튜터에 "수정됨" 힌트 포함. */
+  at?: string;
+}
+
+export interface LearnerProfile {
+  /** 교사 전용 오개념 요약 (slug + 한국어 설명). 최근 3-5개. */
+  misconceptions?: Array<{ kc: string; pattern: string }>;
+  /** 이미 높은 숙련도 KC (튜터가 과도한 힌트 제공 방지). */
+  strongKCs?: string[];
+  /** 최근 반복 실수 에러 타입 (compile/segfault/oob 등). */
+  recurringErrorTypes?: string[];
+}
+
 export interface RequestHintInput {
   utterance: string;
   sessionState: SessionState;
@@ -61,6 +88,10 @@ export interface RequestHintInput {
   namedStuckPoint?: boolean;
   /** 학생 현재 에디터 코드 — prompt의 <student_code> 블록으로 주입. */
   editorCode?: string;
+  /** 직전 에디터 스냅샷 — 현재 코드와 diff 하여 <previous_code_diff> 로 주입. */
+  previousCode?: string;
+  /** 커서 · 선택 영역. 학생이 "이 부분" 이라 할 때 튜터가 정확히 짚도록. */
+  editorFocus?: EditorFocus;
   /** 현재 과제 정보 — 문제 설명을 prompt에 포함해 컨텍스트 일관성 확보. */
   assignmentTemplate?: string;
   assignmentKC?: string[];
@@ -71,10 +102,19 @@ export interface RequestHintInput {
   lintFindings?: LintFinding[];
   /** 최근 /api/run 실행 결과 — 컴파일 실패 또는 런타임 오류 메시지. */
   recentError?: string;
+  /** 최신 실행 결과 전체 (stdout/stderr/exitCode). recentError 보다 우선. */
+  lastRunResult?: LastRunResult;
+  /** 교사·Student Modeler 집계 — 세션 간 연결성. */
+  learnerProfile?: LearnerProfile;
   /** 최근 대화 턴 (8턴 이내 권장) — messages 배열로 직렬화. */
   priorTurns?: PriorTurn[];
   /** 'chat' 이면 탐색 대화 프롬프트, 'hint' 이면 단계적 힌트 프롬프트. */
   pedagogyMode?: PedagogyMode;
+  /**
+   * 중간 자기설명 요청 플래그 — 누적 힌트 3회 이상 연속일 때 튜터 응답 끝에
+   * "지금까지 이해한 걸 1-2문장으로 정리해줄래?" 자연 삽입.
+   */
+  requestMidExplanation?: boolean;
   anthropicApiKey?: string;
 }
 
@@ -230,6 +270,31 @@ function buildUserContext(
     lines.push(`</student_code>`, "");
   }
 
+  // 직전 코드와의 diff (있을 때만) — 학생이 최근에 바꾼 줄만
+  if (
+    input.previousCode &&
+    input.editorCode &&
+    input.previousCode.trim() !== input.editorCode.trim()
+  ) {
+    const diff = summarizeDiff(input.previousCode, input.editorCode);
+    if (diff) {
+      lines.push(`<recent_edit_diff>`);
+      lines.push(diff);
+      lines.push(`</recent_edit_diff>`, "");
+    }
+  }
+
+  // 커서 · 선택 영역 (학생이 "이 부분" 이라 할 때 짚어줌)
+  if (input.editorFocus) {
+    const { line, column, selectionText } = input.editorFocus;
+    lines.push(`<focus>`);
+    lines.push(`cursor: line ${line}${typeof column === "number" ? `, col ${column}` : ""}`);
+    if (selectionText && selectionText.trim().length > 0) {
+      lines.push(`selected: ${selectionText.slice(0, 200)}`);
+    }
+    lines.push(`</focus>`, "");
+  }
+
   // Lint findings
   if (input.lintFindings && input.lintFindings.length > 0) {
     lines.push(`<lint_findings>`);
@@ -239,11 +304,51 @@ function buildUserContext(
     lines.push(`</lint_findings>`, "");
   }
 
-  // 최근 실행 에러
-  if (input.recentError && input.recentError.trim().length > 0) {
+  // 최신 실행 결과 — lastRunResult 우선 (자세한 stdout/stderr 포함)
+  if (input.lastRunResult) {
+    const r = input.lastRunResult;
+    lines.push(`<last_run>`);
+    lines.push(`status: ${r.status}${r.exitCode != null ? ` (exit ${r.exitCode})` : ""}`);
+    if (r.at) lines.push(`at: ${r.at}`);
+    if (r.stdout && r.stdout.trim().length > 0) {
+      lines.push(`stdout:`);
+      lines.push(r.stdout.slice(0, 600));
+    }
+    if (r.stderr && r.stderr.trim().length > 0) {
+      lines.push(`stderr:`);
+      lines.push(r.stderr.slice(0, 600));
+    }
+    lines.push(`</last_run>`, "");
+  } else if (input.recentError && input.recentError.trim().length > 0) {
     lines.push(`<recent_error>`);
     lines.push(input.recentError.slice(0, 800));
     lines.push(`</recent_error>`, "");
+  }
+
+  // Learner profile — 세션 간 연결성. 교사 전용 정보이나 튜터 system context 로만 사용.
+  if (input.learnerProfile) {
+    const p = input.learnerProfile;
+    const hasAny =
+      (p.misconceptions && p.misconceptions.length > 0) ||
+      (p.strongKCs && p.strongKCs.length > 0) ||
+      (p.recurringErrorTypes && p.recurringErrorTypes.length > 0);
+    if (hasAny) {
+      lines.push(`<learner_profile>`);
+      if (p.misconceptions && p.misconceptions.length > 0) {
+        lines.push("자주 헷갈린 개념:");
+        for (const m of p.misconceptions.slice(0, 3)) {
+          lines.push(`  - ${m.kc}: ${m.pattern}`);
+        }
+      }
+      if (p.strongKCs && p.strongKCs.length > 0) {
+        lines.push(`이미 탄탄한 KC: ${p.strongKCs.slice(0, 5).join(", ")}`);
+      }
+      if (p.recurringErrorTypes && p.recurringErrorTypes.length > 0) {
+        lines.push(`반복 에러: ${p.recurringErrorTypes.slice(0, 5).join(", ")}`);
+      }
+      lines.push(`(위 정보는 튜터 힌트 개인화에만 사용. 학생 응답에 직접 언급하지 말 것.)`);
+      lines.push(`</learner_profile>`, "");
+    }
   }
 
   // 학생 발화
@@ -264,9 +369,47 @@ function buildUserContext(
     `Granted level: ${grantedLevel} (${HINT_LEVEL_TYPE[grantedLevel]})`,
     failed.length > 0 ? `Gating failures: ${failed.join("; ")}` : "All gating conditions satisfied.",
     `구체성 강제: 학생 코드가 있으면 변수명·라인 번호·조건을 반드시 언급하라. 일반론 금지.`,
+    input.requestMidExplanation
+      ? `추가 지시: 응답 끝에 부드럽게 "지금까지 이해한 걸 1-2문장으로 정리해줄래?" 형태의 회고 질문을 한 줄 붙여라.`
+      : "",
     `</constraint>`,
   );
-  return lines.join("\n");
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+/**
+ * 이전 코드와 현재 코드의 요약 diff — 변경된 줄만 표시.
+ * 라이브러리 없이 간단히: 양쪽을 라인 set 으로 만들어 대칭차 계산 후
+ * 각 줄에 ±/= 를 붙여 최대 20줄까지 반환.
+ */
+function summarizeDiff(prev: string, curr: string): string {
+  const prevLines = prev.split("\n");
+  const currLines = curr.split("\n");
+  const prevSet = new Set(prevLines.map((l) => l.trim()));
+  const currSet = new Set(currLines.map((l) => l.trim()));
+
+  const out: string[] = [];
+  const added: string[] = [];
+  const removed: string[] = [];
+
+  for (let i = 0; i < currLines.length; i++) {
+    const line = currLines[i]!;
+    if (!prevSet.has(line.trim()) && line.trim().length > 0) {
+      added.push(`+ L${i + 1}: ${line}`);
+    }
+  }
+  for (let i = 0; i < prevLines.length; i++) {
+    const line = prevLines[i]!;
+    if (!currSet.has(line.trim()) && line.trim().length > 0) {
+      removed.push(`- L${i + 1}: ${line}`);
+    }
+  }
+  if (added.length === 0 && removed.length === 0) return "";
+
+  out.push(...removed.slice(0, 10));
+  out.push(...added.slice(0, 10));
+  if (added.length + removed.length > 20) out.push(`(… 외 ${added.length + removed.length - 20}줄)`);
+  return out.join("\n");
 }
 
 function gatingContextNote(failed: string[], level: HintLevel): string {

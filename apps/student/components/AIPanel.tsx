@@ -2,9 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { EditorFocus } from "./CEditor";
 import type { Mode } from "./ModeSwitch";
 import { StuckDiagnostic } from "./StuckDiagnostic";
 import { WalkthroughPrompt } from "./WalkthroughPrompt";
+
+interface LastRunResult {
+  status: "ok" | "compile_error" | "runtime_error" | "timeout" | "signal";
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number | null;
+  at?: string;
+}
 
 interface Finding {
   id: string;
@@ -43,6 +52,7 @@ interface ChatResponse {
   mocked?: boolean;
   error?: string;
   details?: Array<{ path?: (string | number)[]; message?: string; code?: string }>;
+  pedagogyMode?: "hint" | "chat";
 }
 
 type Tab = "chat" | "review";
@@ -68,6 +78,10 @@ interface AIPanelProps {
    * 턴을 1회 주입한다. null 이면 발화 안 함.
    */
   lastRunError?: { id: string; errorType: string } | null;
+  /** 최신 run 결과 전체. 튜터 요청에 그대로 실음. */
+  lastRunResult?: LastRunResult | null;
+  /** Monaco 커서·선택 영역. 튜터에 전달해 "이 부분" 발화를 정확히 짚게. */
+  editorFocus?: EditorFocus | null;
   /** 시험 모드 — AI 기능 전면 차단 오버레이. */
   examMode?: boolean;
 }
@@ -110,8 +124,40 @@ type HistoryEntry =
       level?: 1 | 2 | 3 | 4;
       requiresSelfExplanation?: boolean;
       accepted?: boolean;
+      /** "hint" 이면 L·유형 배지 + 회색 카드. "chat" 이면 일반 말풍선. */
+      pedagogyMode?: "hint" | "chat";
+      /** 학생 1클릭 피드백 — 👍/👎/🤔. */
+      feedback?: "up" | "down" | "confused";
     }
   | { kind: "review"; review: ReviewPayload; meta?: string };
+
+/** 내부 디버그 문자열 제거 — LLM 응답 에도 서버 에도 한 번 더 방어선. */
+function stripInternalDebug(text: string): string {
+  return text
+    .replace(/\(게이팅[^)]*\)\s*/g, "")
+    .replace(/L\d+→L\d+:[^\n]+/g, "")
+    .replace(/\bGating failures:[^\n]+/gi, "")
+    .replace(/\bGranted level:[^\n]+/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** 두 문자열의 토큰 겹침 비율 (0~1). 복붙 감지 휴리스틱용. */
+function textSimilarity(a: string, b: string): number {
+  const tokenize = (s: string): Set<string> =>
+    new Set(
+      s
+        .replace(/[^\w가-힣]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length >= 2),
+    );
+  const A = tokenize(a);
+  const B = tokenize(b);
+  if (A.size === 0 || B.size === 0) return 0;
+  let inter = 0;
+  for (const x of A) if (B.has(x)) inter += 1;
+  return inter / Math.min(A.size, B.size);
+}
 
 const MODE_PLACEHOLDER: Record<Mode, string> = {
   solo: "현재 Solo 모드 — 힌트 받으려면 Pair 이상으로 바꿔요",
@@ -160,6 +206,8 @@ export function AIPanel({
   elapsedSec = 0,
   onMaxHintLevelChange,
   lastRunError,
+  lastRunResult,
+  editorFocus,
   examMode = false,
 }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
@@ -173,6 +221,48 @@ export function AIPanel({
   const hydratedAssignmentRef = useRef<string | null>(null);
   const previousModeRef = useRef<Mode>(mode);
   const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
+
+  // 직전 에디터 스냅샷 (튜터가 최근 변경을 볼 수 있도록).
+  const previousCodeRef = useRef<string>(editorCode);
+  // 메시지 전송 직후의 코드도 보존 — L4 후 10초 내 붙여넣기 감지에 사용.
+  const lastAiHintSnapshotRef = useRef<{
+    at: number;
+    level: 1 | 2 | 3 | 4;
+    aiText: string;
+    codeAtResponse: string;
+  } | null>(null);
+
+  // Assignment 별 history 캐시 — IndexedDB 없이 localStorage.
+  const cacheKey = assignmentCode
+    ? `cvibe.chat.${studentId}.${assignmentCode}`
+    : null;
+
+  // assignment 전환 시 캐시 복원 — 서버 hydration 보다 먼저 로컬 즉시 적용
+  useEffect(() => {
+    if (!cacheKey) return;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return;
+      const cached = JSON.parse(raw) as HistoryEntry[];
+      if (Array.isArray(cached) && cached.length > 0) {
+        setHistory(cached);
+        welcomedAssignmentRef.current = assignmentCode ?? null; // 복원됐으면 welcome 스킵
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey]);
+
+  // history 변화 시 캐시 저장 — 최근 50턴만
+  useEffect(() => {
+    if (!cacheKey) return;
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(history.slice(-50)));
+    } catch {
+      // quota or private mode — ignore
+    }
+  }, [history, cacheKey]);
 
   // 모드 변경 감지 → 시스템 메시지 턴 주입 (첫 마운트는 스킵)
   useEffect(() => {
@@ -292,6 +382,7 @@ export function AIPanel({
       const studentMsg = utterance || `Level ${opts.requestedLevel} 힌트 요청`;
       setHistory((h) => [...h, { kind: "text", role: "student", text: studentMsg }]);
       setLoading(true);
+      const codeAtRequest = editorCode;
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -303,23 +394,21 @@ export function AIPanel({
               supportLevel,
               mode,
               currentKC: [],
-              learningSignals: {
-                attemptCount: editorCode.length > 20 ? 1 : 0,
-                errorTypes: [],
-                repeatedErrorCount: 0,
-                stagnationSec: 0,
-                hintRequests: history.filter((h) => h.kind === "text" && h.role === "student").length,
-                aiDependencyScore: 0,
-              },
             },
             editorHasCode: editorCode.length > 20,
             editorCode,
+            previousCode:
+              previousCodeRef.current !== editorCode ? previousCodeRef.current : undefined,
+            editorFocus: editorFocus ?? undefined,
+            lastRunResult: lastRunResult ?? undefined,
             assignmentCode,
             requestedLevel: opts.requestedLevel,
           }),
         });
         const data = (await res.json()) as ChatResponse;
-        applyChatResponse(data);
+        applyChatResponse(data, codeAtRequest);
+        // 성공적 응답 이후에만 previousCode 갱신 — 다음 요청에서 diff 참조.
+        previousCodeRef.current = editorCode;
       } catch (err) {
         setHistory((h) => [...h, { kind: "text", role: "ai", text: `요청 실패: ${String(err)}` }]);
       } finally {
@@ -327,32 +416,47 @@ export function AIPanel({
         setInput("");
       }
     },
-    [assignmentCode, editorCode, history, mode, studentId, supportLevel],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assignmentCode, editorCode, mode, studentId, supportLevel, editorFocus, lastRunResult],
   );
 
-  const applyChatResponse = useCallback((data: ChatResponse) => {
+  const applyChatResponse = useCallback((data: ChatResponse, codeAtRequest?: string) => {
     if (data.hint) {
-      const meta = data.mocked
-        ? `[mock] L${data.hint.hintLevel} ${data.hint.hintType}`
-        : `${data.usedModel} · L${data.hint.hintLevel} ${data.hint.hintType}`;
-      const gatingNote =
-        data.gating && data.gating.failedConditions.length > 0
-          ? `\n(게이팅: ${data.gating.failedConditions[0]})`
-          : "";
+      const pedagogyMode = data.pedagogyMode ?? (data.intent === "general_chat" ? "chat" : "hint");
+      const meta =
+        pedagogyMode === "chat"
+          ? data.mocked
+            ? "[mock]"
+            : `${data.usedModel ?? ""}`
+          : data.mocked
+            ? `[mock] L${data.hint.hintLevel} ${data.hint.hintType}`
+            : `${data.usedModel} · L${data.hint.hintLevel} ${data.hint.hintType}`;
+      const cleanedMessage = stripInternalDebug(data.hint.message);
       setHistory((h) => [
         ...h,
         {
           kind: "text",
           role: "ai",
-          text: data.hint!.message + gatingNote,
+          text: cleanedMessage,
           meta,
           level: data.hint!.hintLevel,
+          pedagogyMode,
           requiresSelfExplanation: data.hint!.requiresSelfExplanation,
           accepted: false,
         },
       ]);
       setSupportLevel((prev) => Math.max(prev, data.hint!.hintLevel) as 0 | 1 | 2 | 3);
       onMaxHintLevelChange?.(data.hint!.hintLevel);
+
+      // L4 후 복붙 감지를 위해 스냅샷 저장
+      if (data.hint.hintLevel >= 3 && codeAtRequest != null) {
+        lastAiHintSnapshotRef.current = {
+          at: Date.now(),
+          level: data.hint.hintLevel,
+          aiText: cleanedMessage,
+          codeAtResponse: codeAtRequest,
+        };
+      }
     } else if (data.review) {
       const meta = data.mocked ? `[mock] ${data.review.analysisMode}` : `${data.usedModel} · ${data.review.analysisMode}`;
       setHistory((h) => [...h, { kind: "review", review: data.review!, meta }]);
@@ -373,6 +477,63 @@ export function AIPanel({
       ]);
     }
   }, [onMaxHintLevelChange]);
+
+  // L4(예시 코드) 응답 직후 10초 이내 에디터가 AI 텍스트와 유사하게 바뀌면
+  // 자동으로 자기설명 요구 턴 주입.
+  useEffect(() => {
+    const snap = lastAiHintSnapshotRef.current;
+    if (!snap || snap.level < 3) return;
+    if (Date.now() - snap.at > 10_000) return;
+    if (editorCode === snap.codeAtResponse) return;
+    const diff = editorCode.slice(snap.codeAtResponse.length);
+    const similarity = textSimilarity(diff, snap.aiText);
+    if (similarity >= 0.4) {
+      lastAiHintSnapshotRef.current = null;
+      setHistory((h) => [
+        ...h,
+        {
+          kind: "text",
+          role: "ai",
+          text: "방금 내가 준 힌트를 그대로 붙여넣은 것 같네. 1-2문장으로 왜 그 코드가 필요한지, 무엇이 달라지는지 설명해줄래? 자기 언어로 정리되면 더 깊이 남아.",
+          meta: "accept-gate",
+          level: snap.level,
+          requiresSelfExplanation: true,
+          accepted: false,
+          pedagogyMode: "chat",
+        },
+      ]);
+    }
+  }, [editorCode]);
+
+  const submitTurnFeedback = useCallback(
+    async (index: number, value: "up" | "down" | "confused") => {
+      setHistory((h) =>
+        h.map((entry, i) =>
+          i === index && entry.kind === "text" && entry.role === "ai"
+            ? { ...entry, feedback: value }
+            : entry,
+        ),
+      );
+      try {
+        await fetch("/api/events/record", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            verb: "https://cvibe.app/verbs/hint-feedback",
+            object: { type: "assignment", id: assignmentCode ?? "ungoverned" },
+            result: { value, turnIndex: index },
+          }),
+        });
+      } catch {
+        // ignore — UI 피드백은 이미 적용됨
+      }
+      // 🤔 "무슨 말인지 모르겠어" → 자동 재시도 (다른 표현으로)
+      if (value === "confused") {
+        await callChat("지금 말이 좀 헷갈려. 다른 표현으로 다시 설명해줄래?");
+      }
+    },
+    [assignmentCode, callChat],
+  );
 
   const requestReview = useCallback(async () => {
     if (editorCode.trim().length === 0) {
@@ -517,6 +678,35 @@ export function AIPanel({
                 {msg.role === "ai" && msg.accepted && (
                   <div className="mt-1 text-[11px] text-success">✓ 자기 설명 제출됨 · 수락됨</div>
                 )}
+                {msg.role === "ai" && !msg.feedback && (
+                  <div className="mt-1.5 flex items-center gap-1">
+                    <FeedbackButton
+                      label="👍 도움됐어"
+                      title="이 응답이 도움됐어"
+                      onClick={() => void submitTurnFeedback(i, "up")}
+                    />
+                    <FeedbackButton
+                      label="🤔 헷갈려"
+                      title="다른 표현으로 다시 설명 요청"
+                      onClick={() => void submitTurnFeedback(i, "confused")}
+                    />
+                    <FeedbackButton
+                      label="👎"
+                      title="너무 떠먹여줬거나 너무 막연했어"
+                      onClick={() => void submitTurnFeedback(i, "down")}
+                    />
+                  </div>
+                )}
+                {msg.role === "ai" && msg.feedback && (
+                  <div className="mt-1 text-[10px] text-neutral">
+                    피드백 기록됨 ·{" "}
+                    {msg.feedback === "up"
+                      ? "👍 도움됨"
+                      : msg.feedback === "confused"
+                        ? "🤔 재설명 요청"
+                        : "👎 개선 필요"}
+                  </div>
+                )}
               </div>
               {msg.role === "student" && (
                 <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-text-primary text-[11px] font-semibold text-white">
@@ -561,6 +751,46 @@ export function AIPanel({
             setInput((v) => (v.startsWith("[") ? v : prefix + v));
           }}
         />
+        {/* 단축 버튼 — 의도를 말로 안 해도 되게 */}
+        <div className="flex flex-wrap gap-1.5">
+          <Shortcut
+            label="📈 한 단계 더"
+            title="다음 단계 힌트 요청 (supportLevel +1)"
+            disabled={loading || supportLevel >= 3}
+            onClick={() => {
+              const next = Math.min(supportLevel + 1, 4) as 1 | 2 | 3 | 4;
+              void callChat("한 단계 더 힌트 줄래?", { requestedLevel: next });
+            }}
+          />
+          <Shortcut
+            label="🔁 다른 각도로"
+            title="같은 레벨에서 다른 방향의 힌트 요청"
+            disabled={loading || supportLevel === 0}
+            onClick={() => {
+              const same = Math.max(1, supportLevel) as 1 | 2 | 3 | 4;
+              void callChat("같은 레벨에서 다른 관점으로 다시 설명해줄래?", {
+                requestedLevel: same,
+              });
+            }}
+          />
+          <Shortcut
+            label="🤔 아직 헷갈려"
+            title="같은 주제 재질문 (다른 표현으로)"
+            disabled={loading}
+            onClick={() => void callChat("아직 헷갈려. 조금 더 쉬운 예시로 말해줄래?")}
+          />
+          <Shortcut
+            label="✅ 이해했어, 다음"
+            title="스스로 더 풀어볼게 (supportLevel 자발 감소)"
+            disabled={loading}
+            onClick={() => {
+              setSupportLevel((prev) => Math.max(0, prev - 1) as 0 | 1 | 2 | 3);
+              void callChat(
+                "이해했어. 잠깐 내가 더 해볼게. 막히면 다시 부를게.",
+              );
+            }}
+          />
+        </div>
         <div className="flex gap-2">
           <input
             value={input}
@@ -630,6 +860,51 @@ export function AIPanel({
         </div>
       )}
     </aside>
+  );
+}
+
+function Shortcut({
+  label,
+  title,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      className="rounded-full border border-border-soft bg-white px-2.5 py-1 text-[11px] font-medium text-text-secondary transition-all hover:-translate-y-px hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+    >
+      {label}
+    </button>
+  );
+}
+
+function FeedbackButton({
+  label,
+  title,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="rounded-md border border-border-soft bg-white px-2 py-0.5 text-[10px] text-text-secondary transition-colors hover:border-primary hover:text-primary"
+    >
+      {label}
+    </button>
   );
 }
 

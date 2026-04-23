@@ -8,7 +8,7 @@ import { UserMenu } from "@cvibe/shared-ui";
 import { AIPanel } from "@/components/AIPanel";
 import { AssignmentPanel, type AssignmentPublic } from "@/components/AssignmentPanel";
 import { Celebration, type CelebrationMessage } from "@/components/Celebration";
-import { CEditor } from "@/components/CEditor";
+import { CEditor, type EditorFocus } from "@/components/CEditor";
 import { FocusMode } from "@/components/FocusMode";
 import { InterventionBanner } from "@/components/InterventionBanner";
 import { ModeSwitch, type Mode } from "@/components/ModeSwitch";
@@ -88,6 +88,18 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   // 마지막 실행 에러 — Coach 모드에서 AI 선제 개입 트리거
   const [lastRunError, setLastRunError] = useState<{ id: string; errorType: string } | null>(null);
 
+  // 최신 실행 결과 전체 (stdout/stderr) — 튜터에 주입해 맥락 정확도 상승
+  const [lastRunResult, setLastRunResult] = useState<{
+    status: "ok" | "compile_error" | "runtime_error" | "timeout" | "signal";
+    stdout?: string;
+    stderr?: string;
+    exitCode?: number | null;
+    at?: string;
+  } | null>(null);
+
+  // 에디터 커서·선택 — 튜터가 "이 부분" 발화를 정확히 짚도록
+  const [editorFocus, setEditorFocus] = useState<EditorFocus | null>(null);
+
   // 반응형 패널 토글 — 좁은 화면에서 CEditor 가 가려지지 않도록 AssignmentPanel 과
   // AIPanel 을 독립 drawer 로 관리.
   const [showLeftPanel, setShowLeftPanel] = useState(true);
@@ -144,7 +156,13 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   }, [assignmentStartedAt]);
 
   const handleRunComplete = useCallback(
-    (result: { executed: boolean; exitCode: number | null; errorType?: string }) => {
+    (result: {
+      executed: boolean;
+      exitCode: number | null;
+      errorType?: string;
+      stdout?: string;
+      stderr?: string;
+    }) => {
       if (!assignment) return;
       const key = `compile:${user.id}:${assignment.code}`;
       if (result.executed && !result.errorType && !celebratedRef.current.has(key)) {
@@ -156,6 +174,20 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
           body: "첫 실행이 정상 종료됐어. visible test 도 맞춰보자.",
         });
       }
+      // 튜터에 넘길 전체 결과 저장 — errorType 없으면 'ok' 로.
+      const statusMap: Record<string, "ok" | "compile_error" | "runtime_error" | "timeout" | "signal"> = {
+        compile: "compile_error",
+        timeout: "timeout",
+        signal: "signal",
+        environment: "runtime_error",
+      };
+      setLastRunResult({
+        status: result.errorType ? statusMap[result.errorType] ?? "runtime_error" : "ok",
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+        at: new Date().toISOString(),
+      });
       // Coach 모드 proactive 트리거 — 에러 있을 때마다 id 갱신해 AIPanel 이 감지
       if (result.errorType) {
         setLastRunError({
@@ -346,6 +378,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             starterCode={assignment?.starterCode}
             onCodeChange={setEditorCode}
             onRunComplete={handleRunComplete}
+            onFocusChange={setEditorFocus}
           />
         </div>
 
@@ -371,6 +404,8 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
                 setMaxHintLevel((prev) => Math.max(prev, lvl))
               }
               lastRunError={lastRunError}
+              lastRunResult={lastRunResult}
+              editorFocus={editorFocus}
             />
             <FocusMode
               active={focusActive}

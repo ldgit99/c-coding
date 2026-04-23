@@ -17,6 +17,8 @@ const ALLOWED = new Set<string>([
   Verbs.modeDecreased,
   Verbs.examStarted,
   Verbs.examEnded,
+  // 학생 턴별 피드백 — prompt 튜닝 재료
+  "https://cvibe.app/verbs/hint-feedback",
 ]);
 
 interface Body {
