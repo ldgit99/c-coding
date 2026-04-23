@@ -23,7 +23,6 @@ interface Finding {
   kc: string;
   message: string;
   suggestion: string;
-  proposedCode?: string;
 }
 
 interface ReviewPayload {
@@ -1014,11 +1013,7 @@ function FindingItem({ finding, highlight }: { finding: Finding; highlight?: boo
       </div>
       <div className="mt-1 text-[12px] text-text-primary">{finding.message}</div>
       <div className="mt-1 text-[12px] italic text-text-secondary">{finding.suggestion}</div>
-      {finding.proposedCode && (
-        <pre className="mt-2 overflow-auto rounded-md bg-text-primary p-2 font-mono text-[11px] text-white">
-          {finding.proposedCode}
-        </pre>
-      )}
+      {/* proposedCode 는 렌더하지 않음 — Navigator-not-Driver 원칙: 정답 코드 노출 금지. */}
     </div>
   );
 }

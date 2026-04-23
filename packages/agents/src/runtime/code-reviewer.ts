@@ -96,6 +96,10 @@ export async function reviewCode(input: ReviewInput): Promise<RequestReviewOutpu
 
   const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
   const review = parseReviewResponse(text, analysisMode);
+  // 방어선 — LLM 이 system prompt 를 어기고 proposedCode 를 냈더라도 제거.
+  for (const f of review.findings) {
+    if (f.proposedCode) delete (f as { proposedCode?: string }).proposedCode;
+  }
 
   recordGeneration(trace, {
     name: "code-reviewer.messages.create",
@@ -143,9 +147,8 @@ function formatReviewUserMessage(input: ReviewInput, mode: ReviewOutput["analysi
       "column": 0,
       "category": "correctness" | "memory-safety" | "style",
       "kc": "kc-slug",
-      "message": "문제 설명 (학생 언어)",
-      "suggestion": "확인해볼 질문 형태",
-      "proposedCode": "severity=blocker일 때만, ≤5라인 diff"
+      "message": "문제 설명 (수정 방법 언급 금지)",
+      "suggestion": "학생이 스스로 수정법을 떠올리도록 유도하는 한국어 질문"
     }
   ],
   "topIssues": ["f001"],
