@@ -1,22 +1,15 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { getAssignmentByCode } from "@cvibe/db";
 
 /**
- * `supabase/seed-private/` 로더 — 서버 전용(Node runtime).
+ * Hidden tests + reference solution 로더.
  *
- * 파일럿 단계: repo 내 `supabase/seed-private/`에서 직접 읽는다.
- * 프로덕션: 환경변수 `CVIBE_SEED_PRIVATE_DIR`로 경로 override 또는 Vercel
- * Blob에서 fetch하도록 이 모듈을 교체.
+ * Single source of truth: `packages/db/src/seeds/assignments.ts` 안의
+ * `hiddenTests` · `referenceSolution` 필드. `supabase/seed-private/*` 파일은
+ * `pnpm --filter @cvibe/db seed:export` 로 자동 재생성되는 사본일 뿐이다.
  *
- * Next.js API route의 process.cwd()는 일반적으로 apps/student/ 이므로
- * 기본 경로는 repo root 기준 `../../supabase/seed-private`.
- * next.config.ts의 outputFileTracingIncludes로 빌드 시 포함 필수.
+ * 과거에는 파일 시스템에서 읽었으나 과제 스펙 변경 시 파일 싱크가 빠지면
+ * '정답인데 0%' 버그 유발 → 2026-04 이후 in-memory ASSIGNMENTS 기준으로 통일.
  */
-
-function seedPrivateDir(): string {
-  if (process.env.CVIBE_SEED_PRIVATE_DIR) return process.env.CVIBE_SEED_PRIVATE_DIR;
-  return path.resolve(process.cwd(), "..", "..", "supabase", "seed-private");
-}
 
 export interface HiddenTestSpec {
   id: number;
@@ -25,38 +18,23 @@ export interface HiddenTestSpec {
 }
 
 /**
- * `A01_hello_variables` → `A01` 등 파일명 prefix 추출. 모든 과제 code가
- * `A\d+_<slug>` 패턴을 따른다는 전제.
- */
-function codePrefix(assignmentCode: string): string {
-  const first = assignmentCode.split("_")[0];
-  return first ?? assignmentCode;
-}
-
-/**
- * `{prefix}_hidden.json` 로드. 파일 없거나 파싱 실패 시 null.
+ * 해당 과제의 hidden test 케이스 반환. 카탈로그에 없거나 hiddenTests 가 비어
+ * 있으면 null — /api/submit 이 hiddenTestResults 를 undefined 로 넘겨 Assessment
+ * 가 correctness=null 로 처리하도록.
  */
 export async function loadHiddenTests(assignmentCode: string): Promise<HiddenTestSpec[] | null> {
-  try {
-    const filePath = path.join(seedPrivateDir(), `${codePrefix(assignmentCode)}_hidden.json`);
-    const text = await fs.readFile(filePath, "utf8");
-    const parsed = JSON.parse(text) as HiddenTestSpec[];
-    if (!Array.isArray(parsed)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const asg = getAssignmentByCode(assignmentCode);
+  if (!asg || !asg.hiddenTests || asg.hiddenTests.length === 0) return null;
+  return asg.hiddenTests.map((t) => ({ id: t.id, input: t.input, expected: t.expected }));
 }
 
 /**
- * `{prefix}_ref.c` 로드. Safety Guard가 outbound 유사도 검사에 사용.
- * 호출자는 반환값을 학생 경로 응답 본문에 포함해선 안 된다.
+ * Reference solution 반환. Safety Guard 유사도 검사에 사용. 학생 응답에는
+ * 절대 포함되지 않음 (`/api/chat` 이 `referenceSolution` 를 payload 에 넣지
+ * 않고 `checkSafety` 에만 전달).
  */
 export async function loadReferenceSolution(assignmentCode: string): Promise<string | null> {
-  try {
-    const filePath = path.join(seedPrivateDir(), `${codePrefix(assignmentCode)}_ref.c`);
-    return await fs.readFile(filePath, "utf8");
-  } catch {
-    return null;
-  }
+  const asg = getAssignmentByCode(assignmentCode);
+  if (!asg || !asg.referenceSolution) return null;
+  return asg.referenceSolution;
 }

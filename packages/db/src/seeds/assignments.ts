@@ -8,6 +8,12 @@
  * reference_solution은 별도 파일로 커밋하지 않는다 (supabase/seed-private/).
  */
 
+export interface HiddenTest {
+  id: number;
+  input: string;
+  expected: string;
+}
+
 export interface AssignmentSeed {
   code: string;
   version: number;
@@ -28,13 +34,34 @@ export interface AssignmentSeed {
   };
   starterCode: string;
   visibleTests: Array<{ input: string; expected: string; note?: string }>;
-  hiddenTestsPath: string; // supabase/seed-private/ 하위
+  /**
+   * Hidden tests — 학생에게 노출되지 않는 채점용 케이스. 이 필드가
+   * single source of truth. `supabase/seed-private/{prefix}_hidden.json`
+   * 파일은 `pnpm --filter @cvibe/db seed:export` 로 자동 재생성된다.
+   */
+  hiddenTests?: HiddenTest[];
+  /**
+   * Reference solution — Safety Guard 유사도 검사 및 Code Reviewer 비교용.
+   * 학생 응답에 절대 포함되지 않음. 파일로도 export 됨.
+   */
+  referenceSolution?: string;
+  /** @deprecated hiddenTests 필드가 source of truth. 2026-04 이후 제거 예정. */
+  hiddenTestsPath?: string;
   reflectionPrompts: string[];
   /**
    * 표절 방지·재응시용 variant 개수. Problem Architect가 파라미터 시드로
    * 파생한다. 기본 1(단일). research.md §6.1 variants 필드와 매핑.
    */
   variantCount?: number;
+}
+
+/**
+ * assignment.code 에서 seed-private 파일명 prefix 를 추출.
+ * `A02_pointer_swap_fn` → `A02`.
+ */
+export function filePrefixForCode(code: string): string {
+  const m = code.match(/^A\d{2}/);
+  return m ? m[0] : code.split("_")[0] ?? code;
 }
 
 /**
@@ -113,7 +140,29 @@ double average(int x[]) {
         note: "배열 {3,7,2,4,5} 의 평균 = 4.2",
       },
     ],
-    hiddenTestsPath: "supabase/seed-private/A00_hidden.json",
+    hiddenTests: [
+      { id: 1, input: "", expected: "base average = 4.200\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+double average(int x[]);
+
+int main(void) {
+    double avg;
+    int base[5] = {3, 7, 2, 4, 5};
+
+    avg = average(base);
+    printf("base average = %.3f\\n", avg);
+
+    return 0;
+}
+
+double average(int x[]) {
+    int sum = 0;
+    for (int i = 0; i < 5; i++) sum += x[i];
+    return sum / 5.0;
+}
+`,
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {
@@ -170,7 +219,45 @@ int main(void) {
         note: "중복 포함",
       },
     ],
-    hiddenTestsPath: "supabase/seed-private/A01_hidden.json",
+    hiddenTests: [
+      { id: 1, input: "7 4 5", expected: "초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n" },
+      { id: 2, input: "1 2 3", expected: "초기 상태 배열: [ 1 2 3  ] \n정렬된 배열: [ 1 2 3  ] \n" },
+      { id: 3, input: "3 3 1", expected: "초기 상태 배열: [ 3 3 1  ] \n정렬된 배열: [ 1 3 3  ] \n" },
+      { id: 4, input: "9 1 5", expected: "초기 상태 배열: [ 9 1 5  ] \n정렬된 배열: [ 1 5 9  ] \n" },
+      { id: 5, input: "0 0 0", expected: "초기 상태 배열: [ 0 0 0  ] \n정렬된 배열: [ 0 0 0  ] \n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+void bubbleSortAscending(int arr[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                int tmp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = tmp;
+            }
+        }
+    }
+}
+
+int main(void) {
+    int arr[3];
+    int n = 3;
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+
+    printf("초기 상태 배열: [ ");
+    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
+    printf(" ] \\n");
+
+    bubbleSortAscending(arr, n);
+
+    printf("정렬된 배열: [ ");
+    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
+    printf(" ] \\n");
+
+    return 0;
+}
+`,
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {
@@ -212,7 +299,32 @@ void swap(int *a, int *b) {
         note: "같은 값 (교환해도 동일)",
       },
     ],
-    hiddenTestsPath: "supabase/seed-private/A02_hidden.json",
+    hiddenTests: [
+      { id: 1, input: "10 20", expected: "before swap() : a=10, b=20\nafter swap() : a=20, b=10\n" },
+      { id: 2, input: "7 7", expected: "before swap() : a=7, b=7\nafter swap() : a=7, b=7\n" },
+      { id: 3, input: "-5 3", expected: "before swap() : a=-5, b=3\nafter swap() : a=3, b=-5\n" },
+      { id: 4, input: "0 100", expected: "before swap() : a=0, b=100\nafter swap() : a=100, b=0\n" },
+      { id: 5, input: "123456 -987654", expected: "before swap() : a=123456, b=-987654\nafter swap() : a=-987654, b=123456\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+void swap(int *a, int *b);
+
+int main(void) {
+    int a, b;
+    scanf("%d %d", &a, &b);
+    printf("before swap() : a=%d, b=%d\\n", a, b);
+    swap(&a, &b);
+    printf("after swap() : a=%d, b=%d\\n", a, b);
+    return 0;
+}
+
+void swap(int *a, int *b) {
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+`,
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {
@@ -239,7 +351,28 @@ int main(void) {
       { input: "5\n1 2 3 4 5", expected: "15\n" },
       { input: "3\n10 -5 7", expected: "12\n" },
     ],
-    hiddenTestsPath: "supabase/seed-private/A03_hidden.json",
+    hiddenTests: [
+      { id: 1, input: "5\n1 2 3 4 5", expected: "15\n" },
+      { id: 2, input: "3\n10 -5 7", expected: "12\n" },
+      { id: 3, input: "1\n42", expected: "42\n" },
+      { id: 4, input: "6\n-1 -2 -3 -4 -5 -6", expected: "-21\n" },
+      { id: 5, input: "4\n1000 2000 3000 4000", expected: "10000\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    long sum = 0;
+    for (int i = 0; i < n; i++) {
+        int x;
+        scanf("%d", &x);
+        sum += x;
+    }
+    printf("%ld\\n", sum);
+    return 0;
+}
+`,
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
     variantCount: 6,
   },
@@ -268,6 +401,31 @@ int main(void) {
       { input: "5\n3 1 4 1 5", expected: "max=5 idx=4\n" },
       { input: "4\n2 2 2 2", expected: "max=2 idx=0\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "5\n3 1 4 1 5", expected: "max=5 idx=4\n" },
+      { id: 2, input: "4\n2 2 2 2", expected: "max=2 idx=0\n" },
+      { id: 3, input: "3\n-1 -2 -3", expected: "max=-1 idx=0\n" },
+      { id: 4, input: "6\n1 9 5 9 3 9", expected: "max=9 idx=1\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    int arr[100];
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    int maxVal = arr[0];
+    int maxIdx = 0;
+    for (int i = 1; i < n; i++) {
+        if (arr[i] > maxVal) {
+            maxVal = arr[i];
+            maxIdx = i;
+        }
+    }
+    printf("max=%d idx=%d\\n", maxVal, maxIdx);
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A04_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
@@ -299,6 +457,28 @@ int main(void) {
       { input: "3 7", expected: "7 3\n" },
       { input: "-1 0", expected: "0 -1\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "3 7", expected: "7 3\n" },
+      { id: 2, input: "-1 0", expected: "0 -1\n" },
+      { id: 3, input: "5 5", expected: "5 5\n" },
+      { id: 4, input: "100 200", expected: "200 100\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+void swap(int *a, int *b) {
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+int main(void) {
+    int x, y;
+    if (scanf("%d %d", &x, &y) != 2) return 1;
+    swap(&x, &y);
+    printf("%d %d\\n", x, y);
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A05_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
     variantCount: 4,
@@ -329,6 +509,28 @@ int main(void) {
       { input: "4\n1 2 3 4", expected: "4 3 2 1\n" },
       { input: "1\n42", expected: "42\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "4\n1 2 3 4", expected: "4 3 2 1\n" },
+      { id: 2, input: "1\n42", expected: "42\n" },
+      { id: 3, input: "5\n10 20 30 40 50", expected: "50 40 30 20 10\n" },
+      { id: 4, input: "3\n-1 0 -1", expected: "-1 0 -1\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    int arr[100];
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    int *p = arr;
+    for (int i = n - 1; i >= 0; i--) {
+        printf("%d", *(p + i));
+        if (i > 0) printf(" ");
+    }
+    printf("\\n");
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A06_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
@@ -356,6 +558,30 @@ int main(void) {
       { input: "3\n1 2 3", expected: "3 2 1\n" },
       { input: "5\n10 20 30 40 50", expected: "50 40 30 20 10\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "3\n1 2 3", expected: "3 2 1\n" },
+      { id: 2, input: "5\n10 20 30 40 50", expected: "50 40 30 20 10\n" },
+      { id: 3, input: "1\n99", expected: "99\n" },
+      { id: 4, input: "6\n-1 -2 -3 -4 -5 -6", expected: "-6 -5 -4 -3 -2 -1\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    int *arr = malloc(sizeof(int) * n);
+    if (!arr) return 1;
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    for (int i = n - 1; i >= 0; i--) {
+        printf("%d", arr[i]);
+        if (i > 0) printf(" ");
+    }
+    printf("\\n");
+    free(arr);
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A07_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
     variantCount: 5,
@@ -389,6 +615,28 @@ int main(void) {
       { input: "0", expected: "1\n" },
       { input: "10", expected: "3628800\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "0", expected: "1\n" },
+      { id: 2, input: "1", expected: "1\n" },
+      { id: 3, input: "5", expected: "120\n" },
+      { id: 4, input: "10", expected: "3628800\n" },
+      { id: 5, input: "12", expected: "479001600\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+long factorial_iter(int n) {
+    long result = 1;
+    for (int i = 2; i <= n; i++) result *= i;
+    return result;
+}
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    printf("%ld\\n", factorial_iter(n));
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A08_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
@@ -421,6 +669,27 @@ int main(void) {
       { input: "1", expected: "1\n" },
       { input: "7", expected: "5040\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "1", expected: "1\n" },
+      { id: 2, input: "3", expected: "6\n" },
+      { id: 3, input: "5", expected: "120\n" },
+      { id: 4, input: "7", expected: "5040\n" },
+      { id: 5, input: "10", expected: "3628800\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+long factorial_rec(int n) {
+    if (n <= 1) return 1;
+    return n * factorial_rec(n - 1);
+}
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    printf("%ld\\n", factorial_rec(n));
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A09_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
@@ -446,6 +715,22 @@ int main(void) {
     visibleTests: [
       { input: "2", expected: "2 x 1 =  2\n2 x 2 =  4\n2 x 3 =  6\n2 x 4 =  8\n2 x 5 = 10\n2 x 6 = 12\n2 x 7 = 14\n2 x 8 = 16\n2 x 9 = 18\n" },
     ],
+    hiddenTests: [
+      { id: 1, input: "2", expected: "2 x 1 =  2\n2 x 2 =  4\n2 x 3 =  6\n2 x 4 =  8\n2 x 5 = 10\n2 x 6 = 12\n2 x 7 = 14\n2 x 8 = 16\n2 x 9 = 18\n" },
+      { id: 2, input: "5", expected: "5 x 1 =  5\n5 x 2 = 10\n5 x 3 = 15\n5 x 4 = 20\n5 x 5 = 25\n5 x 6 = 30\n5 x 7 = 35\n5 x 8 = 40\n5 x 9 = 45\n" },
+      { id: 3, input: "9", expected: "9 x 1 =  9\n9 x 2 = 18\n9 x 3 = 27\n9 x 4 = 36\n9 x 5 = 45\n9 x 6 = 54\n9 x 7 = 63\n9 x 8 = 72\n9 x 9 = 81\n" },
+    ],
+    referenceSolution: `#include <stdio.h>
+
+int main(void) {
+    int n;
+    if (scanf("%d", &n) != 1) return 1;
+    for (int i = 1; i <= 9; i++) {
+        printf("%d x %d = %2d\\n", n, i, n * i);
+    }
+    return 0;
+}
+`,
     hiddenTestsPath: "supabase/seed-private/A10_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },

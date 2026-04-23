@@ -1,3 +1,7 @@
 [
-  { "id": 1, "input": "", "expected": "base average = 4.200\n" }
+  {
+    "id": 1,
+    "input": "",
+    "expected": "base average = 4.200\n"
+  }
 ]

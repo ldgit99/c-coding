@@ -49,7 +49,7 @@ int main(void) {
 }
 
 double average(int x[]) {
-    // TODO: x[0] ~ x[4] 의 합을 5.0 으로 나눠 double 로 반환한다.
+    // TODO: 배열의 평균을 double 로 반환해보세요.
     return 0.0;
 }
 $$,
@@ -92,9 +92,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
   $$#include <stdio.h>
 
 void bubbleSortAscending(int arr[], int n) {
-    // TODO: for 이중 반복으로 오름차순 버블 정렬.
-    //   외부 for: i = 0 ~ n-2
-    //   내부 for: j = 0 ~ n-i-2, arr[j] > arr[j+1] 이면 교환
+    // TODO: 배열을 오름차순으로 정렬해보세요.
 }
 
 int main(void) {
@@ -162,7 +160,7 @@ int main(void) {
 }
 
 void swap(int *a, int *b) {
-    // TODO: 포인터 역참조(*a, *b)로 두 변수의 값을 교환한다.
+    // TODO: 이 함수가 두 변수의 값을 바꾸도록 구현해보세요.
 }
 $$,
   $$[{"input":"10 20","expected":"before swap() : a=10, b=20\nafter swap() : a=20, b=10\n","note":"기본 교환"},{"input":"7 7","expected":"before swap() : a=7, b=7\nafter swap() : a=7, b=7\n","note":"같은 값 (교환해도 동일)"}]$$::jsonb,
@@ -197,7 +195,7 @@ int main(void) {
     int n;
     scanf("%d", &n);
     int arr[100];
-    // TODO: n개 정수 읽기 + 합산
+    // TODO: n 개 정수를 읽고 합을 출력해보세요.
     return 0;
 }
 $$,
@@ -234,7 +232,7 @@ int main(void) {
     scanf("%d", &n);
     int arr[100];
     for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    // TODO: 최댓값과 인덱스 찾기
+    // TODO: 최댓값과 그 인덱스를 형식에 맞춰 출력해보세요.
     return 0;
 }
 $$,
@@ -312,7 +310,7 @@ int main(void) {
     int arr[100];
     for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
     int *p = arr;
-    // TODO: 포인터 산술로 역순 출력
+    // TODO: 포인터로 배열을 탐색하며 결과를 출력해보세요.
     return 0;
 }
 $$,
@@ -348,7 +346,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 int main(void) {
     int n;
     scanf("%d", &n);
-    // TODO: malloc + 입력 + 역순 출력 + free
+    // TODO: 동적 메모리를 할당하고 결과를 출력한 뒤 정리해보세요.
     return 0;
 }
 $$,
@@ -381,7 +379,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
   $$#include <stdio.h>
 
 long factorial_iter(int n) {
-    // TODO: 반복문으로 구현 (재귀 금지)
+    // TODO: 반복문으로 n! 을 계산해보세요.
     return 1;
 }
 
@@ -421,7 +419,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
   $$#include <stdio.h>
 
 long factorial_rec(int n) {
-    // TODO: 재귀로 구현 — 기저 조건 필수
+    // TODO: 재귀 호출로 n! 을 계산해보세요.
     return 1;
 }
 
@@ -463,7 +461,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 int main(void) {
     int n;
     scanf("%d", &n);
-    // TODO: "n x i = <값>" 포맷으로 i=1..9 출력
+    // TODO: n 단 구구단을 형식에 맞춰 출력해보세요.
     return 0;
 }
 $$,
