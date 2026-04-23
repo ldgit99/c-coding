@@ -31,9 +31,19 @@ interface AssignmentPanelProps {
   onSelect: (assignment: AssignmentPublic) => void;
   /** 진행 상황 표시를 위해 부모가 주입. 변경되면 리렌더. */
   submissions?: SubmissionSummary[];
+  /** 마지막 작업 과제 복원 키에 사용. 없으면 generic 키. */
+  studentId?: string;
 }
 
-export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: AssignmentPanelProps) {
+const LAST_ASSIGNMENT_KEY = (studentId?: string) =>
+  studentId ? `cvibe.student.${studentId}.lastAssignment` : "cvibe.student.lastAssignment";
+
+export function AssignmentPanel({
+  selectedCode,
+  onSelect,
+  submissions = [],
+  studentId,
+}: AssignmentPanelProps) {
   const [assignments, setAssignments] = useState<AssignmentPublic[]>([]);
   const [loading, setLoading] = useState(true);
   // 문제 설명·학습목표 접기 (긴 과제일 때 스크롤 부담 완화)
@@ -46,10 +56,23 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
         const res = await fetch("/api/assignments");
         const data = (await res.json()) as { assignments: AssignmentPublic[] };
         setAssignments(data.assignments);
-        // 순차적 공개 — locked 아닌 첫 과제를 기본 선택.
         if (!selectedCode) {
-          const firstUnlocked = data.assignments.find((a) => !isLocked(a.code));
-          if (firstUnlocked) onSelect(firstUnlocked);
+          // ① 재방문: localStorage 에 저장된 마지막 과제 복원 (lock 체크)
+          let restored: AssignmentPublic | undefined;
+          try {
+            const savedCode = localStorage.getItem(LAST_ASSIGNMENT_KEY(studentId));
+            if (savedCode) {
+              const candidate = data.assignments.find((a) => a.code === savedCode);
+              if (candidate && !isLocked(candidate.code)) {
+                restored = candidate;
+              }
+            }
+          } catch {
+            // localStorage 접근 실패(사생활 모드 등) — 무시하고 fallback.
+          }
+          // ② 첫 방문 or 복원 실패 — 순차적 공개 첫 unlock 과제
+          const target = restored ?? data.assignments.find((a) => !isLocked(a.code));
+          if (target) onSelect(target);
         }
       } finally {
         setLoading(false);
@@ -57,6 +80,16 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 과제 선택 변경 시 localStorage 에 저장 (다음 로그인에서 복원 가능)
+  useEffect(() => {
+    if (!selectedCode) return;
+    try {
+      localStorage.setItem(LAST_ASSIGNMENT_KEY(studentId), selectedCode);
+    } catch {
+      // ignore
+    }
+  }, [selectedCode, studentId]);
 
   // 과제 전환 시 문제 설명·목표는 기본 접힘 상태로 리셋 (긴 과제 진입 충격 완화)
   useEffect(() => {

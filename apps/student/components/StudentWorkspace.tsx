@@ -363,6 +363,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             <AssignmentPanel
               selectedCode={assignment?.code ?? null}
               submissions={submissions}
+              studentId={user.id}
               onSelect={(a) => {
                 setAssignment(a);
                 setEditorCode(a.starterCode);
