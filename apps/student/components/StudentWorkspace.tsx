@@ -70,6 +70,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
 
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [submissionsSource, setSubmissionsSource] = useState<"supabase" | "memory">("memory");
+  const [submissionsLoaded, setSubmissionsLoaded] = useState(false);
   const [showMyLearning, setShowMyLearning] = useState(false);
 
   const [focusActive, setFocusActive] = useState(false);
@@ -132,6 +133,8 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
       setSubmissionsSource(data.source);
     } catch {
       // ignore
+    } finally {
+      setSubmissionsLoaded(true);
     }
   }, []);
 
@@ -363,6 +366,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             <AssignmentPanel
               selectedCode={assignment?.code ?? null}
               submissions={submissions}
+              submissionsLoaded={submissionsLoaded}
               studentId={user.id}
               onSelect={(a) => {
                 setAssignment(a);

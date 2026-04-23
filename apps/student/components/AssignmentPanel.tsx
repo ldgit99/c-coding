@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface AssignmentPublic {
   code: string;
@@ -31,6 +31,9 @@ interface AssignmentPanelProps {
   onSelect: (assignment: AssignmentPublic) => void;
   /** 진행 상황 표시를 위해 부모가 주입. 변경되면 리렌더. */
   submissions?: SubmissionSummary[];
+  /** submissions 가 서버에서 1회 이상 fetch 되었는지. 초기 auto-pick 이 passed
+   *  판정을 내리려면 이 값이 true 가 되어야 정확하다. */
+  submissionsLoaded?: boolean;
   /** 마지막 작업 과제 복원 키에 사용. 없으면 generic 키. */
   studentId?: string;
 }
@@ -42,10 +45,12 @@ export function AssignmentPanel({
   selectedCode,
   onSelect,
   submissions = [],
+  submissionsLoaded = false,
   studentId,
 }: AssignmentPanelProps) {
   const [assignments, setAssignments] = useState<AssignmentPublic[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialPickedRef = useRef(false);
   // 문제 설명·학습목표 접기 (긴 과제일 때 스크롤 부담 완화)
   const [templateExpanded, setTemplateExpanded] = useState(false);
   const [objectivesExpanded, setObjectivesExpanded] = useState(false);
@@ -56,30 +61,62 @@ export function AssignmentPanel({
         const res = await fetch("/api/assignments");
         const data = (await res.json()) as { assignments: AssignmentPublic[] };
         setAssignments(data.assignments);
-        if (!selectedCode) {
-          // ① 재방문: localStorage 에 저장된 마지막 과제 복원 (lock 체크)
-          let restored: AssignmentPublic | undefined;
-          try {
-            const savedCode = localStorage.getItem(LAST_ASSIGNMENT_KEY(studentId));
-            if (savedCode) {
-              const candidate = data.assignments.find((a) => a.code === savedCode);
-              if (candidate && !isLocked(candidate.code)) {
-                restored = candidate;
-              }
-            }
-          } catch {
-            // localStorage 접근 실패(사생활 모드 등) — 무시하고 fallback.
-          }
-          // ② 첫 방문 or 복원 실패 — 순차적 공개 첫 unlock 과제
-          const target = restored ?? data.assignments.find((a) => !isLocked(a.code));
-          if (target) onSelect(target);
-        }
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 초기 자동 선택 — assignments 로드 + submissions 로드 둘 다 끝난 후 1회만.
+  useEffect(() => {
+    if (assignments.length === 0) return;
+    if (selectedCode) return;
+    if (!submissionsLoaded) return;
+    if (initialPickedRef.current) return;
+    initialPickedRef.current = true;
+
+    let savedCode: string | null = null;
+    try {
+      savedCode = localStorage.getItem(LAST_ASSIGNMENT_KEY(studentId));
+    } catch {
+      // ignore
+    }
+
+    if (savedCode) {
+      const lastIdx = assignments.findIndex((a) => a.code === savedCode);
+      const hasPassed = submissions.some((s) => s.assignmentCode === savedCode && s.passed);
+
+      if (lastIdx >= 0 && hasPassed) {
+        // 마지막 작업 과제를 통과했으면 → 다음 unlock 과제 자동 이동
+        for (let i = lastIdx + 1; i < assignments.length; i++) {
+          const cand = assignments[i]!;
+          if (!isLocked(cand.code)) {
+            onSelect(cand);
+            return;
+          }
+        }
+        // 다음 unlock 과제 없음 — 일단 마지막 과제 유지
+        if (lastIdx >= 0) {
+          const cand = assignments[lastIdx]!;
+          if (!isLocked(cand.code)) {
+            onSelect(cand);
+            return;
+          }
+        }
+      } else if (lastIdx >= 0) {
+        // 통과 안 한 마지막 작업 과제 → 그대로 복원
+        const cand = assignments[lastIdx]!;
+        if (!isLocked(cand.code)) {
+          onSelect(cand);
+          return;
+        }
+      }
+    }
+
+    // Fallback: 첫 unlock 과제
+    const firstUnlocked = assignments.find((a) => !isLocked(a.code));
+    if (firstUnlocked) onSelect(firstUnlocked);
+  }, [assignments, submissions, submissionsLoaded, selectedCode, studentId, onSelect]);
 
   // 과제 선택 변경 시 localStorage 에 저장 (다음 로그인에서 복원 가능)
   useEffect(() => {
