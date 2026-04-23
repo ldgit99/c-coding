@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  ASSIGNMENTS,
   DEMO_COHORT_ID,
   createServiceRoleClientIfAvailable,
   fetchClassroomData,
@@ -32,6 +33,7 @@ const STUDENT_URL =
 
 interface DumpTurn {
   studentId: string;
+  assignmentId?: string;
   role: "student" | "ai" | "assistant";
   text: string;
   timestamp: string;
@@ -42,10 +44,14 @@ interface DumpResponse {
   source?: "supabase" | "memory";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = createServiceRoleClientIfAvailable();
   const { students } = await fetchClassroomData(supabase, DEMO_COHORT_ID);
   const nameById = new Map(students.map((s) => [s.id, s.displayName] as const));
+
+  // `?assignmentId=A03_arrays_basic` 또는 'all' (기본).
+  const url = new URL(request.url);
+  const requestedAssignment = url.searchParams.get("assignmentId") ?? "all";
 
   let turns: DumpTurn[] = [];
   let source: "supabase" | "memory" = "memory";
@@ -60,9 +66,23 @@ export async function GET() {
     // ignore — empty turns
   }
 
+  // 과제별 집계 준비 — assignmentId 별 턴 수 (옵션 드롭다운 count 배지용).
+  const turnCountByAssignment = new Map<string, number>();
+  for (const t of turns) {
+    if (t.role !== "student") continue;
+    const key = t.assignmentId ?? "unscoped";
+    turnCountByAssignment.set(key, (turnCountByAssignment.get(key) ?? 0) + 1);
+  }
+
+  // 필터링 — 특정 과제만 분석하려는 경우
+  const filteredTurns =
+    requestedAssignment === "all"
+      ? turns
+      : turns.filter((t) => (t.assignmentId ?? "unscoped") === requestedAssignment);
+
   // 학생별 발화 그룹핑
   const byStudent = new Map<string, string[]>();
-  for (const t of turns) {
+  for (const t of filteredTurns) {
     if (t.role !== "student") continue;
     const arr = byStudent.get(t.studentId) ?? [];
     arr.push(t.text);
@@ -150,10 +170,26 @@ export async function GET() {
     }
   }
 
+  // 드롭다운 옵션 — 과제 카탈로그 + "전체" + 과제당 턴 수.
+  const assignmentOptions = [
+    {
+      value: "all",
+      label: "전체 과제",
+      turnCount: Array.from(turnCountByAssignment.values()).reduce((a, b) => a + b, 0),
+    },
+    ...ASSIGNMENTS.map((a) => ({
+      value: a.code,
+      label: `${a.code.split("_")[0] ?? a.code} · ${a.title}`,
+      turnCount: turnCountByAssignment.get(a.code) ?? 0,
+    })),
+  ];
+
   return NextResponse.json({
     cohortId: DEMO_COHORT_ID,
     source,
-    collectedTurns: turns.length,
+    assignmentFilter: requestedAssignment,
+    assignmentOptions,
+    collectedTurns: filteredTurns.length,
     studentCount: perStudent.length,
     totalDistribution,
     perStudent: perStudent.sort((a, b) => b.utteranceCount - a.utteranceCount),

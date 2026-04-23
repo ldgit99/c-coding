@@ -28,9 +28,17 @@ interface RedFlag {
   detail: string;
 }
 
+interface AssignmentOption {
+  value: string;
+  label: string;
+  turnCount: number;
+}
+
 interface Response {
   cohortId: string;
   source: "supabase" | "memory";
+  assignmentFilter: string;
+  assignmentOptions: AssignmentOption[];
   collectedTurns: number;
   studentCount: number;
   totalDistribution: Record<QuestionType, number>;
@@ -59,10 +67,12 @@ const TYPE_LABEL: Record<QuestionType, { label: string; emoji: string; color: st
 export function ConversationsPage() {
   const [data, setData] = useState<Response | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("all");
 
-  const load = async () => {
+  const load = async (filter = assignmentFilter) => {
     try {
-      const res = await fetch("/api/conversations", { cache: "no-store" });
+      const q = filter === "all" ? "" : `?assignmentId=${encodeURIComponent(filter)}`;
+      const res = await fetch(`/api/conversations${q}`, { cache: "no-store" });
       setData((await res.json()) as Response);
     } finally {
       setLoading(false);
@@ -70,10 +80,11 @@ export function ConversationsPage() {
   };
 
   useEffect(() => {
-    void load();
-    const id = setInterval(load, 30_000);
+    void load(assignmentFilter);
+    const id = setInterval(() => void load(assignmentFilter), 30_000);
     return () => clearInterval(id);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentFilter]);
 
   const totalCount = useMemo(() => {
     if (!data) return 0;
@@ -108,6 +119,33 @@ export function ConversationsPage() {
           </div>
         )}
       </header>
+
+      {/* Assignment 필터 */}
+      {data && data.assignmentOptions && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-wider text-neutral">과제:</span>
+          <select
+            value={assignmentFilter}
+            onChange={(e) => setAssignmentFilter(e.target.value)}
+            className="h-9 rounded-md border border-border-soft bg-surface px-3 text-[13px] text-text-primary focus:border-primary focus:outline-none"
+          >
+            {data.assignmentOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} · {opt.turnCount}턴
+              </option>
+            ))}
+          </select>
+          {assignmentFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => setAssignmentFilter("all")}
+              className="h-9 rounded-md border border-border-soft bg-surface px-2.5 text-[11px] text-text-secondary hover:border-primary hover:text-primary"
+            >
+              전체로 리셋
+            </button>
+          )}
+        </div>
+      )}
 
       {loading && !data && <div className="text-[13px] text-neutral">로딩 중…</div>}
 
