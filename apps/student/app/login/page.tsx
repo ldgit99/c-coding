@@ -71,11 +71,13 @@ export default function LoginPage() {
         if (error) throw error;
         window.location.href = "/";
       } else {
-        // forgot — 비밀번호 분실 시에만 매직링크 발송
+        // forgot — 비밀번호 분실. 매직링크 → /auth/callback → /reset-password 로 유도.
+        // emailRedirectTo 를 /auth/callback?next=/reset-password 로 주면 콜백이
+        // 세션을 세팅한 뒤 reset-password 로 보낸다.
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
           },
         });
         if (error) throw error;
