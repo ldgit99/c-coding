@@ -234,9 +234,19 @@ export async function POST(request: Request) {
       referenceSolution,
       mode: sessionState.mode,
     });
+    // 차단된 응답은 L1 수준으로 강등해 Accept Gate / 자기설명 요구를 끈다.
+    const blockedMessage =
+      "이 응답이 정답과 너무 비슷해서 막혔어. 한 단계 낮은 힌트를 요청하거나, 질문을 조금 다르게 다시 해볼래?";
     const finalHint: Hint =
       outbound.verdict === "block"
-        ? { ...hint, message: "잠시 후 다시 시도해줘 — 응답이 안전 검사에서 막혔어." }
+        ? {
+            ...hint,
+            message: blockedMessage,
+            hintLevel: 1,
+            hintType: "question",
+            requiresSelfExplanation: false,
+            relatedKC: hint.relatedKC,
+          }
         : { ...hint, message: outbound.sanitizedPayload };
 
     // xAPI: requested-hint + received-hint

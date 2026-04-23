@@ -44,21 +44,23 @@ const STUDENT_FACING_AGENTS = new Set([
 
 /**
  * reference_solution 유사도 임계 — 모드별로 차등.
- * solo 는 AI 응답이 참조 해답과 어휘만 살짝 겹쳐도 차단 → 학생 독립성 극대화.
- * coach 는 예시 코드 제공을 허용하므로 임계 완화.
- * exam 은 사실상 모든 코드 유사 표현 금지.
- * 레거시 값은 normalizeMode 범위와 일치.
+ *
+ * 2026-04 완화: 기존 0.10 (solo) 은 `for (int i = 0; i < n; i++)` 같은
+ * 보편 C 관용구조차 토큰 10% 겹침으로 오탐 유발. 아래 값은 "정답을 거의
+ * 그대로 말하는 경우만 차단" 기준. false-positive 체감 대폭 감소.
+ *
+ * exam 은 여전히 엄격 유지 (시험 중엔 약간의 유사도도 부정행위 신호).
  */
 const SIMILARITY_THRESHOLD_BY_MODE: Record<string, number> = {
-  solo: 0.1,
-  silent: 0.1,
-  observer: 0.1,
-  pair: 0.25,
-  coach: 0.4,
-  tutor: 0.4,
-  exam: 0.05,
+  solo: 0.35,
+  silent: 0.35,
+  observer: 0.35,
+  pair: 0.55,
+  coach: 0.7,
+  tutor: 0.7,
+  exam: 0.2,
 };
-const SIMILARITY_THRESHOLD_DEFAULT = 0.25;
+const SIMILARITY_THRESHOLD_DEFAULT = 0.55;
 
 function thresholdFor(mode: string | undefined): number {
   if (!mode) return SIMILARITY_THRESHOLD_DEFAULT;

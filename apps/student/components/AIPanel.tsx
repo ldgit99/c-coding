@@ -53,6 +53,10 @@ interface ChatResponse {
   error?: string;
   details?: Array<{ path?: (string | number)[]; message?: string; code?: string }>;
   pedagogyMode?: "hint" | "chat";
+  safety?: {
+    outboundVerdict?: "allow" | "sanitize" | "block";
+    outboundReasons?: string[];
+  };
 }
 
 type Tab = "chat" | "review";
@@ -128,6 +132,8 @@ type HistoryEntry =
       pedagogyMode?: "hint" | "chat";
       /** 학생 1클릭 피드백 — 👍/👎/🤔. */
       feedback?: "up" | "down" | "confused";
+      /** Safety Guard 차단 메시지 — Accept Gate·피드백 버튼 숨김. */
+      blocked?: boolean;
     }
   | { kind: "review"; review: ReviewPayload; meta?: string };
 
@@ -422,9 +428,11 @@ export function AIPanel({
 
   const applyChatResponse = useCallback((data: ChatResponse, codeAtRequest?: string) => {
     if (data.hint) {
+      const blocked = data.safety?.outboundVerdict === "block";
       const pedagogyMode = data.pedagogyMode ?? (data.intent === "general_chat" ? "chat" : "hint");
-      const meta =
-        pedagogyMode === "chat"
+      const meta = blocked
+        ? "safety"
+        : pedagogyMode === "chat"
           ? data.mocked
             ? "[mock]"
             : `${data.usedModel ?? ""}`
@@ -441,15 +449,18 @@ export function AIPanel({
           meta,
           level: data.hint!.hintLevel,
           pedagogyMode,
-          requiresSelfExplanation: data.hint!.requiresSelfExplanation,
+          requiresSelfExplanation: blocked ? false : data.hint!.requiresSelfExplanation,
           accepted: false,
+          blocked,
         },
       ]);
-      setSupportLevel((prev) => Math.max(prev, data.hint!.hintLevel) as 0 | 1 | 2 | 3);
-      onMaxHintLevelChange?.(data.hint!.hintLevel);
+      if (!blocked) {
+        setSupportLevel((prev) => Math.max(prev, data.hint!.hintLevel) as 0 | 1 | 2 | 3);
+        onMaxHintLevelChange?.(data.hint!.hintLevel);
+      }
 
-      // L4 후 복붙 감지를 위해 스냅샷 저장
-      if (data.hint.hintLevel >= 3 && codeAtRequest != null) {
+      // L4 후 복붙 감지를 위해 스냅샷 저장 (차단된 응답은 제외)
+      if (!blocked && data.hint.hintLevel >= 3 && codeAtRequest != null) {
         lastAiHintSnapshotRef.current = {
           at: Date.now(),
           level: data.hint.hintLevel,
@@ -664,21 +675,29 @@ export function AIPanel({
                 >
                   {msg.text}
                 </div>
-                {msg.role === "ai" && msg.requiresSelfExplanation && !msg.accepted && (
-                  <button
-                    onClick={() => {
-                      setSelfExplainTarget(i);
-                      setSelfExplainText("");
-                    }}
-                    className="mt-2 self-start rounded-md border border-error/30 bg-error/5 px-3 py-1.5 text-[11px] font-medium text-error transition-colors hover:bg-error/10"
-                  >
-                    💭 이 예시를 반영하려면 → 자기 설명 필요
-                  </button>
-                )}
+                {msg.role === "ai" &&
+                  !msg.blocked &&
+                  msg.requiresSelfExplanation &&
+                  !msg.accepted && (
+                    <button
+                      onClick={() => {
+                        setSelfExplainTarget(i);
+                        setSelfExplainText("");
+                      }}
+                      className="mt-2 self-start rounded-md border border-error/30 bg-error/5 px-3 py-1.5 text-[11px] font-medium text-error transition-colors hover:bg-error/10"
+                    >
+                      💭 이 예시를 반영하려면 → 자기 설명 필요
+                    </button>
+                  )}
                 {msg.role === "ai" && msg.accepted && (
                   <div className="mt-1 text-[11px] text-success">✓ 자기 설명 제출됨 · 수락됨</div>
                 )}
-                {msg.role === "ai" && !msg.feedback && (
+                {msg.role === "ai" && msg.blocked && (
+                  <div className="mt-1 text-[10px] text-neutral">
+                    🛡 안전 검사로 응답이 수정됐어요. 한 단계 낮은 힌트를 요청해보세요.
+                  </div>
+                )}
+                {msg.role === "ai" && !msg.blocked && !msg.feedback && (
                   <div className="mt-1.5 flex items-center gap-1">
                     <FeedbackButton
                       label="👍 도움됐어"
