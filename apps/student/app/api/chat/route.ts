@@ -48,6 +48,8 @@ interface ChatRequestBody {
     column?: number;
     selectionText?: string;
   };
+  /** 학생이 에디터 하단 입력란에 넣은 stdin 값 (실행 시 프로그램에 전달됨). */
+  editorStdin?: string;
   /** 최신 run 결과 — 서버가 xAPI 에서 뽑는 것보다 정확. */
   lastRunResult?: {
     status: "ok" | "compile_error" | "runtime_error" | "timeout" | "signal";
@@ -199,6 +201,7 @@ export async function POST(request: Request) {
         editorCode: body.editorCode,
         previousCode: body.previousCode,
         editorFocus: body.editorFocus,
+        lastStdin: body.editorStdin,
         assignmentTemplate: catalog?.template,
         assignmentKC: catalog?.kcTags,
         assignmentDifficulty: catalog?.difficulty,

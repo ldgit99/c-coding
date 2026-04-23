@@ -85,6 +85,8 @@ interface AIPanelProps {
   lastRunResult?: LastRunResult | null;
   /** Monaco 커서·선택 영역. 튜터에 전달해 "이 부분" 발화를 정확히 짚게. */
   editorFocus?: EditorFocus | null;
+  /** 학생이 입력한 stdin. '내가 준 입력' 을 튜터가 볼 수 있도록. */
+  editorStdin?: string;
   /** 시험 모드 — AI 기능 전면 차단 오버레이. */
   examMode?: boolean;
 }
@@ -229,6 +231,7 @@ export function AIPanel({
   lastRunError,
   lastRunResult,
   editorFocus,
+  editorStdin,
   examMode = false,
 }: AIPanelProps) {
   const [tab, setTab] = useState<Tab>("chat");
@@ -435,6 +438,7 @@ export function AIPanel({
             previousCode:
               previousCodeRef.current !== editorCode ? previousCodeRef.current : undefined,
             editorFocus: editorFocus ?? undefined,
+            editorStdin: editorStdin && editorStdin.length > 0 ? editorStdin : undefined,
             lastRunResult: lastRunResult ?? undefined,
             assignmentCode,
             requestedLevel: opts.requestedLevel,
@@ -452,7 +456,7 @@ export function AIPanel({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [assignmentCode, editorCode, mode, studentId, supportLevel, editorFocus, lastRunResult],
+    [assignmentCode, editorCode, mode, studentId, supportLevel, editorFocus, lastRunResult, editorStdin],
   );
 
   const applyChatResponse = useCallback((data: ChatResponse, codeAtRequest?: string) => {

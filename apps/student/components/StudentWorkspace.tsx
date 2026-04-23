@@ -101,6 +101,9 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
   // 에디터 커서·선택 — 튜터가 "이 부분" 발화를 정확히 짚도록
   const [editorFocus, setEditorFocus] = useState<EditorFocus | null>(null);
 
+  // 학생이 입력한 stdin — 튜터가 입력 맥락을 참조하도록
+  const [editorStdin, setEditorStdin] = useState<string>("");
+
   // 반응형 패널 토글 — 좁은 화면에서 CEditor 가 가려지지 않도록 AssignmentPanel 과
   // AIPanel 을 독립 drawer 로 관리.
   const [showLeftPanel, setShowLeftPanel] = useState(true);
@@ -384,6 +387,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
             onCodeChange={setEditorCode}
             onRunComplete={handleRunComplete}
             onFocusChange={setEditorFocus}
+            onStdinChange={setEditorStdin}
             assignmentCode={assignment?.code ?? null}
             visibleTests={assignment?.visibleTests ?? []}
           />
@@ -413,6 +417,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
               lastRunError={lastRunError}
               lastRunResult={lastRunResult}
               editorFocus={editorFocus}
+              editorStdin={editorStdin}
             />
             <FocusMode
               active={focusActive}

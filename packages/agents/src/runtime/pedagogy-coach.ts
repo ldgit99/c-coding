@@ -104,6 +104,8 @@ export interface RequestHintInput {
   recentError?: string;
   /** 최신 실행 결과 전체 (stdout/stderr/exitCode). recentError 보다 우선. */
   lastRunResult?: LastRunResult;
+  /** 학생이 실행 시 프로그램에 전달한 stdin. '내가 준 입력' 이 무엇이었는지 튜터가 참조. */
+  lastStdin?: string;
   /** 교사·Student Modeler 집계 — 세션 간 연결성. */
   learnerProfile?: LearnerProfile;
   /** 최근 대화 턴 (8턴 이내 권장) — messages 배열로 직렬화. */
@@ -302,6 +304,13 @@ function buildUserContext(
       lines.push(`[${f.severity}] ${f.line ? `L${f.line} ` : ""}${f.message}`);
     }
     lines.push(`</lint_findings>`, "");
+  }
+
+  // 학생이 실행 시 프로그램에 준 stdin (scanf 입력)
+  if (input.lastStdin && input.lastStdin.trim().length > 0) {
+    lines.push(`<last_stdin>`);
+    lines.push(input.lastStdin.slice(0, 600));
+    lines.push(`</last_stdin>`, "");
   }
 
   // 최신 실행 결과 — lastRunResult 우선 (자세한 stdout/stderr 포함)

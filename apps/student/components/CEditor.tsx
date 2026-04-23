@@ -37,6 +37,8 @@ interface CEditorProps {
   onRunComplete?: (result: RunCResult) => void;
   /** 커서·선택 영역 변화를 상위(AIPanel)로 전달 — 튜터 맥락 인지용. */
   onFocusChange?: (focus: EditorFocus | null) => void;
+  /** stdin 값 변화를 상위(AIPanel)로 전달 — 튜터가 입력 맥락을 참조하도록. */
+  onStdinChange?: (stdin: string) => void;
   /** stdin 입력란 저장 key — 과제별 분리. 없으면 generic. */
   assignmentCode?: string | null;
   /** 예제 불러오기 드롭다운 — 과제의 visibleTests. 없으면 드롭다운 숨김. */
@@ -50,6 +52,7 @@ export function CEditor({
   onCodeChange,
   onRunComplete,
   onFocusChange,
+  onStdinChange,
   assignmentCode,
   visibleTests = [],
 }: CEditorProps) {
@@ -84,19 +87,21 @@ export function CEditor({
     setStdinOpen(SCANF_RE.test(starterCode ?? "") || restored.length > 0);
   }, [stdinKey, starterCode]);
 
-  // stdin 변경 시 저장 (과제별 key)
+  // stdin 변경 시 저장 (과제별 key) + 상위로 전달
   useEffect(() => {
-    if (!stdinKey) return;
-    try {
-      if (stdin.length === 0) {
-        localStorage.removeItem(stdinKey);
-      } else {
-        localStorage.setItem(stdinKey, stdin);
+    if (stdinKey) {
+      try {
+        if (stdin.length === 0) {
+          localStorage.removeItem(stdinKey);
+        } else {
+          localStorage.setItem(stdinKey, stdin);
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
-  }, [stdin, stdinKey]);
+    onStdinChange?.(stdin);
+  }, [stdin, stdinKey, onStdinChange]);
 
   const handleChange = useCallback(
     (value: string | undefined) => {
