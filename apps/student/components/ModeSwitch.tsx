@@ -87,8 +87,11 @@ export function ModeSwitch({ mode, onChange, locked }: ModeSwitchProps) {
                 : "border border-transparent text-text-secondary hover:bg-bg"
             } ${locked ? "cursor-not-allowed opacity-70" : ""}`}
             title={
-              locked && active ? "교사가 잠금" : `${info.label} — ${info.description}`
+              locked && active
+                ? `교사가 잠금 · ${info.label} — ${info.description}`
+                : `${info.label} (${info.short}) — ${info.description}\n${info.ceiling}\n예: ${info.example}`
             }
+            aria-label={`${info.label} 모드 — ${info.short}. ${info.ceiling}`}
           >
             <span className={active ? "" : info.dot}>●</span>
             <span>{info.label}</span>
@@ -103,11 +106,12 @@ export function ModeSwitch({ mode, onChange, locked }: ModeSwitchProps) {
       <button
         type="button"
         onClick={() => setShowHelp((v) => !v)}
-        className="ml-1 flex h-5 w-5 items-center justify-center rounded-full border border-border-soft text-[10px] font-medium text-neutral transition-colors hover:border-primary hover:text-primary"
+        className="ml-1 flex h-6 items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 text-[11px] font-medium text-primary transition-all hover:-translate-y-px hover:bg-primary/10"
         aria-label="AI 모드 설명 열기"
-        title={`지금: ${current.label} · ${current.ceiling}`}
+        title={`지금: ${current.label} · ${current.ceiling}\n(클릭하면 각 모드 상세 설명)`}
       >
-        ?
+        <span className="text-[12px]">ℹ️</span>
+        <span className="hidden sm:inline">모드 설명</span>
       </button>
 
       {showHelp && (

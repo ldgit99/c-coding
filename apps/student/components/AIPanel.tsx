@@ -148,6 +148,22 @@ function stripInternalDebug(text: string): string {
     .trim();
 }
 
+/** hintType enum → 학생이 이해 가능한 한국어 라벨. */
+function humanHintType(hintType: string): string {
+  switch (hintType) {
+    case "question":
+      return "질문";
+    case "concept":
+      return "개념";
+    case "pseudocode":
+      return "의사코드";
+    case "example":
+      return "예시";
+    default:
+      return hintType;
+  }
+}
+
 /** 두 문자열의 토큰 겹침 비율 (0~1). 복붙 감지 휴리스틱용. */
 function textSimilarity(a: string, b: string): number {
   const tokenize = (s: string): Set<string> =>
@@ -224,6 +240,8 @@ export function AIPanel({
   const [selfExplainTarget, setSelfExplainTarget] = useState<number | null>(null);
   const [selfExplainText, setSelfExplainText] = useState("");
   const welcomedAssignmentRef = useRef<string | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const stuckToBottomRef = useRef<boolean>(true);
   const hydratedAssignmentRef = useRef<string | null>(null);
   const previousModeRef = useRef<Mode>(mode);
   const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
@@ -269,6 +287,18 @@ export function AIPanel({
       // quota or private mode — ignore
     }
   }, [history, cacheKey]);
+
+  // 새 턴 추가/로딩 상태 변화 시 맨 아래로 자동 스크롤 — 학생이 위로 읽고 있지
+  // 않을 때만 (stuckToBottomRef 로 의도 존중).
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    if (!stuckToBottomRef.current) return;
+    // 다음 paint 에 부드럽게 스크롤
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    });
+  }, [history, loading]);
 
   // 모드 변경 감지 → 시스템 메시지 턴 주입 (첫 마운트는 스킵)
   useEffect(() => {
@@ -430,15 +460,17 @@ export function AIPanel({
     if (data.hint) {
       const blocked = data.safety?.outboundVerdict === "block";
       const pedagogyMode = data.pedagogyMode ?? (data.intent === "general_chat" ? "chat" : "hint");
+      // 학생 UI 에는 모델명 노출하지 않음 — 교육에 불필요한 노이즈.
+      const hintTypeLabel = humanHintType(data.hint.hintType);
       const meta = blocked
-        ? "safety"
+        ? "안전 검사"
         : pedagogyMode === "chat"
           ? data.mocked
-            ? "[mock]"
-            : `${data.usedModel ?? ""}`
+            ? "연습 모드"
+            : ""
           : data.mocked
-            ? `[mock] L${data.hint.hintLevel} ${data.hint.hintType}`
-            : `${data.usedModel} · L${data.hint.hintLevel} ${data.hint.hintType}`;
+            ? `L${data.hint.hintLevel} ${hintTypeLabel} · 연습`
+            : `L${data.hint.hintLevel} ${hintTypeLabel}`;
       const cleanedMessage = stripInternalDebug(data.hint.message);
       setHistory((h) => [
         ...h,
@@ -620,7 +652,16 @@ export function AIPanel({
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto px-5 py-4 text-[13px]">
+      <div
+        ref={chatScrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          // 맨 아래 근처(60px 이내)에 있을 때만 'stick' 유지. 위로 스크롤 중이면 억제.
+          stuckToBottomRef.current =
+            el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
+        }}
+        className="flex-1 overflow-auto px-5 py-4 text-[13px]"
+      >
         {history.length === 0 && (
           <p className="leading-relaxed text-text-secondary">
             과제를 고르면 같이 시작해볼까. 힌트는 코드를 조금 써본 뒤에 요청할 수 있어.
@@ -657,14 +698,14 @@ export function AIPanel({
               )}
               <div className={`max-w-[82%] ${msg.role === "student" ? "items-end" : "items-start"} flex flex-col`}>
                 <div
-                  className={`mb-1 flex items-baseline gap-2 text-[10px] uppercase tracking-wider ${
+                  className={`mb-1 flex items-baseline gap-2 text-[11px] ${
                     msg.role === "student" ? "flex-row-reverse text-neutral" : "text-neutral"
                   }`}
                 >
                   <span className={msg.role === "student" ? "text-text-primary" : "text-primary"}>
                     {msg.role === "student" ? "나" : "AI 튜터"}
                   </span>
-                  {msg.meta && <span className="font-mono text-neutral">· {msg.meta}</span>}
+                  {msg.meta && <span className="text-neutral">· {msg.meta}</span>}
                 </div>
                 <div
                   className={`whitespace-pre-wrap rounded-xl px-3.5 py-2.5 leading-relaxed ${
@@ -1011,9 +1052,9 @@ interface ServerTurn {
 function toHistoryEntry(turn: ServerTurn): HistoryEntry {
   const meta =
     turn.meta?.hintLevel && turn.meta?.hintType
-      ? `${turn.meta.usedModel ?? "model"} · L${turn.meta.hintLevel} ${turn.meta.hintType}`
+      ? `L${turn.meta.hintLevel} ${humanHintType(turn.meta.hintType)}`
       : turn.meta?.kind === "code-review"
-        ? `${turn.meta.usedModel ?? "model"} · review`
+        ? "코드 리뷰"
         : undefined;
   return {
     kind: "text",

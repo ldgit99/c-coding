@@ -36,6 +36,9 @@ interface AssignmentPanelProps {
 export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: AssignmentPanelProps) {
   const [assignments, setAssignments] = useState<AssignmentPublic[]>([]);
   const [loading, setLoading] = useState(true);
+  // 문제 설명·학습목표 접기 (긴 과제일 때 스크롤 부담 완화)
+  const [templateExpanded, setTemplateExpanded] = useState(false);
+  const [objectivesExpanded, setObjectivesExpanded] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -54,6 +57,12 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 과제 전환 시 문제 설명·목표는 기본 접힘 상태로 리셋 (긴 과제 진입 충격 완화)
+  useEffect(() => {
+    setTemplateExpanded(false);
+    setObjectivesExpanded(false);
+  }, [selectedCode]);
 
   const statusByCode = useMemo(() => {
     const map = new Map<string, Status>();
@@ -188,25 +197,55 @@ export function AssignmentPanel({ selectedCode, onSelect, submissions = [] }: As
                 </span>
               )}
             </div>
-            <p className="mt-4 whitespace-pre-wrap leading-relaxed text-text-primary">
-              {selected.template}
-            </p>
+            {/* 문제 설명 — 처음에는 3줄 미리보기 + 토글 */}
+            <div className="mt-4">
+              <p
+                className={`whitespace-pre-wrap leading-relaxed text-text-primary ${
+                  templateExpanded ? "" : "line-clamp-3"
+                }`}
+              >
+                {selected.template}
+              </p>
+              {selected.template.length > 80 && (
+                <button
+                  type="button"
+                  onClick={() => setTemplateExpanded((v) => !v)}
+                  className="mt-1.5 text-[11px] text-primary transition-colors hover:underline"
+                >
+                  {templateExpanded ? "접기 ▲" : "문제 자세히 보기 ▼"}
+                </button>
+              )}
+            </div>
 
             {selected.learningObjectives && selected.learningObjectives.length > 0 && (
-              <div className="mt-5 rounded-lg border border-primary/15 bg-primary/5 p-3">
-                <div className="text-[10px] font-medium uppercase tracking-wider text-primary">
-                  Learning Objectives
-                </div>
-                <ul className="mt-2 space-y-1.5">
-                  {selected.learningObjectives.map((obj, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[12px] text-text-primary">
-                      <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-medium text-primary">
-                        {i + 1}
-                      </span>
-                      <span className="leading-relaxed">{obj}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="mt-4 rounded-lg border border-primary/15 bg-primary/5 p-3">
+                <button
+                  type="button"
+                  onClick={() => setObjectivesExpanded((v) => !v)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-primary">
+                    🎯 학습 목표 ({selected.learningObjectives.length})
+                  </span>
+                  <span className="text-[11px] text-primary">
+                    {objectivesExpanded ? "접기 ▲" : "펼치기 ▼"}
+                  </span>
+                </button>
+                {objectivesExpanded && (
+                  <ul className="mt-2 space-y-1.5">
+                    {selected.learningObjectives.map((obj, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-[12px] text-text-primary"
+                      >
+                        <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-medium text-primary">
+                          {i + 1}
+                        </span>
+                        <span className="leading-relaxed">{obj}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 
