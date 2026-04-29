@@ -166,94 +166,95 @@ double average(int x[]) {
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {
-    code: "A01_bubble_sort",
-    version: 2,
-    title: "배열과 버블정렬",
+    code: "A01_array_2d_sum",
+    version: 1,
+    title: "2차원 배열 행·열 합산",
     template:
-      "정수 3개를 공백으로 구분해 입력받아 오름차순으로 **버블 정렬** 한 뒤 정렬 전과 후를 다음 형식으로 출력하라.\n\n```\n초기 상태 배열: [ <a> <b> <c>  ] \n정렬된 배열: [ <min> <mid> <max>  ] \n```\n\n- for 이중 반복으로 구현 (외부 i: 0 ≤ i < n-1, 내부 j: 0 ≤ j < n-i-1)\n- 인접한 두 원소를 비교해 앞이 크면 교환\n- 표준 라이브러리 qsort 사용 금지, 본인이 작성한 반복문으로만 해결\n- 출력 형식의 공백(대괄호 양옆 · 숫자 사이)을 정확히 맞출 것",
+      "5×4 정수 배열이 다음과 같이 초기화되어 있다.\n\n```\n  1   2   3   0\n  5   6   7   0\n  9  10  11   0\n 13  14  15   0\n  0   0   0   0\n```\n\n- 마지막 **열**(j=3)에는 각 행(0~3)의 합을 저장\n- 마지막 **행**(i=4)에는 각 열(0~3)의 합을 저장 (마지막 행은 행합까지 포함된 결과의 열 합)\n- 채운 뒤 전체 5×4 배열을 `%3d` 포맷으로 출력 (각 행 끝에 줄바꿈)\n\n**채워야 할 두 부분**:\n\n1. 각 행 i(0~3)에 대해 arr[i][0..2]의 합을 arr[i][3] 에 저장\n2. 각 열 j(0~3)에 대해 arr[0..3][j]의 합을 arr[4][j] 에 저장\n\n출력 예시 (`%3d`로 폭 3):\n\n```\n  1  2  3  6\n  5  6  7 18\n  9 10 11 30\n 13 14 15 42\n 28 32 36 96\n```\n\n입력은 없다. 배열 초기값과 출력 형식은 starter 코드에 이미 작성되어 있다.",
     kcTags: ["arrays-indexing", "control-flow-loop"],
     difficulty: 2,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
-void bubbleSortAscending(int arr[], int n) {
-    // TODO: 배열을 오름차순으로 정렬해보세요.
-}
+int main() {
 
-int main(void) {
-    int arr[3];
-    int n = 3;
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    int i, j;
+    int arr[5][4] = {
+        {1, 2, 3, 0},
+        {5, 6, 7, 0},
+        {9, 10, 11, 0},
+        {13, 14, 15, 0},
+        {0, 0, 0, 0}
+    };
 
-    printf("초기 상태 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \\n");
+    // TODO 1: 각 행 i (0~3) 에 대해, arr[i][0]~arr[i][2] 를 더해 arr[i][3] 에 저장하세요.
 
-    bubbleSortAscending(arr, n);
 
-    printf("정렬된 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \\n");
+    // TODO 2: 각 열 j (0~3) 에 대해, arr[0][j]~arr[3][j] 를 더해 arr[4][j] 에 저장하세요.
+
+
+    for (i = 0; i < 5; i++) {
+        for (j = 0; j < 4; j++) {
+            printf("%3d", arr[i][j]);
+        }
+        printf("\\n");
+    }
 
     return 0;
 }
 `,
     visibleTests: [
       {
-        input: "7 4 5",
+        input: "",
         expected:
-          "초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n",
-        note: "서로 다른 3개",
-      },
-      {
-        input: "1 2 3",
-        expected:
-          "초기 상태 배열: [ 1 2 3  ] \n정렬된 배열: [ 1 2 3  ] \n",
-        note: "이미 정렬된 경우 (교환 0회)",
-      },
-      {
-        input: "3 3 1",
-        expected:
-          "초기 상태 배열: [ 3 3 1  ] \n정렬된 배열: [ 1 3 3  ] \n",
-        note: "중복 포함",
+          "  1  2  3  6\n  5  6  7 18\n  9 10 11 30\n 13 14 15 42\n 28 32 36 96\n",
+        note: "고정 입력 — 행합·열합이 마지막 열·행에 채워져야 함",
       },
     ],
     hiddenTests: [
-      { id: 1, input: "7 4 5", expected: "초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n" },
-      { id: 2, input: "1 2 3", expected: "초기 상태 배열: [ 1 2 3  ] \n정렬된 배열: [ 1 2 3  ] \n" },
-      { id: 3, input: "3 3 1", expected: "초기 상태 배열: [ 3 3 1  ] \n정렬된 배열: [ 1 3 3  ] \n" },
-      { id: 4, input: "9 1 5", expected: "초기 상태 배열: [ 9 1 5  ] \n정렬된 배열: [ 1 5 9  ] \n" },
-      { id: 5, input: "0 0 0", expected: "초기 상태 배열: [ 0 0 0  ] \n정렬된 배열: [ 0 0 0  ] \n" },
+      {
+        id: 1,
+        input: "",
+        expected:
+          "  1  2  3  6\n  5  6  7 18\n  9 10 11 30\n 13 14 15 42\n 28 32 36 96\n",
+      },
     ],
     referenceSolution: `#include <stdio.h>
 
-void bubbleSortAscending(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        for (int j = 0; j < n - i - 1; j++) {
-            if (arr[j] > arr[j + 1]) {
-                int tmp = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = tmp;
-            }
+int main() {
+
+    int i, j;
+    int arr[5][4] = {
+        {1, 2, 3, 0},
+        {5, 6, 7, 0},
+        {9, 10, 11, 0},
+        {13, 14, 15, 0},
+        {0, 0, 0, 0}
+    };
+
+    for (i = 0; i < 4; i++) {
+        int sumrow = 0;
+        for (j = 0; j < 3; j++) {
+            sumrow += arr[i][j];
         }
+        arr[i][3] = sumrow;
     }
-}
 
-int main(void) {
-    int arr[3];
-    int n = 3;
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    for (j = 0; j < 4; j++) {
+        int sumcol = 0;
+        for (i = 0; i < 4; i++) {
+            sumcol += arr[i][j];
+        }
+        arr[4][j] = sumcol;
+    }
 
-    printf("초기 상태 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \\n");
-
-    bubbleSortAscending(arr, n);
-
-    printf("정렬된 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \\n");
+    for (i = 0; i < 5; i++) {
+        for (j = 0; j < 4; j++) {
+            printf("%3d", arr[i][j]);
+        }
+        printf("\\n");
+    }
 
     return 0;
 }

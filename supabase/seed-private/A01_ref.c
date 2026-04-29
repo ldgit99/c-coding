@@ -1,31 +1,38 @@
 #include <stdio.h>
 
-void bubbleSortAscending(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        for (int j = 0; j < n - i - 1; j++) {
-            if (arr[j] > arr[j + 1]) {
-                int tmp = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = tmp;
-            }
+int main() {
+
+    int i, j;
+    int arr[5][4] = {
+        {1, 2, 3, 0},
+        {5, 6, 7, 0},
+        {9, 10, 11, 0},
+        {13, 14, 15, 0},
+        {0, 0, 0, 0}
+    };
+
+    for (i = 0; i < 4; i++) {
+        int sumrow = 0;
+        for (j = 0; j < 3; j++) {
+            sumrow += arr[i][j];
         }
+        arr[i][3] = sumrow;
     }
-}
 
-int main(void) {
-    int arr[3];
-    int n = 3;
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    for (j = 0; j < 4; j++) {
+        int sumcol = 0;
+        for (i = 0; i < 4; i++) {
+            sumcol += arr[i][j];
+        }
+        arr[4][j] = sumcol;
+    }
 
-    printf("초기 상태 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \n");
-
-    bubbleSortAscending(arr, n);
-
-    printf("정렬된 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \n");
+    for (i = 0; i < 5; i++) {
+        for (j = 0; j < 4; j++) {
+            printf("%3d", arr[i][j]);
+        }
+        printf("\n");
+    }
 
     return 0;
 }

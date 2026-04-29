@@ -15,11 +15,12 @@ describe("seed-private loader (in-memory ASSIGNMENTS 기반)", () => {
     expect(tests).toBeNull();
   });
 
-  it("loadReferenceSolution(A01_bubble_sort)은 bubbleSort 포함 C 소스", async () => {
-    const ref = await loadReferenceSolution("A01_bubble_sort");
+  it("loadReferenceSolution(A01_array_2d_sum)은 행·열 합산 C 소스", async () => {
+    const ref = await loadReferenceSolution("A01_array_2d_sum");
     expect(ref).not.toBeNull();
     expect(ref).toContain("printf");
-    expect(ref).toContain("bubbleSortAscending");
+    expect(ref).toContain("sumrow");
+    expect(ref).toContain("sumcol");
     expect(ref).toMatch(/int\s+main/);
   });
 

@@ -71,49 +71,73 @@ $$,
   reflection_prompts = excluded.reflection_prompts;
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
-  'A01_bubble_sort',
-  2,
-  $$배열과 버블정렬$$,
-  $$정수 3개를 공백으로 구분해 입력받아 오름차순으로 **버블 정렬** 한 뒤 정렬 전과 후를 다음 형식으로 출력하라.
+  'A01_array_2d_sum',
+  1,
+  $$2차원 배열 행·열 합산$$,
+  $$5×4 정수 배열이 다음과 같이 초기화되어 있다.
 
 ```
-초기 상태 배열: [ <a> <b> <c>  ] 
-정렬된 배열: [ <min> <mid> <max>  ] 
+  1   2   3   0
+  5   6   7   0
+  9  10  11   0
+ 13  14  15   0
+  0   0   0   0
 ```
 
-- for 이중 반복으로 구현 (외부 i: 0 ≤ i < n-1, 내부 j: 0 ≤ j < n-i-1)
-- 인접한 두 원소를 비교해 앞이 크면 교환
-- 표준 라이브러리 qsort 사용 금지, 본인이 작성한 반복문으로만 해결
-- 출력 형식의 공백(대괄호 양옆 · 숫자 사이)을 정확히 맞출 것$$,
+- 마지막 **열**(j=3)에는 각 행(0~3)의 합을 저장
+- 마지막 **행**(i=4)에는 각 열(0~3)의 합을 저장 (마지막 행은 행합까지 포함된 결과의 열 합)
+- 채운 뒤 전체 5×4 배열을 `%3d` 포맷으로 출력 (각 행 끝에 줄바꿈)
+
+**채워야 할 두 부분**:
+
+1. 각 행 i(0~3)에 대해 arr[i][0..2]의 합을 arr[i][3] 에 저장
+2. 각 열 j(0~3)에 대해 arr[0..3][j]의 합을 arr[4][j] 에 저장
+
+출력 예시 (`%3d`로 폭 3):
+
+```
+  1  2  3  6
+  5  6  7 18
+  9 10 11 30
+ 13 14 15 42
+ 28 32 36 96
+```
+
+입력은 없다. 배열 초기값과 출력 형식은 starter 코드에 이미 작성되어 있다.$$,
   $$["arrays-indexing","control-flow-loop"]$$::jsonb,
   2,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-void bubbleSortAscending(int arr[], int n) {
-    // TODO: 배열을 오름차순으로 정렬해보세요.
-}
+int main() {
 
-int main(void) {
-    int arr[3];
-    int n = 3;
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    int i, j;
+    int arr[5][4] = {
+        {1, 2, 3, 0},
+        {5, 6, 7, 0},
+        {9, 10, 11, 0},
+        {13, 14, 15, 0},
+        {0, 0, 0, 0}
+    };
 
-    printf("초기 상태 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \n");
+    // TODO 1: 각 행 i (0~3) 에 대해, arr[i][0]~arr[i][2] 를 더해 arr[i][3] 에 저장하세요.
 
-    bubbleSortAscending(arr, n);
 
-    printf("정렬된 배열: [ ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf(" ] \n");
+    // TODO 2: 각 열 j (0~3) 에 대해, arr[0][j]~arr[3][j] 를 더해 arr[4][j] 에 저장하세요.
+
+
+    for (i = 0; i < 5; i++) {
+        for (j = 0; j < 4; j++) {
+            printf("%3d", arr[i][j]);
+        }
+        printf("\n");
+    }
 
     return 0;
 }
 $$,
-  $$[{"input":"7 4 5","expected":"초기 상태 배열: [ 7 4 5  ] \n정렬된 배열: [ 4 5 7  ] \n","note":"서로 다른 3개"},{"input":"1 2 3","expected":"초기 상태 배열: [ 1 2 3  ] \n정렬된 배열: [ 1 2 3  ] \n","note":"이미 정렬된 경우 (교환 0회)"},{"input":"3 3 1","expected":"초기 상태 배열: [ 3 3 1  ] \n정렬된 배열: [ 1 3 3  ] \n","note":"중복 포함"}]$$::jsonb,
+  $$[{"input":"","expected":"  1  2  3  6\n  5  6  7 18\n  9 10 11 30\n 13 14 15 42\n 28 32 36 96\n","note":"고정 입력 — 행합·열합이 마지막 열·행에 채워져야 함"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,
