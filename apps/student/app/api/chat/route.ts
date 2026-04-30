@@ -342,6 +342,20 @@ export async function POST(request: Request) {
     const lintResult = await lintC(body.editorCode);
     const { review, usedModel, mocked } = await reviewCode({
       code: body.editorCode,
+      // 환각 BLOCKER 방지를 위해 LLM 에 충분한 맥락 제공.
+      // referenceSolution 은 system prompt 의 HARD RULE 1 이 학생 응답 인용을 차단.
+      assignment: catalog
+        ? {
+            id: catalog.code,
+            kcTags: catalog.kcTags,
+            template: catalog.template,
+            visibleTests: catalog.visibleTests,
+          }
+        : body.assignmentCode
+          ? { id: body.assignmentCode }
+          : undefined,
+      referenceSolution,
+      lastRunResult: body.lastRunResult,
       studentLevel: "novice",
       lintResult,
     });

@@ -52,7 +52,25 @@ export interface ReviewInput {
     id: string;
     kcTags?: string[];
     rubric?: Record<string, number>;
+    /** 문제 명세 본문 — LLM이 학생 의도를 추측하지 않도록 정확한 스펙을 제공. */
+    template?: string;
+    /** 학생에게 공개된 입출력 예시 — 정답 출력 형식 검증용. */
+    visibleTests?: Array<{ input: string; expected: string; note?: string }>;
   };
+  /**
+   * 참고 정답 — LLM 의 행위적 동등성 비교 근거로만 사용. 학생 응답에
+   * 절대 인용·노출 금지 (시스템 프롬프트의 HARD RULE 로도 명시됨).
+   */
+  referenceSolution?: string;
+  /** 학생이 직전에 ▶실행으로 받은 결과 — 통과 신호로 환각 BLOCKER 차단. */
+  lastRunResult?: {
+    status: "ok" | "compile_error" | "runtime_error" | "timeout" | "signal";
+    stdout?: string;
+    stderr?: string;
+    exitCode?: number | null;
+  };
+  /** 0~1. /api/submit 에서 hidden tests 가 실행됐다면 그 통과율. */
+  hiddenTestPassRatio?: number;
   studentLevel?: "novice" | "intermediate";
   lintResult?: { executed: boolean; warnings: LintWarning[] };
   anthropicApiKey?: string;
@@ -100,6 +118,11 @@ export async function reviewCode(input: ReviewInput): Promise<RequestReviewOutpu
   for (const f of review.findings) {
     if (f.proposedCode) delete (f as { proposedCode?: string }).proposedCode;
   }
+  // 결정적 후처리 — 통과 신호가 있으면 correctness BLOCKER 환각 차단.
+  // 학생 코드가 이미 동작 검증된 정답일 때 LLM 이 환각 BLOCKER 를 내면
+  // 학생 학습을 가로막는다. 외부 신호(hidden test 통과 / 컴파일 성공) 로
+  // severity 를 결정적으로 강등.
+  downgradeHallucinatedBlockers(review, input);
 
   recordGeneration(trace, {
     name: "code-reviewer.messages.create",
@@ -124,14 +147,59 @@ function formatReviewUserMessage(input: ReviewInput, mode: ReviewOutput["analysi
     ? `<lint_result>\n${JSON.stringify(input.lintResult, null, 2)}\n</lint_result>`
     : "<lint_result>clang-tidy 미실행 — LLM 단독 분석</lint_result>";
 
-  const assignmentBlock = input.assignment
-    ? `<assignment>\nid: ${input.assignment.id}\nkc_tags: ${JSON.stringify(input.assignment.kcTags ?? [])}\n</assignment>`
-    : "<assignment>미배정 (generic review)</assignment>";
+  const assignment = input.assignment;
+  const assignmentLines: string[] = [];
+  if (assignment) {
+    assignmentLines.push(`id: ${assignment.id}`);
+    assignmentLines.push(`kc_tags: ${JSON.stringify(assignment.kcTags ?? [])}`);
+    if (assignment.template) {
+      assignmentLines.push("---");
+      assignmentLines.push(assignment.template);
+    }
+  }
+  const assignmentBlock =
+    assignmentLines.length > 0
+      ? `<assignment>\n${assignmentLines.join("\n")}\n</assignment>`
+      : "<assignment>미배정 (generic review)</assignment>";
+
+  const visibleTestsBlock =
+    assignment?.visibleTests && assignment.visibleTests.length > 0
+      ? `<visible_tests>\n${JSON.stringify(assignment.visibleTests, null, 2)}\n</visible_tests>`
+      : "";
+
+  // 참고 정답은 판정 *근거* 로만 노출 — system prompt 가 학생 응답 인용을 금지.
+  // 길이가 너무 길어 cache 효율을 떨어뜨리지 않도록 첫 4KB 만 전달.
+  const refBlock = input.referenceSolution
+    ? `<reference_solution note="DO NOT quote in findings — judgement basis only">\n${input.referenceSolution.slice(0, 4000)}\n</reference_solution>`
+    : "";
+
+  // 통과 신호 — LLM 이 환각 BLOCKER 를 내지 않도록 명시적으로 통과 사실 알림.
+  const signalLines: string[] = [];
+  if (input.lastRunResult) {
+    signalLines.push(`last_run_status: ${input.lastRunResult.status}`);
+    if (input.lastRunResult.stderr) {
+      signalLines.push(
+        `last_run_stderr_excerpt: ${input.lastRunResult.stderr.slice(0, 500)}`,
+      );
+    }
+  }
+  if (typeof input.hiddenTestPassRatio === "number") {
+    signalLines.push(
+      `hidden_test_pass_ratio: ${input.hiddenTestPassRatio.toFixed(2)} (1.0 = all passed)`,
+    );
+  }
+  const runtimeSignalsBlock =
+    signalLines.length > 0
+      ? `<runtime_signals>\n${signalLines.join("\n")}\n</runtime_signals>`
+      : "";
 
   return [
     `<student_code>\n${input.code}\n</student_code>`,
     "",
     assignmentBlock,
+    visibleTestsBlock,
+    refBlock,
+    runtimeSignalsBlock,
     "",
     lintBlock,
     "",
@@ -173,6 +241,39 @@ function parseReviewResponse(text: string, mode: ReviewOutput["analysisMode"]): 
     analysisMode: mode,
     summary: text.trim().slice(0, 300) || "리뷰 생성 실패 — 재시도 필요.",
   };
+}
+
+/**
+ * 통과 신호 기반 BLOCKER 강등.
+ *
+ * - hidden test 100% 통과: correctness 카테고리의 BLOCKER · MAJOR 모두 minor 로
+ *   강등 (코드는 사실상 정답이므로 학생을 막을 이유 없음).
+ * - lastRunResult.status === "ok" : correctness BLOCKER → MAJOR 강등 (실행은
+ *   됐으니 logic bug 가능성은 있으나 BLOCKER 는 아님).
+ * - lastRunResult.status === "compile_error" : 강등 안 함 (LLM 이 컴파일러보다
+ *   원인을 잘 짚을 수 있음).
+ * - topIssues 도 비어버린 finding ID 는 정리.
+ */
+function downgradeHallucinatedBlockers(review: ReviewOutput, input: ReviewInput): void {
+  const allHiddenPassed =
+    typeof input.hiddenTestPassRatio === "number" && input.hiddenTestPassRatio >= 0.999;
+  const runOk = input.lastRunResult?.status === "ok";
+
+  if (!allHiddenPassed && !runOk) return;
+
+  for (const f of review.findings) {
+    if (f.category !== "correctness") continue;
+    if (allHiddenPassed) {
+      // BLOCKER · MAJOR → minor (학생에게 메시지는 보여주되 차단하지 않음)
+      if (f.severity === "blocker" || f.severity === "major") {
+        f.severity = "minor";
+        f.message = `[자동 강등 — hidden test 전부 통과] ${f.message}`;
+      }
+    } else if (runOk && f.severity === "blocker") {
+      f.severity = "major";
+      f.message = `[자동 강등 — 컴파일·실행 성공] ${f.message}`;
+    }
+  }
 }
 
 function mockReview(input: ReviewInput): ReviewOutput {

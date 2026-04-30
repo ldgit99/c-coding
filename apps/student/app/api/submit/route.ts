@@ -15,7 +15,7 @@ import {
 import { Judge0Backend, lintC, runHiddenTests } from "@cvibe/wasm-runtime";
 import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
-import { loadHiddenTests } from "@/lib/seed-private";
+import { loadHiddenTests, loadReferenceSolution } from "@/lib/seed-private";
 import { getRouteHandlerUser } from "@/lib/session";
 
 /**
@@ -86,13 +86,24 @@ export async function POST(request: Request) {
 
   // 2) 정적 분석 + LLM 리뷰
   const lintResult = await lintC(body.code);
+  const referenceSolution = body.assignment?.id
+    ? (await loadReferenceSolution(body.assignment.id)) ?? undefined
+    : undefined;
+  const hiddenTestPassRatio =
+    hiddenTestResults && hiddenTestResults.length > 0
+      ? hiddenTestResults.filter((r) => r.passed).length / hiddenTestResults.length
+      : undefined;
   const { review } = await reviewCode({
     code: body.code,
     assignment: {
       id: effectiveAssignment.id,
       kcTags: effectiveAssignment.kcTags,
       rubric: effectiveAssignment.rubric,
+      template: catalog?.template,
+      visibleTests: catalog?.visibleTests,
     },
+    referenceSolution,
+    hiddenTestPassRatio,
     studentLevel: "novice",
     lintResult,
   });
