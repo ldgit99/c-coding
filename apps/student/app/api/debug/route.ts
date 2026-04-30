@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { debugRun, type RunResultShape } from "@cvibe/agents";
+import { resolveUserFromRequest } from "@cvibe/db";
+import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
 /**
  * POST /api/debug — 이미 실행된 결과를 Runtime Debugger로 해석.
@@ -16,6 +18,8 @@ interface DebugRequestBody {
     failedIds?: number[];
     timedOutIds?: number[];
   };
+  /** 옵션 — 어떤 과제 컨텍스트인지 events.assignment_id 매핑용. */
+  assignmentCode?: string;
 }
 
 export async function POST(request: Request) {
@@ -35,6 +39,32 @@ export async function POST(request: Request) {
     runResult: body.runResult,
     hiddenTestSummary: body.hiddenTestSummary,
   });
+
+  // xAPI — Runtime Debugger 결과 영구 기록 (가설 + 컨텍스트).
+  const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
+  recordEvent(
+    buildStatement({
+      actor: { type: "student", id: sid },
+      verb: Verbs.runtimeDebugged,
+      object: { type: "assignment", id: body.assignmentCode ?? "ungoverned" },
+      result: {
+        errorType: result.debug.errorType,
+        studentFacingMessage: result.debug.studentFacingMessage.slice(0, 500),
+        hypothesesCount: result.debug.hypotheses.length,
+        hypotheses: result.debug.hypotheses.slice(0, 5).map((h) => ({
+          cause: h.cause.slice(0, 300),
+          evidence: h.evidence.slice(0, 200),
+          kc: h.kc,
+          investigationQuestion: h.investigationQuestion.slice(0, 200),
+        })),
+        runErrorType: body.runResult.errorType ?? null,
+        runExitCode: body.runResult.exitCode ?? null,
+        runDurationMs: body.runResult.durationMs ?? null,
+        usedModel: result.usedModel,
+        mocked: result.mocked,
+      },
+    }),
+  );
 
   return NextResponse.json(result);
 }

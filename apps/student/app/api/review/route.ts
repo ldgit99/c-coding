@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { reviewCode } from "@cvibe/agents";
+import { resolveUserFromRequest } from "@cvibe/db";
 import { lintC } from "@cvibe/wasm-runtime";
+import { buildStatement, recordEvent, Verbs } from "@cvibe/xapi";
 
 /**
  * POST /api/review — 학생 코드를 Code Reviewer로 분석.
@@ -38,6 +40,32 @@ export async function POST(request: Request) {
     studentLevel: body.studentLevel ?? "novice",
     lintResult,
   });
+
+  // xAPI — Code Reviewer 결과 영구 기록.
+  const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
+  recordEvent(
+    buildStatement({
+      actor: { type: "student", id: sid },
+      verb: Verbs.codeReviewed,
+      object: { type: "assignment", id: body.assignment?.id ?? "ungoverned" },
+      result: {
+        summary: result.review.summary.slice(0, 500),
+        analysisMode: result.review.analysisMode,
+        findingsCount: result.review.findings.length,
+        findings: result.review.findings.slice(0, 10).map((f) => ({
+          id: f.id,
+          severity: f.severity,
+          category: f.category,
+          kc: f.kc,
+          line: f.line,
+          message: f.message.slice(0, 400),
+        })),
+        topIssues: result.review.topIssues,
+        usedModel: result.usedModel,
+        mocked: result.mocked,
+      },
+    }),
+  );
 
   return NextResponse.json(result);
 }

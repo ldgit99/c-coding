@@ -363,6 +363,32 @@ export async function POST(request: Request) {
       .map((f) => `• [${f.severity}] L${f.line} ${f.message}`)
       .join("\n")}`;
     const reviewAssignmentId = body.assignmentCode ?? sessionState.assignmentId;
+
+    // xAPI — Code Reviewer 결과 영구 기록 (findings 요약).
+    // proposedCode 는 schema 후처리에서 이미 제거됨 — 여기서도 저장 안 함.
+    recordEvent(
+      buildStatement({
+        actor: { type: "student", id: sessionState.studentId },
+        verb: Verbs.codeReviewed,
+        object: { type: "assignment", id: reviewAssignmentId ?? "ungoverned" },
+        result: {
+          summary: review.summary.slice(0, 500),
+          analysisMode: review.analysisMode,
+          findingsCount: review.findings.length,
+          findings: review.findings.slice(0, 10).map((f) => ({
+            id: f.id,
+            severity: f.severity,
+            category: f.category,
+            kc: f.kc,
+            line: f.line,
+            message: f.message.slice(0, 400),
+          })),
+          topIssues: review.topIssues,
+          usedModel,
+          mocked,
+        },
+      }),
+    );
     recordTurn({
       studentId: sessionState.studentId,
       role: "ai",

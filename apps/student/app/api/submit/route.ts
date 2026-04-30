@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     hiddenTestResults && hiddenTestResults.length > 0
       ? hiddenTestResults.filter((r) => r.passed).length / hiddenTestResults.length
       : undefined;
-  const { review } = await reviewCode({
+  const { review, usedModel: reviewModel, mocked: reviewMocked } = await reviewCode({
     code: body.code,
     assignment: {
       id: effectiveAssignment.id,
@@ -124,6 +124,32 @@ export async function POST(request: Request) {
 
   // xAPI: submission 결과 + reflection 제출 이벤트
   const sid = (await getRouteHandlerUser(request, { preferredRole: "student" })).id;
+
+  // xAPI — Code Reviewer 결과 (제출 시점) 영구 기록.
+  recordEvent(
+    buildStatement({
+      actor: { type: "student", id: sid },
+      verb: Verbs.codeReviewed,
+      object: { type: "assignment", id: effectiveAssignment.id },
+      result: {
+        summary: review.summary.slice(0, 500),
+        analysisMode: review.analysisMode,
+        findingsCount: review.findings.length,
+        findings: review.findings.slice(0, 10).map((f) => ({
+          id: f.id,
+          severity: f.severity,
+          category: f.category,
+          kc: f.kc,
+          line: f.line,
+          message: f.message.slice(0, 400),
+        })),
+        topIssues: review.topIssues,
+        usedModel: reviewModel,
+        mocked: reviewMocked,
+        triggeredBy: "submit",
+      },
+    }),
+  );
   recordEvent(
     buildStatement({
       actor: { type: "student", id: sid },

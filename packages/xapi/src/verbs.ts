@@ -25,6 +25,10 @@ export const Verbs = {
   runExecuted: `${VERB_BASE}/run-executed`,
   /** 에디터 자동 저장 (drafts) — 5초 디바운스 단위 저장 발생 시. */
   draftSaved: `${VERB_BASE}/draft-saved`,
+  /** Code Reviewer 가 실행되어 findings 가 산출됨. result.findings 요약 저장. */
+  codeReviewed: `${VERB_BASE}/code-reviewed`,
+  /** Runtime Debugger 가 실행되어 가설 목록이 산출됨. */
+  runtimeDebugged: `${VERB_BASE}/runtime-debugged`,
   modeChanged: `${VERB_BASE}/mode-changed`,
   /**
    * 자발적 모드 하향 — coach→pair 또는 pair→solo 로 학생이 스스로 내렸을 때.
