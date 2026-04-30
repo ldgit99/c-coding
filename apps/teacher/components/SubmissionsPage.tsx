@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { SubmissionCodeModal } from "./SubmissionCodeModal";
+
 type CellStatus = "passed" | "failed" | "in_progress" | "none";
 
 interface Cell {
@@ -37,6 +39,12 @@ export function SubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [hideEmpty, setHideEmpty] = useState(false);
+  const [modal, setModal] = useState<{
+    studentId: string;
+    studentName: string;
+    assignmentCode: string;
+    assignmentTitle: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,9 +226,23 @@ export function SubmissionsPage() {
                           lastScore: null,
                           lastAt: null,
                         };
+                        const clickable = cell.attempts > 0;
                         return (
                           <td key={a.code} className="px-2 py-1 text-center">
-                            <StatusCell cell={cell} />
+                            <StatusCell
+                              cell={cell}
+                              onClick={
+                                clickable
+                                  ? () =>
+                                      setModal({
+                                        studentId: row.studentId,
+                                        studentName: row.displayName,
+                                        assignmentCode: a.code,
+                                        assignmentTitle: a.title,
+                                      })
+                                  : undefined
+                              }
+                            />
                           </td>
                         );
                       })}
@@ -256,48 +278,85 @@ export function SubmissionsPage() {
       </section>
 
       <Legend />
+
+      {modal && (
+        <SubmissionCodeModal
+          studentId={modal.studentId}
+          studentName={modal.studentName}
+          assignmentCode={modal.assignmentCode}
+          assignmentTitle={modal.assignmentTitle}
+          onClose={() => setModal(null)}
+        />
+      )}
     </main>
   );
 }
 
-function StatusCell({ cell }: { cell: Cell }) {
+function StatusCell({ cell, onClick }: { cell: Cell; onClick?: () => void }) {
   const { status, attempts, lastScore } = cell;
+  const Wrap = ({
+    children,
+    title,
+    className,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    className: string;
+  }) => {
+    if (onClick) {
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          title={`${title} · 클릭하여 코드 보기`}
+          className={`${className} cursor-pointer transition-transform hover:scale-105`}
+        >
+          {children}
+        </button>
+      );
+    }
+    return (
+      <div title={title} className={className}>
+        {children}
+      </div>
+    );
+  };
   if (status === "passed") {
     return (
-      <div
-        className="mx-auto flex h-7 w-11 items-center justify-center gap-0.5 rounded-md bg-success/15 text-[11px] font-semibold text-success"
+      <Wrap
         title={
           lastScore != null
             ? `통과 · 점수 ${(lastScore * 100).toFixed(0)} · 시도 ${attempts}회`
             : `통과 · 시도 ${attempts}회`
         }
+        className="mx-auto flex h-7 w-11 items-center justify-center gap-0.5 rounded-md bg-success/15 text-[11px] font-semibold text-success"
       >
         ✓ {attempts > 1 ? <span className="font-mono text-[9px]">{attempts}</span> : null}
-      </div>
+      </Wrap>
     );
   }
   if (status === "failed") {
     return (
-      <div
-        className="mx-auto flex h-7 w-11 items-center justify-center gap-0.5 rounded-md bg-error/10 text-[11px] font-semibold text-error"
+      <Wrap
         title={
           lastScore != null
             ? `미통과 · 점수 ${(lastScore * 100).toFixed(0)} · 시도 ${attempts}회`
             : `미통과 · 시도 ${attempts}회`
         }
+        className="mx-auto flex h-7 w-11 items-center justify-center gap-0.5 rounded-md bg-error/10 text-[11px] font-semibold text-error"
       >
         ✗ <span className="font-mono text-[9px]">{attempts}</span>
-      </div>
+      </Wrap>
     );
   }
   if (status === "in_progress") {
     return (
-      <div
-        className="mx-auto flex h-7 w-11 items-center justify-center rounded-md bg-warning/15 text-[11px] font-semibold text-warning"
+      <Wrap
         title={`시도 중 · ${attempts}회`}
+        className="mx-auto flex h-7 w-11 items-center justify-center rounded-md bg-warning/15 text-[11px] font-semibold text-warning"
       >
         ⏳
-      </div>
+      </Wrap>
     );
   }
   return (
