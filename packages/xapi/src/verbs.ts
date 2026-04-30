@@ -21,6 +21,10 @@ export const Verbs = {
   reflectionSubmitted: `${VERB_BASE}/reflection-submitted`,
   blockedBySafety: `${VERB_BASE}/blocked-by-safety`,
   teacherIntervened: `${VERB_BASE}/teacher-intervened`,
+  /** ▶실행 정상 종료 — 컴파일/런타임 에러가 아닌 모든 학생 코드 실행. */
+  runExecuted: `${VERB_BASE}/run-executed`,
+  /** 에디터 자동 저장 (drafts) — 5초 디바운스 단위 저장 발생 시. */
+  draftSaved: `${VERB_BASE}/draft-saved`,
   modeChanged: `${VERB_BASE}/mode-changed`,
   /**
    * 자발적 모드 하향 — coach→pair 또는 pair→solo 로 학생이 스스로 내렸을 때.

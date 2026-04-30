@@ -42,15 +42,26 @@ export async function POST(request: Request) {
   });
   const result = await backend.runC(input);
 
-  // xAPI — compile/runtime error 발생 시 로깅
+  // xAPI — 모든 실행 (정상·실패) 을 events 에 풀 본문 기록.
+  // "하나도 놓치지 않는다" 운영 원칙 — stdout·stderr·exit 도 분석 데이터.
   const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
+  const baseResult = {
+    executed: result.executed,
+    exitCode: result.exitCode,
+    durationMs: result.durationMs,
+    // 본문은 너무 길면 events 가 비대해지므로 4KB 컷.
+    stdout: (result.stdout ?? "").slice(0, 4000),
+    stderr: (result.stderr ?? "").slice(0, 4000),
+    stdin: (input.stdin ?? "").slice(0, 1000),
+    codeLength: input.code.length,
+  };
   if (result.errorType === "compile") {
     recordEvent(
       buildStatement({
         actor: { type: "student", id: sid },
         verb: Verbs.compileError,
         object: { type: "code", submissionId: "adhoc" },
-        result: { stderr: result.stderr.slice(0, 200) },
+        result: { ...baseResult, errorType: "compile" },
       }),
     );
   } else if (result.errorType === "runtime" || result.errorType === "timeout") {
@@ -59,7 +70,17 @@ export async function POST(request: Request) {
         actor: { type: "student", id: sid },
         verb: Verbs.runtimeError,
         object: { type: "code", submissionId: "adhoc" },
-        result: { exitCode: result.exitCode, errorType: result.errorType },
+        result: { ...baseResult, errorType: result.errorType },
+      }),
+    );
+  } else {
+    // 정상 실행도 기록 — 실행 횟수·stdout 패턴·실행 시간 분석에 필수.
+    recordEvent(
+      buildStatement({
+        actor: { type: "student", id: sid },
+        verb: Verbs.runExecuted,
+        object: { type: "code", submissionId: "adhoc" },
+        result: baseResult,
       }),
     );
   }

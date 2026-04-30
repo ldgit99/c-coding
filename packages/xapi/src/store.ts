@@ -16,10 +16,18 @@ const MAX_BUFFER = 500;
 
 export type EventListener = (stmt: XApiStatementT) => void;
 
+/**
+ * Persister — recordEvent 호출 시 fire-and-forget 으로 호출되어 영구 저장소
+ * (Supabase events 테이블 등) 로 이벤트를 보내는 싱크. 미설정 시 메모리 buffer
+ * 만 사용. 학생/교사 앱 부팅 시 한 번 등록한다.
+ */
+export type EventPersister = (stmt: XApiStatementT) => Promise<void> | void;
+
 interface StoreState {
   buffer: XApiStatementT[];
   byStudent: Map<string, XApiStatementT[]>;
   listeners: Set<EventListener>;
+  persister: EventPersister | null;
 }
 
 const globalKey = "__cvibe_xapi_store__" as const;
@@ -27,9 +35,22 @@ const globalKey = "__cvibe_xapi_store__" as const;
 function getStore(): StoreState {
   const g = globalThis as unknown as Record<string, StoreState>;
   if (!g[globalKey]) {
-    g[globalKey] = { buffer: [], byStudent: new Map(), listeners: new Set() };
+    g[globalKey] = {
+      buffer: [],
+      byStudent: new Map(),
+      listeners: new Set(),
+      persister: null,
+    };
   }
   return g[globalKey]!;
+}
+
+/**
+ * 영구 저장 싱크 등록. 한 번만 호출하면 이후 모든 recordEvent 가 fire-and-forget
+ * 으로 persister 를 호출. persister 의 예외는 무시 (메모리 buffer 보존).
+ */
+export function setEventPersister(fn: EventPersister | null): void {
+  getStore().persister = fn;
 }
 
 export function recordEvent(stmt: XApiStatementT): void {
@@ -51,6 +72,20 @@ export function recordEvent(stmt: XApiStatementT): void {
       listener(stmt);
     } catch {
       // ignore listener errors
+    }
+  }
+
+  // 영구 저장소 fire-and-forget. 실패해도 메모리는 유지 → 손실 ≠ 무효.
+  if (s.persister) {
+    try {
+      const r = s.persister(stmt);
+      if (r && typeof (r as Promise<void>).then === "function") {
+        (r as Promise<void>).catch(() => {
+          // network/db 실패는 조용히 무시 — Vercel 로그에서 추적
+        });
+      }
+    } catch {
+      // sync persister 예외도 무시
     }
   }
 }

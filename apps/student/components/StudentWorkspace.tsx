@@ -153,6 +153,51 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
     setMaxHintLevel(0);
   }, [assignment?.code]);
 
+  // 에디터 코드 자동 저장 — 학생이 새로고침해도 작업 손실 없도록.
+  // (1) 과제 선택 시 draft 가 있으면 starterCode 대신 복구.
+  // (2) 코드 변경 시 5초 디바운스로 PUT /api/drafts.
+  const draftRestoredFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!assignment?.code) return;
+    if (draftRestoredFor.current === assignment.code) return;
+    draftRestoredFor.current = assignment.code;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/drafts?assignmentCode=${encodeURIComponent(assignment.code)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          code: string | null;
+          updatedAt: string | null;
+          source: string;
+        };
+        // draft 가 starterCode 와 동일하면 복구할 의미 없음.
+        if (data.code && data.code !== assignment.starterCode) {
+          setEditorCode(data.code);
+        }
+      } catch {
+        // 네트워크 실패는 조용히 무시 — starterCode 그대로 사용.
+      }
+    })();
+  }, [assignment?.code, assignment?.starterCode]);
+
+  useEffect(() => {
+    if (!assignment?.code) return;
+    if (!editorCode) return;
+    // starterCode 와 동일하면 저장하지 않음 (불필요한 노이즈).
+    if (editorCode === assignment.starterCode) return;
+    const timer = setTimeout(() => {
+      void fetch("/api/drafts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignmentCode: assignment.code, code: editorCode }),
+      });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [editorCode, assignment?.code, assignment?.starterCode]);
+
   useEffect(() => {
     if (!assignmentStartedAt) return;
     const t = setInterval(() => {

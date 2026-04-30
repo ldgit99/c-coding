@@ -92,6 +92,126 @@ export async function insertSubmission(
   }
 }
 
+// =============================================================================
+// xAPI events 영구 저장
+// =============================================================================
+
+export interface InsertEventInput {
+  /** xAPI statement (actor·verb·object·result·context·timestamp). */
+  statement: {
+    actor: { account: { name: string } } & Record<string, unknown>;
+    verb: { id: string } & Record<string, unknown>;
+    object: { id: string } & Record<string, unknown>;
+    result?: Record<string, unknown>;
+    context?: Record<string, unknown>;
+    timestamp: string;
+  };
+  /** profiles.id (uuid). 미제공 시 actor.account.name 으로 lookup 시도하지 않음 — null 저장. */
+  studentId?: string;
+  /** assignments.id (uuid). assignment code 가 statement 에 들어 있으면 라우트가 변환해서 넘김. */
+  assignmentId?: string;
+}
+
+export async function insertEvent(
+  client: SupabaseClient | null,
+  input: InsertEventInput,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!client) return { ok: false, error: "no-client" };
+  try {
+    const { error } = await client.from("events").insert({
+      actor: input.statement.actor,
+      verb: input.statement.verb,
+      object: input.statement.object,
+      result: input.statement.result ?? null,
+      context: input.statement.context ?? null,
+      student_id: input.studentId && isUuid(input.studentId) ? input.studentId : null,
+      assignment_id: input.assignmentId && isUuid(input.assignmentId) ? input.assignmentId : null,
+      timestamp: input.statement.timestamp,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+// =============================================================================
+// drafts — 에디터 자동 저장 (제출 전 코드 보존)
+// =============================================================================
+
+export interface UpsertDraftInput {
+  studentId: string;
+  /** assignments.code (예: "A01_array_2d_sum"). 라우트가 id 로 변환. */
+  assignmentCode: string;
+  code: string;
+}
+
+export async function upsertDraft(
+  client: SupabaseClient | null,
+  input: UpsertDraftInput,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!client) return { ok: false, error: "no-client" };
+  if (!isUuid(input.studentId)) return { ok: false, error: "non-uuid-studentId" };
+  try {
+    const { data: asg, error: asgErr } = await client
+      .from("assignments")
+      .select("id")
+      .eq("code", input.assignmentCode)
+      .maybeSingle();
+    if (asgErr) return { ok: false, error: asgErr.message };
+    if (!asg) return { ok: false, error: `assignment not found: ${input.assignmentCode}` };
+
+    const { error } = await client.from("drafts").upsert(
+      {
+        student_id: input.studentId,
+        assignment_id: asg.id as string,
+        code: input.code,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "student_id,assignment_id" },
+    );
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+export interface FetchDraftInput {
+  studentId: string;
+  assignmentCode: string;
+}
+
+export async function fetchDraft(
+  client: SupabaseClient | null,
+  input: FetchDraftInput,
+): Promise<{ code: string | null; updatedAt: string | null; error?: string }> {
+  if (!client) return { code: null, updatedAt: null, error: "no-client" };
+  if (!isUuid(input.studentId)) return { code: null, updatedAt: null, error: "non-uuid-studentId" };
+  try {
+    const { data: asg } = await client
+      .from("assignments")
+      .select("id")
+      .eq("code", input.assignmentCode)
+      .maybeSingle();
+    if (!asg) return { code: null, updatedAt: null };
+
+    const { data, error } = await client
+      .from("drafts")
+      .select("code, updated_at")
+      .eq("student_id", input.studentId)
+      .eq("assignment_id", asg.id as string)
+      .maybeSingle();
+    if (error) return { code: null, updatedAt: null, error: error.message };
+    return {
+      code: (data?.code as string | undefined) ?? null,
+      updatedAt: (data?.updated_at as string | undefined) ?? null,
+    };
+  } catch (err) {
+    return { code: null, updatedAt: null, error: String(err) };
+  }
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
