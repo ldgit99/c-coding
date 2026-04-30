@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { createServiceRoleClientIfAvailable } from "@cvibe/db";
+import { hashLearnerId, Verbs } from "@cvibe/xapi";
 
 /**
  * GET /api/submission?studentId=X&assignmentCode=Y
  *
- * 특정 학생 × 과제의 전체 제출 이력 (코드 본문 포함, 시간 역순).
+ * 특정 학생 × 과제의 전체 제출 이력 (코드 본문 포함, 시간 역순) +
+ * 같은 학생 × 과제의 AI 분석 events (codeReviewed · runtimeDebugged).
  *
  * 교사 전용 — service_role 로 RLS 우회. 학생 앱에서는 호출 불가
  * (교사 미들웨어로 보호됨).
@@ -19,6 +21,13 @@ interface SubmissionDetail {
   rubricScores: Record<string, unknown> | null;
   submittedAt: string | null;
   evaluatedAt: string | null;
+}
+
+interface AiAnalysis {
+  id: number;
+  kind: "code-review" | "runtime-debug";
+  timestamp: string;
+  result: Record<string, unknown> | null;
 }
 
 export async function GET(request: Request) {
@@ -38,6 +47,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       source: "demo",
       submissions: [] as SubmissionDetail[],
+      aiAnalyses: [] as AiAnalysis[],
       note: "Supabase 미설정 — 데모 모드에서는 코드 본문이 저장되지 않는다.",
     });
   }
@@ -51,13 +61,13 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (asgErr) {
       return NextResponse.json(
-        { source: "supabase", submissions: [], error: asgErr.message },
+        { source: "supabase", submissions: [], aiAnalyses: [], error: asgErr.message },
         { status: 200 },
       );
     }
     if (!asg) {
       return NextResponse.json(
-        { source: "supabase", submissions: [], error: `assignment not found: ${assignmentCode}` },
+        { source: "supabase", submissions: [], aiAnalyses: [], error: `assignment not found: ${assignmentCode}` },
         { status: 200 },
       );
     }
@@ -71,7 +81,7 @@ export async function GET(request: Request) {
 
     if (rowsErr) {
       return NextResponse.json(
-        { source: "supabase", submissions: [], error: rowsErr.message },
+        { source: "supabase", submissions: [], aiAnalyses: [], error: rowsErr.message },
         { status: 200 },
       );
     }
@@ -86,13 +96,44 @@ export async function GET(request: Request) {
       evaluatedAt: (r.evaluated_at as string | null) ?? null,
     }));
 
+    // AI 분석 events 조회 — 학생 actor (해시) + 과제 object id 매칭.
+    // event-persistence.ts 가 student_id 를 null 로 저장하므로 actor.account.name
+    // (hashLearnerId 결과) 기준으로 필터.
+    const learnerName = hashLearnerId(studentId);
+    const objectMatchSuffix = `/assignment/${assignmentCode}`;
+    const { data: eventRows } = await supabase
+      .from("events")
+      .select("id, verb, object, result, timestamp")
+      .filter("actor->account->>name", "eq", learnerName)
+      .in("verb->>id", [Verbs.codeReviewed, Verbs.runtimeDebugged])
+      .order("timestamp", { ascending: false })
+      .limit(40);
+
+    const aiAnalyses: AiAnalysis[] = (eventRows ?? [])
+      .filter((r) => {
+        const obj = r.object as { id?: string } | null;
+        return typeof obj?.id === "string" && obj.id.endsWith(objectMatchSuffix);
+      })
+      .map((r) => {
+        const verbId = ((r.verb as { id?: string } | null)?.id) ?? "";
+        const kind: AiAnalysis["kind"] =
+          verbId === Verbs.runtimeDebugged ? "runtime-debug" : "code-review";
+        return {
+          id: Number(r.id),
+          kind,
+          timestamp: (r.timestamp as string) ?? "",
+          result: (r.result as Record<string, unknown> | null) ?? null,
+        };
+      });
+
     return NextResponse.json({
       source: "supabase",
       submissions,
+      aiAnalyses,
     });
   } catch (err) {
     return NextResponse.json(
-      { source: "supabase", submissions: [], error: String(err) },
+      { source: "supabase", submissions: [], aiAnalyses: [], error: String(err) },
       { status: 200 },
     );
   }
