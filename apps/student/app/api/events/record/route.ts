@@ -53,6 +53,10 @@ export async function POST(request: Request) {
         ? { type: "kc", slug: body.object.slug ?? "unknown" }
         : { type: "assignment", id: "ungoverned" };
 
+  const assignmentCode =
+    body.object?.type === "assignment" && typeof body.object.id === "string"
+      ? body.object.id
+      : undefined;
   recordEvent(
     buildStatement({
       actor: { type: "student", id: user.id },
@@ -61,6 +65,7 @@ export async function POST(request: Request) {
       result: body.result,
       context: body.context,
     }),
+    { studentId: user.id, assignmentCode },
   );
 
   return NextResponse.json({ ok: true });

@@ -124,6 +124,7 @@ export async function POST(request: Request) {
 
   // xAPI: submission 결과 + reflection 제출 이벤트
   const sid = (await getRouteHandlerUser(request, { preferredRole: "student" })).id;
+  const persistCtx = { studentId: sid, assignmentCode: effectiveAssignment.id };
 
   // xAPI — Code Reviewer 결과 (제출 시점) 영구 기록.
   recordEvent(
@@ -149,6 +150,7 @@ export async function POST(request: Request) {
         triggeredBy: "submit",
       },
     }),
+    persistCtx,
   );
   recordEvent(
     buildStatement({
@@ -161,6 +163,7 @@ export async function POST(request: Request) {
         hiddenTestsSource,
       },
     }),
+    persistCtx,
   );
   recordEvent(
     buildStatement({
@@ -172,6 +175,7 @@ export async function POST(request: Request) {
           .length,
       },
     }),
+    persistCtx,
   );
 
   // Supabase env 있으면 submission insert (service_role, RLS 우회).

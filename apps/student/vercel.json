@@ -11,6 +11,15 @@
     },
     "app/api/events/stream/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/cron/student-modeler/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/student-modeler",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

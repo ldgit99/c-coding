@@ -45,6 +45,12 @@ export async function POST(request: Request) {
   // xAPI — 모든 실행 (정상·실패) 을 events 에 풀 본문 기록.
   // "하나도 놓치지 않는다" 운영 원칙 — stdout·stderr·exit 도 분석 데이터.
   const sid = resolveUserFromRequest(request, { preferredRole: "student" }).id;
+  // assignmentCode 는 RunCInput 에 없으나, body 에 같이 들어올 수 있어 unknown 캐스트.
+  const assignmentCode =
+    typeof (input as unknown as { assignmentCode?: string }).assignmentCode === "string"
+      ? (input as unknown as { assignmentCode: string }).assignmentCode
+      : undefined;
+  const runCtx = { studentId: sid, assignmentCode };
   const baseResult = {
     executed: result.executed,
     exitCode: result.exitCode,
@@ -63,6 +69,7 @@ export async function POST(request: Request) {
         object: { type: "code", submissionId: "adhoc" },
         result: { ...baseResult, errorType: "compile" },
       }),
+      runCtx,
     );
   } else if (result.errorType === "runtime" || result.errorType === "timeout") {
     recordEvent(
@@ -72,6 +79,7 @@ export async function POST(request: Request) {
         object: { type: "code", submissionId: "adhoc" },
         result: { ...baseResult, errorType: result.errorType },
       }),
+      runCtx,
     );
   } else {
     // 정상 실행도 기록 — 실행 횟수·stdout 패턴·실행 시간 분석에 필수.
@@ -82,6 +90,7 @@ export async function POST(request: Request) {
         object: { type: "code", submissionId: "adhoc" },
         result: baseResult,
       }),
+      runCtx,
     );
   }
 

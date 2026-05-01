@@ -64,6 +64,7 @@ export async function POST(request: Request) {
         mocked: result.mocked,
       },
     }),
+    { studentId: sid, assignmentCode: body.assignmentCode },
   );
 
   return NextResponse.json(result);

@@ -17,11 +17,25 @@ const MAX_BUFFER = 500;
 export type EventListener = (stmt: XApiStatementT) => void;
 
 /**
+ * Persister 가 받는 routing 인자 — actor.account.name 만으로는 profiles.id 와
+ * 매칭이 안 되므로(hashLearnerId 일방향) 라우트가 알고 있는 studentId·assignmentCode
+ * 를 그대로 통과시켜 events 테이블의 student_id·assignment_id 컬럼을 결정적으로
+ * 채운다.
+ */
+export interface PersistContext {
+  studentId?: string;
+  assignmentCode?: string;
+}
+
+/**
  * Persister — recordEvent 호출 시 fire-and-forget 으로 호출되어 영구 저장소
  * (Supabase events 테이블 등) 로 이벤트를 보내는 싱크. 미설정 시 메모리 buffer
  * 만 사용. 학생/교사 앱 부팅 시 한 번 등록한다.
  */
-export type EventPersister = (stmt: XApiStatementT) => Promise<void> | void;
+export type EventPersister = (
+  stmt: XApiStatementT,
+  ctx?: PersistContext,
+) => Promise<void> | void;
 
 interface StoreState {
   buffer: XApiStatementT[];
@@ -53,7 +67,7 @@ export function setEventPersister(fn: EventPersister | null): void {
   getStore().persister = fn;
 }
 
-export function recordEvent(stmt: XApiStatementT): void {
+export function recordEvent(stmt: XApiStatementT, ctx?: PersistContext): void {
   const s = getStore();
   s.buffer.push(stmt);
   if (s.buffer.length > MAX_BUFFER) s.buffer.shift();
@@ -78,20 +92,97 @@ export function recordEvent(stmt: XApiStatementT): void {
   // 영구 저장소 fire-and-forget. 실패해도 메모리는 유지 → 손실 ≠ 무효.
   if (s.persister) {
     try {
-      const r = s.persister(stmt);
+      const r = s.persister(stmt, ctx);
       if (r && typeof (r as Promise<void>).then === "function") {
         (r as Promise<void>).catch(() => {
-          // network/db 실패는 조용히 무시 — Vercel 로그에서 추적
+          // network/db 실패 — observability 카운터에서 추적
+          incrementWriteFailure("events");
         });
       }
     } catch {
-      // sync persister 예외도 무시
+      // sync persister 예외도 카운터에 기록
+      incrementWriteFailure("events");
     }
   }
 }
 
-export function recordEvents(stmts: XApiStatementT[]): void {
-  for (const s of stmts) recordEvent(s);
+export function recordEvents(stmts: XApiStatementT[], ctx?: PersistContext): void {
+  for (const s of stmts) recordEvent(s, ctx);
+}
+
+// =============================================================================
+// DB 쓰기 관측 카운터 — silent-fail 재발 방지를 위한 최소한의 텔레메트리.
+// =============================================================================
+
+interface WriteCounter {
+  attempts: number;
+  failures: number;
+  lastFailureAt: string | null;
+  lastError: string | null;
+}
+
+interface CountersState {
+  byTable: Map<string, WriteCounter>;
+  startedAt: string;
+}
+
+function getCounters(): CountersState {
+  const g = globalThis as unknown as Record<string, CountersState>;
+  const key = "__cvibe_write_counters__";
+  if (!g[key]) {
+    g[key] = { byTable: new Map(), startedAt: new Date().toISOString() };
+  }
+  return g[key]!;
+}
+
+function ensureCounter(table: string): WriteCounter {
+  const c = getCounters();
+  let row = c.byTable.get(table);
+  if (!row) {
+    row = { attempts: 0, failures: 0, lastFailureAt: null, lastError: null };
+    c.byTable.set(table, row);
+  }
+  return row;
+}
+
+export function incrementWriteAttempt(table: string): void {
+  ensureCounter(table).attempts += 1;
+}
+
+export function incrementWriteFailure(table: string, error?: unknown): void {
+  const row = ensureCounter(table);
+  row.failures += 1;
+  row.lastFailureAt = new Date().toISOString();
+  if (error !== undefined) {
+    row.lastError = error instanceof Error ? error.message : String(error);
+  }
+}
+
+export interface WriteCounterSnapshot {
+  startedAt: string;
+  tables: Array<{
+    table: string;
+    attempts: number;
+    failures: number;
+    failureRate: number;
+    lastFailureAt: string | null;
+    lastError: string | null;
+  }>;
+}
+
+export function snapshotWriteCounters(): WriteCounterSnapshot {
+  const c = getCounters();
+  return {
+    startedAt: c.startedAt,
+    tables: Array.from(c.byTable.entries()).map(([table, row]) => ({
+      table,
+      attempts: row.attempts,
+      failures: row.failures,
+      failureRate: row.attempts > 0 ? row.failures / row.attempts : 0,
+      lastFailureAt: row.lastFailureAt,
+      lastError: row.lastError,
+    })),
+  };
 }
 
 export function listRecentEvents(limit = 50): XApiStatementT[] {

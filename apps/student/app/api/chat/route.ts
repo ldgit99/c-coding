@@ -14,11 +14,18 @@ import {
 import {
   createServiceRoleClientIfAvailable,
   getAssignmentByCode,
-  insertConversationTurn,
+  trackConversationTurnInsert,
 } from "@cvibe/db";
 import { checkRateLimit } from "@cvibe/shared-ui";
 import { lintC } from "@cvibe/wasm-runtime";
-import { buildStatement, recordEvent, recordTurn, Verbs } from "@cvibe/xapi";
+import {
+  buildStatement,
+  incrementWriteAttempt,
+  incrementWriteFailure,
+  recordEvent,
+  recordTurn,
+  Verbs,
+} from "@cvibe/xapi";
 
 import { computeServerSideSignals } from "@/lib/learning-signals-server";
 import { loadReferenceSolution } from "@/lib/seed-private";
@@ -157,13 +164,17 @@ export async function POST(request: Request) {
     assignmentId: conversationAssignmentId,
     meta: { mode: sessionState.mode },
   });
-  void insertConversationTurn(supabaseForWrites, {
-    studentId: sessionState.studentId,
-    assignmentId: conversationAssignmentId,
-    role: "student",
-    text: body.utterance,
-    meta: { mode: sessionState.mode },
-  });
+  void trackConversationTurnInsert(
+    supabaseForWrites,
+    {
+      studentId: sessionState.studentId,
+      assignmentId: conversationAssignmentId,
+      role: "student",
+      text: body.utterance,
+      meta: { mode: sessionState.mode },
+    },
+    { onAttempt: incrementWriteAttempt, onFailure: incrementWriteFailure },
+  );
 
   // inbound Safety Guard — 학생 발화에 PII·프롬프트 인젝션 사전 처리
   const inbound = checkSafety({
@@ -252,6 +263,10 @@ export async function POST(request: Request) {
           }
         : { ...hint, message: outbound.sanitizedPayload };
 
+    const chatPersistCtx = {
+      studentId: sessionState.studentId,
+      assignmentCode: conversationAssignmentId,
+    };
     // xAPI: requested-hint + received-hint
     recordEvent(
       buildStatement({
@@ -268,6 +283,7 @@ export async function POST(request: Request) {
         },
         context: { assignmentId: sessionState.assignmentId, sessionId: sessionState.studentId },
       }),
+      chatPersistCtx,
     );
     // 대화 로그 — AI 응답 원문 기록 (safety block 여부도 함께)
     const aiTurnMeta = {
@@ -284,13 +300,17 @@ export async function POST(request: Request) {
       assignmentId: conversationAssignmentId,
       meta: aiTurnMeta,
     });
-    void insertConversationTurn(supabaseForWrites, {
-      studentId: sessionState.studentId,
-      assignmentId: conversationAssignmentId,
-      role: "ai",
-      text: finalHint.message,
-      meta: aiTurnMeta,
-    });
+    void trackConversationTurnInsert(
+      supabaseForWrites,
+      {
+        studentId: sessionState.studentId,
+        assignmentId: conversationAssignmentId,
+        role: "ai",
+        text: finalHint.message,
+        meta: aiTurnMeta,
+      },
+      { onAttempt: incrementWriteAttempt, onFailure: incrementWriteFailure },
+    );
 
     if (outbound.verdict === "block") {
       recordEvent(
@@ -300,6 +320,7 @@ export async function POST(request: Request) {
           object: { type: "assignment", id: sessionState.assignmentId ?? "ungoverned" },
           result: { reason: outbound.reasons.join(";") },
         }),
+        chatPersistCtx,
       );
     } else {
       recordEvent(
@@ -312,6 +333,7 @@ export async function POST(request: Request) {
               : { type: "assignment", id: sessionState.assignmentId ?? "ungoverned" },
           result: { hintLevel: finalHint.hintLevel, hintType: finalHint.hintType },
         }),
+        chatPersistCtx,
       );
     }
 
@@ -388,6 +410,7 @@ export async function POST(request: Request) {
           mocked,
         },
       }),
+      { studentId: sessionState.studentId, assignmentCode: reviewAssignmentId },
     );
     recordTurn({
       studentId: sessionState.studentId,
@@ -396,13 +419,17 @@ export async function POST(request: Request) {
       assignmentId: reviewAssignmentId,
       meta: { mode: sessionState.mode, usedModel },
     });
-    void insertConversationTurn(supabaseForWrites, {
-      studentId: sessionState.studentId,
-      assignmentId: reviewAssignmentId,
-      role: "ai",
-      text: reviewText,
-      meta: { mode: sessionState.mode, usedModel, kind: "code-review" },
-    });
+    void trackConversationTurnInsert(
+      supabaseForWrites,
+      {
+        studentId: sessionState.studentId,
+        assignmentId: reviewAssignmentId,
+        role: "ai",
+        text: reviewText,
+        meta: { mode: sessionState.mode, usedModel, kind: "code-review" },
+      },
+      { onAttempt: incrementWriteAttempt, onFailure: incrementWriteFailure },
+    );
     return NextResponse.json({
       intent: route.intent satisfies Intent,
       route: route.route,

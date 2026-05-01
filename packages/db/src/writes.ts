@@ -37,6 +37,25 @@ export async function insertConversationTurn(
   }
 }
 
+/**
+ * 카운터를 함께 갱신하는 wrapper. fire-and-forget 호출자가 사용.
+ * 호출자는 await 하지 않고 .catch 도 안 걸어도 됨 — 에러는 카운터에 기록된다.
+ */
+export function trackConversationTurnInsert(
+  client: SupabaseClient | null,
+  input: InsertConversationTurnInput,
+  counters?: {
+    onAttempt?: (table: string) => void;
+    onFailure?: (table: string, error?: unknown) => void;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  counters?.onAttempt?.("conversations");
+  return insertConversationTurn(client, input).then((result) => {
+    if (!result.ok) counters?.onFailure?.("conversations", result.error);
+    return result;
+  });
+}
+
 export interface InsertSubmissionInput {
   studentId: string;
   /** 카탈로그 code (예: "A01_hello_variables") → assignments 테이블 id로 변환 */

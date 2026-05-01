@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     },
   });
 
+  const seCtx = { studentId: body.studentId };
   recordEvent(
     buildStatement({
       actor: { type: "student", id: body.studentId },
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
         axes: evaluation.axes,
       },
     }),
+    seCtx,
   );
 
   // 수락 이벤트 — Pedagogy Coach의 Accept Gate 요건 충족
@@ -65,6 +67,7 @@ export async function POST(request: Request) {
       object: { type: "code", submissionId: body.suggestionId ?? "adhoc" },
       result: { hadRationale: true, rationaleQuality: evaluation.quality },
     }),
+    seCtx,
   );
 
   return NextResponse.json({

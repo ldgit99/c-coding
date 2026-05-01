@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   };
   getStore().items.push(item);
 
-  // xAPI 이벤트 기록
+  // xAPI 이벤트 기록 — 대상 학생 ID 를 events.student_id 에도 저장
   recordEvent(
     buildStatement({
       actor: { type: "teacher", id: body.teacherId },
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       object: { type: "assignment", id: "live" },
       result: { interventionType: body.type, targetStudent: body.studentId },
     }),
+    { studentId: body.studentId },
   );
 
   return NextResponse.json({ intervention: item }, {

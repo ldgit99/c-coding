@@ -81,6 +81,7 @@ export async function PUT(request: Request) {
       object: { type: "assignment", id: body.assignmentCode },
       result: { codeLength: body.code.length },
     }),
+    { studentId: user.id, assignmentCode: body.assignmentCode },
   );
 
   return NextResponse.json({ ok: result.ok, error: result.error, source: "supabase" });

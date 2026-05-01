@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { ASSIGNMENTS, createServiceRoleClientIfAvailable } from "@cvibe/db";
 
+import { requireTeacher } from "@/lib/guard";
+
 /**
  * GET /api/debug/db-status — 교사 진단용. DB 의 assignments.code 가 정적
  * 카탈로그(ASSIGNMENTS)와 일치하는지·submissions/conversations row 수를 확인.
@@ -9,7 +11,9 @@ import { ASSIGNMENTS, createServiceRoleClientIfAvailable } from "@cvibe/db";
  * 학생 제출이 그리드에 안 잡히는 silent-fail 디버깅 전용. 운영 안정화 후
  * 제거할 수 있다.
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requireTeacher(request);
+  if (!auth.ok) return auth.response;
   const supabase = createServiceRoleClientIfAvailable();
   if (!supabase) {
     return NextResponse.json({ ok: false, error: "no-service-role-client" });

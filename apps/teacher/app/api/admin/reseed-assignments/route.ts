@@ -6,6 +6,8 @@ import {
   createServiceRoleClientIfAvailable,
 } from "@cvibe/db";
 
+import { requireTeacher } from "@/lib/guard";
+
 /**
  * POST /api/admin/reseed-assignments — 정적 카탈로그(ASSIGNMENTS)를 DB
  * assignments 테이블로 강제 upsert.
@@ -21,7 +23,9 @@ import {
 
 const SEED_TEACHER_ID = "00000000-0000-4000-8000-000000000001";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const auth = await requireTeacher(request);
+  if (!auth.ok) return auth.response;
   const supabase = createServiceRoleClientIfAvailable();
   if (!supabase) {
     return NextResponse.json(

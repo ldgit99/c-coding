@@ -58,10 +58,17 @@ export function Sidebar({ user }: { user: AppUser }) {
         ]);
         if (cancelled) return;
         const q = (await qRes.json()) as { interventionQueue?: unknown[] };
-        const s = (await sRes.json()) as { students?: unknown[] };
+        const s = (await sRes.json()) as {
+          students?: Array<{ status?: string }>;
+        };
+        // 사이드바 배지는 학생 명단 페이지 기본 뷰(활성 학생) 와 일치하도록
+        // status === "active" 만 카운트. inactive(휴강)·removed(제적) 제외.
+        const activeCount = Array.isArray(s.students)
+          ? s.students.filter((r) => (r.status ?? "active") === "active").length
+          : 0;
         setBadges({
           queue: Array.isArray(q.interventionQueue) ? q.interventionQueue.length : 0,
-          students: Array.isArray(s.students) ? s.students.length : 0,
+          students: activeCount,
         });
       } catch {
         // ignore
