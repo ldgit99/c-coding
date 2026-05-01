@@ -19,6 +19,7 @@ interface SubmissionDetail {
   finalScore: number | null;
   status: string;
   rubricScores: Record<string, unknown> | null;
+  evidence: Record<string, unknown> | null;
   submittedAt: string | null;
   evaluatedAt: string | null;
 }
@@ -83,7 +84,9 @@ export async function GET(request: Request) {
 
     const { data: rows, error: rowsErr } = await supabase
       .from("submissions")
-      .select("id, code, final_score, status, rubric_scores, submitted_at, evaluated_at")
+      .select(
+        "id, code, final_score, status, rubric_scores, evidence, submitted_at, evaluated_at",
+      )
       .eq("student_id", studentId)
       .eq("assignment_id", asg.id as string)
       .order("submitted_at", { ascending: false });
@@ -101,6 +104,7 @@ export async function GET(request: Request) {
       finalScore: r.final_score != null ? Number(r.final_score) : null,
       status: (r.status as string) ?? "unknown",
       rubricScores: (r.rubric_scores as Record<string, unknown> | null) ?? null,
+      evidence: (r.evidence as Record<string, unknown> | null) ?? null,
       submittedAt: (r.submitted_at as string | null) ?? null,
       evaluatedAt: (r.evaluated_at as string | null) ?? null,
     }));
@@ -135,14 +139,13 @@ export async function GET(request: Request) {
         };
       });
 
-    // 대화 턴 — conversations.assignment_id 는 text(코드 그대로) 라 join 불필요.
-    // 시간 오름차순으로 모달에서 자연 흐름대로 보이게 한다. 너무 길면 윗부분
-    // 잘라 최근 200턴만.
+    // 대화 턴 — assignment_id 가 uuid 로 통일된 후 asg.id 로 매칭.
+    // 시간 오름차순으로 모달에서 자연 흐름대로. 최근 200턴.
     const { data: convRows } = await supabase
       .from("conversations")
       .select("id, role, text, meta, created_at")
       .eq("student_id", studentId)
-      .eq("assignment_id", assignmentCode)
+      .eq("assignment_id", asg.id as string)
       .order("created_at", { ascending: true })
       .limit(200);
 

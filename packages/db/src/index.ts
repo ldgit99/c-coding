@@ -4,6 +4,7 @@ export * from "./auth";
 export * from "./queries";
 export * from "./writes";
 export * from "./variant-assignment";
+export * from "./analytics-fetch";
 export * from "./seeds/assignments";
 export * from "./seeds/demo-cohort";
 export * from "./seeds/demo-users";

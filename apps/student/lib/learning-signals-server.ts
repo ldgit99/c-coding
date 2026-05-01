@@ -172,11 +172,18 @@ async function fetchPriorTurns(input: ComputeInput) {
   // Supabase 경로 우선 — 해당 assignment 의 최근 대화 16턴 (8 학생 + 8 AI).
   if (input.supabase && input.assignmentCode) {
     try {
+      // assignment_id 컬럼을 uuid 로 통일 — code 를 id 로 변환해 매칭.
+      const { data: asg } = await input.supabase
+        .from("assignments")
+        .select("id")
+        .eq("code", input.assignmentCode)
+        .maybeSingle();
+      const assignmentUuid = (asg?.id as string | undefined) ?? input.assignmentCode;
       const { data } = await input.supabase
         .from("conversations")
         .select("role, text, created_at")
         .eq("student_id", input.studentId)
-        .eq("assignment_id", input.assignmentCode)
+        .eq("assignment_id", assignmentUuid)
         .order("created_at", { ascending: false })
         .limit(16);
       if (data && data.length > 0) {

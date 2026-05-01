@@ -9,6 +9,7 @@ import {
   ASSIGNMENTS,
   DEMO_COHORT_ID,
   createServiceRoleClientIfAvailable,
+  fetchAnalyticsFromDb,
   fetchClassroomData,
 } from "@cvibe/db";
 import {
@@ -30,11 +31,6 @@ import {
  * At-risk 는 🔴/🟡 학생을 urgency 순으로 정렬한 리스트.
  */
 
-const STUDENT_URL =
-  process.env.STUDENT_APP_INTERNAL_URL ??
-  process.env.NEXT_PUBLIC_STUDENT_APP_URL ??
-  "http://localhost:3000";
-
 interface DumpTurn {
   studentId: string;
   assignmentId?: string;
@@ -44,16 +40,12 @@ interface DumpTurn {
 }
 
 interface DumpEvent {
-  actor?: { id?: string };
+  actor?: { id?: string; account?: { name?: string } };
   verb?: string;
   object?: Record<string, unknown>;
   result?: Record<string, unknown>;
+  studentId?: string;
   timestamp?: string;
-}
-
-interface DumpResponse {
-  turns?: DumpTurn[];
-  events?: DumpEvent[];
 }
 
 export type HealthStatus = "flow" | "watch" | "critical";
@@ -62,31 +54,52 @@ export async function GET() {
   const supabase = createServiceRoleClientIfAvailable();
   const { students, source } = await fetchClassroomData(supabase, DEMO_COHORT_ID);
   const cohortStudents = students as unknown as StudentData[];
+  const activeIds = students.map((s) => s.id);
 
   // 학생별 대화 로그 (frustration·loop 계산용) + 이벤트 (trend·today)
+  // — 학생 앱 /api/analytics/dump 프록시 제거, Supabase 직접 SELECT.
   const utterancesByStudent = new Map<string, string[]>();
   const lastTimestampByStudent = new Map<string, string>();
   const allTurns: DumpTurn[] = [];
   const allEvents: DumpEvent[] = [];
-  try {
-    const res = await fetch(`${STUDENT_URL}/api/analytics/dump`, { cache: "no-store" });
-    if (res.ok) {
-      const dump = (await res.json()) as DumpResponse;
-      for (const t of dump.turns ?? []) {
-        allTurns.push(t);
-        const prev = lastTimestampByStudent.get(t.studentId);
-        if (!prev || t.timestamp > prev) {
-          lastTimestampByStudent.set(t.studentId, t.timestamp);
-        }
-        if (t.role !== "student") continue;
-        const arr = utterancesByStudent.get(t.studentId) ?? [];
-        arr.push(t.text);
-        utterancesByStudent.set(t.studentId, arr);
+  if (supabase && activeIds.length > 0) {
+    // 7일 이내만 — trendSparks 와 today 집계에 충분.
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const bundle = await fetchAnalyticsFromDb({
+      client: supabase,
+      studentIds: activeIds,
+      since,
+      eventLimit: 4000,
+      turnLimit: 4000,
+    });
+    for (const t of bundle.turns) {
+      const turn: DumpTurn = {
+        studentId: t.studentId,
+        assignmentId: t.assignmentId,
+        role: t.role,
+        text: t.text,
+        timestamp: t.timestamp,
+      };
+      allTurns.push(turn);
+      const prev = lastTimestampByStudent.get(turn.studentId);
+      if (!prev || turn.timestamp > prev) {
+        lastTimestampByStudent.set(turn.studentId, turn.timestamp);
       }
-      for (const e of dump.events ?? []) allEvents.push(e);
+      if (turn.role !== "student") continue;
+      const arr = utterancesByStudent.get(turn.studentId) ?? [];
+      arr.push(turn.text);
+      utterancesByStudent.set(turn.studentId, arr);
     }
-  } catch {
-    // ignore
+    for (const ev of bundle.events) {
+      allEvents.push({
+        actor: ev.actor as DumpEvent["actor"],
+        verb: ev.verb?.id,
+        object: ev.object,
+        result: (ev.result as Record<string, unknown> | null) ?? undefined,
+        studentId: ev.studentId,
+        timestamp: ev.timestamp,
+      });
+    }
   }
 
   const now = Date.now();
@@ -202,10 +215,13 @@ export async function GET() {
     const ts = e.timestamp ? new Date(e.timestamp).getTime() : NaN;
     if (!Number.isFinite(ts)) continue;
     const verb = String(e.verb ?? "");
+    // student_id 컬럼이 채워진 새 events 는 그것을 우선. 과거 이벤트(NULL) 는
+    // actor.id 폴백 — 둘 다 없으면 빈 문자열.
     const actorId =
-      e.actor && typeof e.actor === "object" && "id" in e.actor
+      e.studentId ??
+      (e.actor && typeof e.actor === "object" && "id" in e.actor
         ? String((e.actor as { id?: string }).id ?? "")
-        : "";
+        : "");
     if (verb.endsWith("submission-passed") || verb.endsWith("submission-failed")) {
       if (ts >= startOfToday.getTime() && ts < startOfTomorrow.getTime()) {
         submittedAtsByDay.today += 1;
@@ -447,9 +463,10 @@ export async function GET() {
     if (!Number.isFinite(ts) || now - ts > FIVE_MIN) continue;
     const verb = String(e.verb ?? "");
     const actorId =
-      e.actor && typeof e.actor === "object" && "id" in e.actor
+      e.studentId ??
+      (e.actor && typeof e.actor === "object" && "id" in e.actor
         ? String((e.actor as { id?: string }).id ?? "")
-        : "";
+        : "");
     const name = nameById.get(actorId) ?? "";
     if (verb.endsWith("submission-passed")) {
       interpretedEvents.push({

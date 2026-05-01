@@ -23,9 +23,25 @@ export async function insertConversationTurn(
   // studentId 가 uuid가 아니면 demo 세션 — 쓰지 않는다
   if (!isUuid(input.studentId)) return { ok: false, error: "non-uuid-studentId" };
   try {
+    // assignment_id 컬럼을 uuid 로 통일했으므로 code 가 들어오면 lookup 변환.
+    // 옛 schema(text) 환경 호환을 위해 lookup 실패 시 raw 값을 그대로 전달
+    // (Supabase 가 type mismatch 면 에러 — 마이그레이션 적용 후 lookup 성공).
+    let assignmentId: string | null = null;
+    if (input.assignmentId) {
+      if (isUuid(input.assignmentId)) {
+        assignmentId = input.assignmentId;
+      } else {
+        const { data: asg } = await client
+          .from("assignments")
+          .select("id")
+          .eq("code", input.assignmentId)
+          .maybeSingle();
+        assignmentId = (asg?.id as string | undefined) ?? null;
+      }
+    }
     const { error } = await client.from("conversations").insert({
       student_id: input.studentId,
-      assignment_id: input.assignmentId ?? null,
+      assignment_id: assignmentId,
       role: input.role,
       text: input.text.slice(0, 4000),
       meta: input.meta ?? {},
@@ -68,6 +84,14 @@ export interface InsertSubmissionInput {
   kcDelta: Record<string, number>;
   dependencyFactor?: number;
   teacherOnlyNotes?: string;
+  /** hidden test 별 결과 (id, passed) — submissions.evidence 에 저장. */
+  hiddenTestResults?: Array<{ id: number; passed: boolean }>;
+  /** Code Reviewer findings 요약 — evidence 의 보조 정보. */
+  reviewSummary?: {
+    summary: string;
+    findingsCount: number;
+    topIssues?: string[];
+  };
 }
 
 export async function insertSubmission(
@@ -86,6 +110,18 @@ export async function insertSubmission(
     if (asgErr) return { ok: false, error: asgErr.message };
     if (!asg) return { ok: false, error: `assignment not found: ${input.assignmentCode}` };
 
+    // evidence — hidden test 결과 + review 요약. 교사 모달에서 "테스트별 결과"
+    // 섹션을 만들 수 있게 구조적으로 저장.
+    const evidence: Record<string, unknown> = {};
+    if (input.hiddenTestResults && input.hiddenTestResults.length > 0) {
+      evidence.hiddenTests = input.hiddenTestResults;
+      evidence.hiddenPassed = input.hiddenTestResults.filter((r) => r.passed).length;
+      evidence.hiddenTotal = input.hiddenTestResults.length;
+    }
+    if (input.reviewSummary) {
+      evidence.codeReview = input.reviewSummary;
+    }
+
     const { data, error } = await client
       .from("submissions")
       .insert({
@@ -96,6 +132,7 @@ export async function insertSubmission(
         status: input.status,
         rubric_scores: input.rubricScores,
         final_score: input.finalScore,
+        evidence: Object.keys(evidence).length > 0 ? evidence : null,
         kc_delta: input.kcDelta,
         dependency_factor: input.dependencyFactor ?? null,
         teacher_only_notes: input.teacherOnlyNotes ?? null,

@@ -192,6 +192,12 @@ export async function POST(request: Request) {
     kcDelta: grade.assessment.kcDelta,
     dependencyFactor: grade.assessment.dependencyFactor ?? undefined,
     teacherOnlyNotes: grade.assessment.teacherOnlyNotes,
+    hiddenTestResults,
+    reviewSummary: {
+      summary: review.summary.slice(0, 400),
+      findingsCount: review.findings.length,
+      topIssues: review.topIssues,
+    },
   });
   if (!dbWrite.ok && supabaseWriter) {
     // 서버 로그 — Vercel Logs 에서 검색 가능. 학생 화면에는 노출하지 않음.

@@ -4,6 +4,7 @@ import {
   ASSIGNMENTS,
   DEMO_COHORT_ID,
   createServiceRoleClientIfAvailable,
+  fetchAnalyticsFromDb,
   fetchClassroomData,
 } from "@cvibe/db";
 import {
@@ -19,18 +20,13 @@ import {
 /**
  * GET /api/conversations — 교사 대화 분석 탭 데이터.
  *
- * 수집: 학생 앱 /api/analytics/dump → turns
+ * 수집: Supabase conversations 테이블 직접 SELECT (학생 앱 프록시 제거).
  * 집계:
  *  - 학생별 요약(distribution, frustration, loop)
  *  - 전체 질문 유형 분포
  *  - 상위 공통 질문 클러스터
  *  - 레드플래그 목록(답 요청 다발, 막힘 루프, frustration 높음)
  */
-
-const STUDENT_URL =
-  process.env.STUDENT_APP_INTERNAL_URL ??
-  process.env.NEXT_PUBLIC_STUDENT_APP_URL ??
-  "http://localhost:3000";
 
 interface DumpTurn {
   studentId: string;
@@ -40,15 +36,11 @@ interface DumpTurn {
   timestamp: string;
 }
 
-interface DumpResponse {
-  turns?: DumpTurn[];
-  source?: "supabase" | "memory";
-}
-
 export async function GET(request: Request) {
   const supabase = createServiceRoleClientIfAvailable();
   const { students } = await fetchClassroomData(supabase, DEMO_COHORT_ID);
   const nameById = new Map(students.map((s) => [s.id, s.displayName] as const));
+  const activeIds = students.map((s) => s.id);
 
   // `?assignmentId=A03_arrays_basic` 또는 'all' (기본).
   const url = new URL(request.url);
@@ -56,15 +48,20 @@ export async function GET(request: Request) {
 
   let turns: DumpTurn[] = [];
   let source: "supabase" | "memory" = "memory";
-  try {
-    const res = await fetch(`${STUDENT_URL}/api/analytics/dump`, { cache: "no-store" });
-    if (res.ok) {
-      const dump = (await res.json()) as DumpResponse;
-      turns = dump.turns ?? [];
-      source = dump.source ?? "memory";
-    }
-  } catch {
-    // ignore — empty turns
+  if (supabase && activeIds.length > 0) {
+    const bundle = await fetchAnalyticsFromDb({
+      client: supabase,
+      studentIds: activeIds,
+      turnLimit: 4000,
+    });
+    turns = bundle.turns.map((t) => ({
+      studentId: t.studentId,
+      assignmentId: t.assignmentId,
+      role: t.role,
+      text: t.text,
+      timestamp: t.timestamp,
+    }));
+    source = "supabase";
   }
 
   // 과제별 집계 준비 — assignmentId 별 턴 수 (옵션 드롭다운 count 배지용).

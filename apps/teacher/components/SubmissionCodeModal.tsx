@@ -8,6 +8,7 @@ interface SubmissionDetail {
   finalScore: number | null;
   status: string;
   rubricScores: Record<string, unknown> | null;
+  evidence: Record<string, unknown> | null;
   submittedAt: string | null;
   evaluatedAt: string | null;
 }
@@ -224,6 +225,9 @@ export function SubmissionCodeModal({
                       📋 복사
                     </button>
                   </div>
+                  {active.evidence && (
+                    <EvidenceStrip evidence={active.evidence} />
+                  )}
                   <pre className="flex-1 overflow-auto bg-bg p-4 font-mono text-[12px] leading-relaxed text-text-primary">
                     {active.code || "(코드 본문 없음)"}
                   </pre>
@@ -422,6 +426,52 @@ function AnalysisItem({ analysis }: { analysis: AiAnalysis }) {
         </div>
       )}
     </li>
+  );
+}
+
+function EvidenceStrip({ evidence }: { evidence: Record<string, unknown> }) {
+  const hiddenTests = Array.isArray(evidence.hiddenTests)
+    ? (evidence.hiddenTests as Array<{ id: number; passed: boolean }>)
+    : [];
+  const hiddenPassed = typeof evidence.hiddenPassed === "number"
+    ? (evidence.hiddenPassed as number)
+    : null;
+  const hiddenTotal = typeof evidence.hiddenTotal === "number"
+    ? (evidence.hiddenTotal as number)
+    : null;
+  if (hiddenTests.length === 0) return null;
+  return (
+    <div className="border-b border-border-soft bg-surface px-4 py-2">
+      <div className="mb-1.5 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-neutral">
+        Hidden Tests
+        {hiddenPassed != null && hiddenTotal != null && (
+          <span
+            className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
+              hiddenPassed === hiddenTotal
+                ? "bg-success/15 text-success"
+                : "bg-warning/15 text-warning"
+            }`}
+          >
+            {hiddenPassed}/{hiddenTotal}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {hiddenTests.map((t) => (
+          <span
+            key={t.id}
+            title={`테스트 #${t.id} ${t.passed ? "통과" : "실패"}`}
+            className={`inline-flex h-5 min-w-[28px] items-center justify-center rounded font-mono text-[10px] font-semibold ${
+              t.passed
+                ? "bg-success/15 text-success"
+                : "bg-error/10 text-error"
+            }`}
+          >
+            #{t.id} {t.passed ? "✓" : "✗"}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

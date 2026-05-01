@@ -80,26 +80,108 @@ export async function GET() {
     }
   }
 
-  const dependencyFactorHistory = DEMO_STUDENTS.flatMap((s) =>
-    s.dependencyFactorHistory.map((d, i) => ({
+  // dependencyFactorHistory + transferByStudent — Supabase 모드면 실 DB 기반.
+  let dependencyFactorHistory: Array<{
+    studentId: string;
+    studentIdHashed: string;
+    dependencyFactor: number;
+    timestamp: string;
+  }> = [];
+  let transferByStudent: Array<{
+    studentId: string;
+    studentIdHashed: string;
+    transferAxisMean: number;
+  }> = [];
+  let studentList = DEMO_STUDENTS.map((s) => ({
+    id: s.id,
+    idHashed: hashLearnerId(s.id),
+    displayName: s.displayName,
+  }));
+
+  if (supabase) {
+    try {
+      // 활성 학생 (제적 제외)
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, status")
+        .eq("role", "student");
+      const activeProfiles = (profiles ?? []).filter((p) => p.status !== "removed");
+      const activeIds = activeProfiles.map((p) => p.id as string);
+      studentList = activeProfiles.map((p) => ({
+        id: p.id as string,
+        idHashed: hashLearnerId(p.id as string),
+        displayName: (p.display_name as string) ?? (p.id as string),
+      }));
+
+      if (activeIds.length > 0) {
+        // dependency trajectory — submissions 시간순.
+        const { data: subs } = await supabase
+          .from("submissions")
+          .select("student_id, dependency_factor, submitted_at")
+          .in("student_id", activeIds)
+          .order("submitted_at", { ascending: true });
+        dependencyFactorHistory = (subs ?? [])
+          .filter((r) => r.dependency_factor != null)
+          .map((r) => ({
+            studentId: r.student_id as string,
+            studentIdHashed: hashLearnerId(r.student_id as string),
+            dependencyFactor: Number(r.dependency_factor),
+            timestamp:
+              (r.submitted_at as string | null) ?? new Date().toISOString(),
+          }));
+
+        // transferAxisMean — 학생별 mastery.value 평균.
+        const { data: masteryRows } = await supabase
+          .from("mastery")
+          .select("student_id, value")
+          .in("student_id", activeIds);
+        const sumByStudent = new Map<string, { sum: number; count: number }>();
+        for (const row of masteryRows ?? []) {
+          const sid = row.student_id as string;
+          const cur = sumByStudent.get(sid) ?? { sum: 0, count: 0 };
+          cur.sum += Number(row.value ?? 0);
+          cur.count += 1;
+          sumByStudent.set(sid, cur);
+        }
+        transferByStudent = activeIds.map((id) => {
+          const agg = sumByStudent.get(id);
+          return {
+            studentId: id,
+            studentIdHashed: hashLearnerId(id),
+            transferAxisMean:
+              agg && agg.count > 0 ? agg.sum / agg.count : 0,
+          };
+        });
+      }
+    } catch {
+      // ignore — fallback below
+    }
+  }
+
+  // Supabase fallback or empty real DB → DEMO 사용 (기존 동작 보존).
+  if (dependencyFactorHistory.length === 0) {
+    dependencyFactorHistory = DEMO_STUDENTS.flatMap((s) =>
+      s.dependencyFactorHistory.map((d, i) => ({
+        studentId: s.id,
+        studentIdHashed: hashLearnerId(s.id),
+        dependencyFactor: d,
+        timestamp: new Date(
+          Date.now() - (s.dependencyFactorHistory.length - i) * 86400000,
+        ).toISOString(),
+      })),
+    );
+  }
+  if (transferByStudent.length === 0) {
+    transferByStudent = DEMO_STUDENTS.map((s) => ({
       studentId: s.id,
       studentIdHashed: hashLearnerId(s.id),
-      dependencyFactor: d,
-      timestamp: new Date(
-        Date.now() - (s.dependencyFactorHistory.length - i) * 86400000,
-      ).toISOString(),
-    })),
-  );
-
-  const transferByStudent = DEMO_STUDENTS.map((s) => ({
-    studentId: s.id,
-    studentIdHashed: hashLearnerId(s.id),
-    transferAxisMean:
-      Object.values(s.mastery).length > 0
-        ? Object.values(s.mastery).reduce((a, b) => a + b, 0) /
-          Object.values(s.mastery).length
-        : 0,
-  }));
+      transferAxisMean:
+        Object.values(s.mastery).length > 0
+          ? Object.values(s.mastery).reduce((a, b) => a + b, 0) /
+            Object.values(s.mastery).length
+          : 0,
+    }));
+  }
 
   return NextResponse.json(
     {
@@ -109,11 +191,7 @@ export async function GET() {
       turns,
       dependencyFactorHistory,
       transferByStudent,
-      students: DEMO_STUDENTS.map((s) => ({
-        id: s.id,
-        idHashed: hashLearnerId(s.id),
-        displayName: s.displayName,
-      })),
+      students: studentList,
     },
     { headers: { "Cache-Control": "no-store" } },
   );
