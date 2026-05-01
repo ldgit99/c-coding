@@ -246,13 +246,14 @@ function parseReviewResponse(text: string, mode: ReviewOutput["analysisMode"]): 
 /**
  * 통과 신호 기반 BLOCKER 강등.
  *
- * - hidden test 100% 통과: correctness 카테고리의 BLOCKER · MAJOR 모두 minor 로
- *   강등 (코드는 사실상 정답이므로 학생을 막을 이유 없음).
+ * - hidden test 100% 통과: correctness · memory-safety 의 BLOCKER · MAJOR 를
+ *   minor 로 강등. hidden test 가 전부 통과했다는 것은 OOB·UB 류 메모리 안전
+ *   주장도 행위 수준에서 반박된 것이므로 학생을 차단할 근거가 약하다.
  * - lastRunResult.status === "ok" : correctness BLOCKER → MAJOR 강등 (실행은
- *   됐으니 logic bug 가능성은 있으나 BLOCKER 는 아님).
+ *   됐으니 logic bug 가능성은 있으나 BLOCKER 는 아님). memory-safety 는 단발
+ *   실행으로 입증되지 않으므로 유지.
  * - lastRunResult.status === "compile_error" : 강등 안 함 (LLM 이 컴파일러보다
  *   원인을 잘 짚을 수 있음).
- * - topIssues 도 비어버린 finding ID 는 정리.
  */
 function downgradeHallucinatedBlockers(review: ReviewOutput, input: ReviewInput): void {
   const allHiddenPassed =
@@ -262,14 +263,14 @@ function downgradeHallucinatedBlockers(review: ReviewOutput, input: ReviewInput)
   if (!allHiddenPassed && !runOk) return;
 
   for (const f of review.findings) {
-    if (f.category !== "correctness") continue;
     if (allHiddenPassed) {
+      if (f.category !== "correctness" && f.category !== "memory-safety") continue;
       // BLOCKER · MAJOR → minor (학생에게 메시지는 보여주되 차단하지 않음)
       if (f.severity === "blocker" || f.severity === "major") {
         f.severity = "minor";
         f.message = `[자동 강등 — hidden test 전부 통과] ${f.message}`;
       }
-    } else if (runOk && f.severity === "blocker") {
+    } else if (runOk && f.category === "correctness" && f.severity === "blocker") {
       f.severity = "major";
       f.message = `[자동 강등 — 컴파일·실행 성공] ${f.message}`;
     }

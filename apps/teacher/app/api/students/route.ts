@@ -37,14 +37,19 @@ export async function GET() {
 
   try {
     // 1차: status 컬럼 포함 조회. 컬럼 미적용(마이그레이션 전)이면 42703 에러 → 재시도.
+    //
+    // cohort_id 가 DEMO_COHORT_ID 이거나 NULL 인 학생까지 포함한다.
+    // (handle_new_user 트리거가 cohort 를 잘못 선택하거나 미적용된 가입자를
+    // 그리드에서 누락시키지 않기 위함 — submissions/grid 와 동일 방침.)
+    const cohortFilter = `cohort_id.eq.${DEMO_COHORT_ID},cohort_id.is.null`;
     let profiles: Array<Record<string, unknown>> | null = null;
     let statusColumnMissing = false;
     {
       const full = await supabase
         .from("profiles")
         .select("id, display_name, email, cohort_id, role, status, created_at")
-        .eq("cohort_id", DEMO_COHORT_ID)
         .eq("role", "student")
+        .or(cohortFilter)
         .order("display_name", { ascending: true });
       if (full.error) {
         const msg = full.error.message ?? "";
@@ -71,8 +76,8 @@ export async function GET() {
       const fallback = await supabase
         .from("profiles")
         .select("id, display_name, email, cohort_id, role, created_at")
-        .eq("cohort_id", DEMO_COHORT_ID)
         .eq("role", "student")
+        .or(cohortFilter)
         .order("display_name", { ascending: true });
       if (fallback.error) {
         return NextResponse.json(

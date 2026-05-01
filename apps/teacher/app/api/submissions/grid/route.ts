@@ -52,11 +52,18 @@ export async function GET() {
   }
 
   try {
+    // 학생 프로필 조회.
+    //
+    // cohort_id 가 DEMO_COHORT_ID 와 일치하지 않거나 NULL 인 학생도 포함한다.
+    // 이유: handle_new_user 트리거(SUPABASE.md Step 5)가 cohort_id 를 "최초
+    // 생성 cohort"로 채우기 때문에, 다른 cohort 가 먼저 생성됐거나 트리거 적용
+    // 전 가입한 학생의 cohort_id 가 NULL/불일치할 수 있다. 파일럿은 단일
+    // cohort 이므로 role=student 만 보장되면 그리드에 노출하는 것이 안전하다.
     const { data: profiles, error: profileError } = await supabase
       .from("profiles")
-      .select("id, display_name")
-      .eq("cohort_id", DEMO_COHORT_ID)
+      .select("id, display_name, cohort_id")
       .eq("role", "student")
+      .or(`cohort_id.eq.${DEMO_COHORT_ID},cohort_id.is.null`)
       .order("display_name", { ascending: true });
 
     if (profileError) {
@@ -72,37 +79,61 @@ export async function GET() {
       );
     }
 
-    const studentIds = (profiles ?? []).map((p) => p.id as string);
-    let submissions: Array<Record<string, unknown>> = [];
-    if (studentIds.length > 0) {
-      const { data: subs, error: subsError } = await supabase
-        .from("submissions")
-        .select(
-          "student_id, assignment_id, final_score, status, submitted_at, assignments!inner(code)",
-        )
-        .in("student_id", studentIds)
-        .order("submitted_at", { ascending: false });
-      if (subsError) {
-        return NextResponse.json(
-          {
-            cohortId: DEMO_COHORT_ID,
-            source: "supabase",
-            assignments,
-            students: [],
-            error: subsError.message,
-          },
-          { status: 200 },
-        );
-      }
-      submissions = subs ?? [];
+    // assignments 코드↔ID 맵을 별도 조회. PostgREST embed (`assignments!inner`)
+    // 가 캐시·관계 추론 실패 시 조용히 빈 배열을 돌려주는 위험을 회피.
+    const { data: assignmentRows, error: asgError } = await supabase
+      .from("assignments")
+      .select("id, code");
+    if (asgError) {
+      return NextResponse.json(
+        {
+          cohortId: DEMO_COHORT_ID,
+          source: "supabase",
+          assignments,
+          students: [],
+          error: asgError.message,
+        },
+        { status: 200 },
+      );
+    }
+    const codeById = new Map<string, string>();
+    for (const row of assignmentRows ?? []) {
+      const id = row.id as string | undefined;
+      const code = row.code as string | undefined;
+      if (id && code) codeById.set(id, code);
     }
 
+    // 제출물은 학생 ID 필터 없이 전부 가져와 student_id 가 누락 프로필인
+    // 케이스(예: cohort_id 가 둘 다 아닌 학생)도 union 으로 합친다.
+    const studentIdSet = new Set((profiles ?? []).map((p) => p.id as string));
+    const { data: subs, error: subsError } = await supabase
+      .from("submissions")
+      .select(
+        "student_id, assignment_id, final_score, status, submitted_at",
+      )
+      .order("submitted_at", { ascending: false });
+    if (subsError) {
+      return NextResponse.json(
+        {
+          cohortId: DEMO_COHORT_ID,
+          source: "supabase",
+          assignments,
+          students: [],
+          error: subsError.message,
+        },
+        { status: 200 },
+      );
+    }
+    const submissions: Array<Record<string, unknown>> = subs ?? [];
+
     const byStudent = new Map<string, Map<string, CellState>>();
+    const orphanStudentIds = new Set<string>();
     for (const row of submissions) {
       const sid = row.student_id as string;
-      const assignment = row.assignments as unknown as { code?: string } | null;
-      const code = assignment?.code;
+      const aid = row.assignment_id as string | undefined;
+      const code = aid ? codeById.get(aid) : undefined;
       if (!code) continue;
+      if (!studentIdSet.has(sid)) orphanStudentIds.add(sid);
       const outer = byStudent.get(sid) ?? new Map<string, CellState>();
       const cur = outer.get(code) ?? {
         status: "none",
@@ -123,24 +154,44 @@ export async function GET() {
       byStudent.set(sid, outer);
     }
 
-    const rows = (profiles ?? []).map((p) => {
-      const id = p.id as string;
-      const cellMap = byStudent.get(id) ?? new Map<string, CellState>();
-      const cells: Record<string, CellState> = {};
-      for (const a of assignments) {
-        cells[a.code] = cellMap.get(a.code) ?? {
-          status: "none",
-          attempts: 0,
-          lastScore: null,
-          lastAt: null,
+    // cohort 필터에 걸리지 않았지만 제출 기록이 있는 학생의 표시명을 찾아온다.
+    const orphanProfiles: Array<Record<string, unknown>> = [];
+    if (orphanStudentIds.size > 0) {
+      const { data: orphans } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", Array.from(orphanStudentIds));
+      if (orphans) orphanProfiles.push(...orphans);
+    }
+
+    const allProfiles = [...(profiles ?? []), ...orphanProfiles];
+    const seen = new Set<string>();
+    const rows = allProfiles
+      .filter((p) => {
+        const id = p.id as string;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+      .map((p) => {
+        const id = p.id as string;
+        const cellMap = byStudent.get(id) ?? new Map<string, CellState>();
+        const cells: Record<string, CellState> = {};
+        for (const a of assignments) {
+          cells[a.code] = cellMap.get(a.code) ?? {
+            status: "none",
+            attempts: 0,
+            lastScore: null,
+            lastAt: null,
+          };
+        }
+        return {
+          studentId: id,
+          displayName: (p.display_name as string) ?? id,
+          cells,
         };
-      }
-      return {
-        studentId: id,
-        displayName: (p.display_name as string) ?? id,
-        cells,
-      };
-    });
+      })
+      .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
 
     return NextResponse.json({
       cohortId: DEMO_COHORT_ID,
