@@ -85,8 +85,12 @@ export interface RequestReviewOutput {
 export async function reviewCode(input: ReviewInput): Promise<RequestReviewOutput> {
   // API key 없으면 mock — 개발·데모용
   if (!(input.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY)) {
+    const review = mockReview(input);
+    // mock 결과에도 통과 신호 기반 강등을 동일 적용 — LLM 경로와 행동 일치
+    // (테스트가 mock 으로 후처리 동작을 검증).
+    downgradeHallucinatedBlockers(review, input);
     return {
-      review: mockReview(input),
+      review,
       usedModel: "mock",
       mocked: true,
     };
