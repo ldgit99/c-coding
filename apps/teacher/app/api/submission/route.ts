@@ -30,6 +30,14 @@ interface AiAnalysis {
   result: Record<string, unknown> | null;
 }
 
+interface ConversationTurn {
+  id: string;
+  role: "student" | "ai";
+  text: string;
+  createdAt: string;
+  meta: Record<string, unknown> | null;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const studentId = url.searchParams.get("studentId");
@@ -48,6 +56,7 @@ export async function GET(request: Request) {
       source: "demo",
       submissions: [] as SubmissionDetail[],
       aiAnalyses: [] as AiAnalysis[],
+      conversation: [] as ConversationTurn[],
       note: "Supabase 미설정 — 데모 모드에서는 코드 본문이 저장되지 않는다.",
     });
   }
@@ -126,14 +135,40 @@ export async function GET(request: Request) {
         };
       });
 
+    // 대화 턴 — conversations.assignment_id 는 text(코드 그대로) 라 join 불필요.
+    // 시간 오름차순으로 모달에서 자연 흐름대로 보이게 한다. 너무 길면 윗부분
+    // 잘라 최근 200턴만.
+    const { data: convRows } = await supabase
+      .from("conversations")
+      .select("id, role, text, meta, created_at")
+      .eq("student_id", studentId)
+      .eq("assignment_id", assignmentCode)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    const conversation: ConversationTurn[] = (convRows ?? []).map((r) => ({
+      id: r.id as string,
+      role: ((r.role as string) === "ai" ? "ai" : "student") as "student" | "ai",
+      text: (r.text as string) ?? "",
+      createdAt: (r.created_at as string) ?? "",
+      meta: (r.meta as Record<string, unknown> | null) ?? null,
+    }));
+
     return NextResponse.json({
       source: "supabase",
       submissions,
       aiAnalyses,
+      conversation,
     });
   } catch (err) {
     return NextResponse.json(
-      { source: "supabase", submissions: [], aiAnalyses: [], error: String(err) },
+      {
+        source: "supabase",
+        submissions: [],
+        aiAnalyses: [],
+        conversation: [],
+        error: String(err),
+      },
       { status: 200 },
     );
   }

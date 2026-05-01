@@ -19,10 +19,19 @@ interface AiAnalysis {
   result: Record<string, unknown> | null;
 }
 
+interface ConversationTurn {
+  id: string;
+  role: "student" | "ai";
+  text: string;
+  createdAt: string;
+  meta: Record<string, unknown> | null;
+}
+
 interface ApiResponse {
   source: "supabase" | "demo";
   submissions: SubmissionDetail[];
   aiAnalyses?: AiAnalysis[];
+  conversation?: ConversationTurn[];
   error?: string;
   note?: string;
 }
@@ -45,7 +54,7 @@ export function SubmissionCodeModal({
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [tab, setTab] = useState<"code" | "ai">("code");
+  const [tab, setTab] = useState<"code" | "ai" | "chat">("code");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +90,7 @@ export function SubmissionCodeModal({
 
   const submissions = data?.submissions ?? [];
   const aiAnalyses = data?.aiAnalyses ?? [];
+  const conversation = data?.conversation ?? [];
   const active = submissions[activeIdx] ?? null;
 
   return (
@@ -190,6 +200,12 @@ export function SubmissionCodeModal({
                 label="AI 분석"
                 count={aiAnalyses.length}
               />
+              <TabButton
+                active={tab === "chat"}
+                onClick={() => setTab("chat")}
+                label="대화"
+                count={conversation.length}
+              />
             </div>
 
             {tab === "code" && (
@@ -235,6 +251,24 @@ export function SubmissionCodeModal({
                   <ul className="divide-y divide-border-soft">
                     {aiAnalyses.map((a) => (
                       <AnalysisItem key={a.id} analysis={a} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {tab === "chat" && (
+              <div className="flex-1 overflow-auto bg-bg">
+                {conversation.length === 0 ? (
+                  !loading && (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-[12px] text-neutral">
+                      이 학생 × 과제에서 기록된 AI 챗봇 대화가 없습니다.
+                    </div>
+                  )
+                ) : (
+                  <ul className="space-y-2 px-4 py-3">
+                    {conversation.map((t) => (
+                      <ChatBubble key={t.id} turn={t} />
                     ))}
                   </ul>
                 )}
@@ -387,6 +421,58 @@ function AnalysisItem({ analysis }: { analysis: AiAnalysis }) {
           )}
         </div>
       )}
+    </li>
+  );
+}
+
+function ChatBubble({ turn }: { turn: ConversationTurn }) {
+  const isStudent = turn.role === "student";
+  const meta = turn.meta ?? {};
+  const mode =
+    typeof meta.mode === "string" ? (meta.mode as string) : null;
+  const supportLevel =
+    typeof meta.supportLevel === "number"
+      ? (meta.supportLevel as number)
+      : null;
+  return (
+    <li
+      className={`flex w-full ${isStudent ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`max-w-[78%] rounded-lg border px-3 py-2 text-[12px] ${
+          isStudent
+            ? "border-primary/30 bg-primary/5 text-text-primary"
+            : "border-border-soft bg-surface text-text-primary"
+        }`}
+      >
+        <div className="mb-1 flex flex-wrap items-baseline gap-2 text-[10px] text-neutral">
+          <span
+            className={`rounded px-1.5 py-0.5 font-mono font-semibold ${
+              isStudent
+                ? "bg-primary/15 text-primary"
+                : "bg-warning/15 text-warning"
+            }`}
+          >
+            {isStudent ? "🧑 학생" : "🤖 AI"}
+          </span>
+          <span className="font-mono text-text-secondary">
+            {formatTime(turn.createdAt)}
+          </span>
+          {mode && (
+            <span className="rounded bg-bg px-1.5 py-0.5 font-mono">
+              {mode}
+            </span>
+          )}
+          {supportLevel != null && (
+            <span className="rounded bg-bg px-1.5 py-0.5 font-mono">
+              L{supportLevel}
+            </span>
+          )}
+        </div>
+        <p className="whitespace-pre-wrap break-words leading-relaxed">
+          {turn.text}
+        </p>
+      </div>
     </li>
   );
 }
