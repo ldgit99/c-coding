@@ -59,12 +59,39 @@ export async function GET() {
     // 생성 cohort"로 채우기 때문에, 다른 cohort 가 먼저 생성됐거나 트리거 적용
     // 전 가입한 학생의 cohort_id 가 NULL/불일치할 수 있다. 파일럿은 단일
     // cohort 이므로 role=student 만 보장되면 그리드에 노출하는 것이 안전하다.
-    const { data: profiles, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, display_name, cohort_id")
-      .eq("role", "student")
-      .or(`cohort_id.eq.${DEMO_COHORT_ID},cohort_id.is.null`)
-      .order("display_name", { ascending: true });
+    // status 컬럼이 마이그레이션 적용 전이면 select 자체가 42703 에러.
+    // 한 번 시도하고 실패 시 status 없이 재조회.
+    let profiles: Array<Record<string, unknown>> | null = null;
+    let profileError: { message: string } | null = null;
+    {
+      const withStatus = await supabase
+        .from("profiles")
+        .select("id, display_name, cohort_id, status")
+        .eq("role", "student")
+        .or(`cohort_id.eq.${DEMO_COHORT_ID},cohort_id.is.null`)
+        .order("display_name", { ascending: true });
+      if (withStatus.error) {
+        const code = (withStatus.error as { code?: string }).code;
+        if (code === "42703" || /status/.test(withStatus.error.message)) {
+          const fallback = await supabase
+            .from("profiles")
+            .select("id, display_name, cohort_id")
+            .eq("role", "student")
+            .or(`cohort_id.eq.${DEMO_COHORT_ID},cohort_id.is.null`)
+            .order("display_name", { ascending: true });
+          profiles = fallback.data;
+          profileError = fallback.error
+            ? { message: fallback.error.message }
+            : null;
+        } else {
+          profileError = { message: withStatus.error.message };
+        }
+      } else {
+        profiles = withStatus.data;
+      }
+    }
+    // removed(제적) 학생은 그리드에서 제외. inactive(휴강)는 포함.
+    profiles = (profiles ?? []).filter((p) => p.status !== "removed");
 
     if (profileError) {
       return NextResponse.json(
@@ -155,13 +182,32 @@ export async function GET() {
     }
 
     // cohort 필터에 걸리지 않았지만 제출 기록이 있는 학생의 표시명을 찾아온다.
+    // 단 status='removed' 면 그리드에서 제외.
     const orphanProfiles: Array<Record<string, unknown>> = [];
     if (orphanStudentIds.size > 0) {
-      const { data: orphans } = await supabase
+      let orphans: Array<Record<string, unknown>> | null = null;
+      const withStatus = await supabase
         .from("profiles")
-        .select("id, display_name")
+        .select("id, display_name, status")
         .in("id", Array.from(orphanStudentIds));
-      if (orphans) orphanProfiles.push(...orphans);
+      if (withStatus.error) {
+        const code = (withStatus.error as { code?: string }).code;
+        if (code === "42703" || /status/.test(withStatus.error.message)) {
+          const fallback = await supabase
+            .from("profiles")
+            .select("id, display_name")
+            .in("id", Array.from(orphanStudentIds));
+          orphans = fallback.data;
+        }
+      } else {
+        orphans = withStatus.data;
+      }
+      if (orphans) {
+        for (const o of orphans) {
+          if (o.status === "removed") continue;
+          orphanProfiles.push(o);
+        }
+      }
     }
 
     const allProfiles = [...(profiles ?? []), ...orphanProfiles];

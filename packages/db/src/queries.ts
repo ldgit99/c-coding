@@ -45,13 +45,34 @@ export async function fetchClassroomData(
   }
 
   try {
-    const { data: profiles, error } = await client
-      .from("profiles")
-      .select("id, display_name, cohort_id")
-      .eq("cohort_id", cohortId)
-      .eq("role", "student");
-    if (error) throw error;
-    if (!profiles || profiles.length === 0) {
+    // status='removed' 학생은 모든 집계에서 제외 (제적). status 컬럼이 없는
+    // 마이그레이션 미적용 환경 대비 fallback 포함.
+    let profiles: Array<Record<string, unknown>> | null = null;
+    {
+      const withStatus = await client
+        .from("profiles")
+        .select("id, display_name, cohort_id, status")
+        .eq("cohort_id", cohortId)
+        .eq("role", "student");
+      if (withStatus.error) {
+        const code = (withStatus.error as { code?: string }).code;
+        if (code === "42703" || /status/.test(withStatus.error.message)) {
+          const fallback = await client
+            .from("profiles")
+            .select("id, display_name, cohort_id")
+            .eq("cohort_id", cohortId)
+            .eq("role", "student");
+          if (fallback.error) throw fallback.error;
+          profiles = fallback.data;
+        } else {
+          throw withStatus.error;
+        }
+      } else {
+        profiles = withStatus.data;
+      }
+    }
+    profiles = (profiles ?? []).filter((p) => p.status !== "removed");
+    if (profiles.length === 0) {
       return { students: [], source: "supabase" };
     }
 
