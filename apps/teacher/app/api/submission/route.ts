@@ -20,6 +20,7 @@ interface SubmissionDetail {
   status: string;
   rubricScores: Record<string, unknown> | null;
   evidence: Record<string, unknown> | null;
+  reflection: Record<string, string> | null;
   submittedAt: string | null;
   evaluatedAt: string | null;
 }
@@ -77,15 +78,16 @@ export async function GET(request: Request) {
       submissions: [] as SubmissionDetail[],
       aiAnalyses: [] as AiAnalysis[],
       conversation: [] as ConversationTurn[],
+      reflectionPrompts: [] as string[],
       note: "Supabase 미설정 — 데모 모드에서는 코드 본문이 저장되지 않는다.",
     });
   }
 
   try {
-    // assignments.code → assignments.id
+    // assignments.code → assignments.id + reflection_prompts (질문 본문)
     const { data: asg, error: asgErr } = await supabase
       .from("assignments")
-      .select("id")
+      .select("id, reflection_prompts")
       .eq("code", assignmentCode)
       .maybeSingle();
     if (asgErr) {
@@ -104,7 +106,7 @@ export async function GET(request: Request) {
     const { data: rows, error: rowsErr } = await supabase
       .from("submissions")
       .select(
-        "id, code, final_score, status, rubric_scores, evidence, submitted_at, evaluated_at",
+        "id, code, final_score, status, rubric_scores, evidence, reflection, submitted_at, evaluated_at",
       )
       .eq("student_id", studentId)
       .eq("assignment_id", asg.id as string)
@@ -124,9 +126,14 @@ export async function GET(request: Request) {
       status: (r.status as string) ?? "unknown",
       rubricScores: (r.rubric_scores as Record<string, unknown> | null) ?? null,
       evidence: (r.evidence as Record<string, unknown> | null) ?? null,
+      reflection: (r.reflection as Record<string, string> | null) ?? null,
       submittedAt: (r.submitted_at as string | null) ?? null,
       evaluatedAt: (r.evaluated_at as string | null) ?? null,
     }));
+
+    const reflectionPrompts = Array.isArray(asg.reflection_prompts)
+      ? (asg.reflection_prompts as string[])
+      : [];
 
     // AI 분석 events 조회 — 학생 actor (해시) + 과제 object id 매칭.
     // event-persistence.ts 가 student_id 를 null 로 저장하므로 actor.account.name
@@ -183,6 +190,7 @@ export async function GET(request: Request) {
       submissions,
       aiAnalyses,
       conversation,
+      reflectionPrompts,
     });
   } catch (err) {
     return NextResponse.json(

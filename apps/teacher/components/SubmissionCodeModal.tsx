@@ -9,6 +9,7 @@ interface SubmissionDetail {
   status: string;
   rubricScores: Record<string, unknown> | null;
   evidence: Record<string, unknown> | null;
+  reflection: Record<string, string> | null;
   submittedAt: string | null;
   evaluatedAt: string | null;
 }
@@ -33,6 +34,7 @@ interface ApiResponse {
   submissions: SubmissionDetail[];
   aiAnalyses?: AiAnalysis[];
   conversation?: ConversationTurn[];
+  reflectionPrompts?: string[];
   error?: string;
   note?: string;
 }
@@ -55,7 +57,7 @@ export function SubmissionCodeModal({
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [tab, setTab] = useState<"code" | "ai" | "chat">("code");
+  const [tab, setTab] = useState<"code" | "ai" | "chat" | "reflection">("code");
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +94,11 @@ export function SubmissionCodeModal({
   const submissions = data?.submissions ?? [];
   const aiAnalyses = data?.aiAnalyses ?? [];
   const conversation = data?.conversation ?? [];
+  const reflectionPrompts = data?.reflectionPrompts ?? [];
   const active = submissions[activeIdx] ?? null;
+  const reflectionEntries = active?.reflection
+    ? Object.entries(active.reflection).filter(([, v]) => typeof v === "string" && v.trim().length > 0)
+    : [];
 
   return (
     <div
@@ -207,6 +213,12 @@ export function SubmissionCodeModal({
                 label="대화"
                 count={conversation.length}
               />
+              <TabButton
+                active={tab === "reflection"}
+                onClick={() => setTab("reflection")}
+                label="성찰"
+                count={reflectionEntries.length}
+              />
             </div>
 
             {tab === "code" && (
@@ -277,6 +289,38 @@ export function SubmissionCodeModal({
                   </ul>
                 )}
               </div>
+            )}
+
+            {tab === "reflection" && (
+              active ? (
+                <div className="flex-1 overflow-auto bg-bg">
+                  {reflectionEntries.length === 0 ? (
+                    !loading && (
+                      <div className="flex h-full items-center justify-center px-6 text-center text-[12px] text-neutral">
+                        이 제출에는 성찰일지 응답이 없습니다.
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-3 px-4 py-3">
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-neutral">
+                        <span>제출 #{submissions.length - activeIdx}</span>
+                        <span>·</span>
+                        <span>{formatTime(active.submittedAt)}</span>
+                      </div>
+                      <ReflectionList
+                        reflection={active.reflection ?? {}}
+                        prompts={reflectionPrompts}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                !loading && (
+                  <div className="flex flex-1 items-center justify-center text-[12px] text-neutral">
+                    표시할 제출이 없습니다.
+                  </div>
+                )
+              )
             )}
           </section>
         </div>
@@ -524,6 +568,60 @@ function ChatBubble({ turn }: { turn: ConversationTurn }) {
         </p>
       </div>
     </li>
+  );
+}
+
+function ReflectionList({
+  reflection,
+  prompts,
+}: {
+  reflection: Record<string, string>;
+  prompts: string[];
+}) {
+  // 학생 SubmitDialog 의 ReflectionState 키 순서: Q1_difficult → Q3_alternatives → Q5_next_time
+  // assignments.reflection_prompts(string[]) 와 1:1 대응. 키 정렬은 라벨 순서 안정성을 위해
+  // 학번처럼 보이는 prefix(Q1/Q3/Q5) 를 우선시하고 모르는 키는 뒤로.
+  const orderedKeys = Object.keys(reflection).sort((a, b) => {
+    const matchA = a.match(/^Q(\d+)/);
+    const matchB = b.match(/^Q(\d+)/);
+    const numA = matchA ? Number(matchA[1]) : 99;
+    const numB = matchB ? Number(matchB[1]) : 99;
+    return numA - numB;
+  });
+
+  return (
+    <ul className="space-y-3">
+      {orderedKeys.map((key, idx) => {
+        const answer = reflection[key]?.trim() ?? "";
+        if (answer.length === 0) return null;
+        const promptText = prompts[idx] ?? "";
+        const labelMatch = key.match(/^Q(\d+)/);
+        const label = labelMatch ? `Q${labelMatch[1]}` : key;
+        return (
+          <li
+            key={key}
+            className="rounded-lg border border-border-soft bg-surface p-4"
+          >
+            <div className="mb-2 flex items-baseline gap-2">
+              <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">
+                {label}
+              </span>
+              {promptText && (
+                <span className="text-[12px] font-medium text-text-primary">
+                  {promptText}
+                </span>
+              )}
+            </div>
+            <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-text-primary">
+              {answer}
+            </p>
+            <div className="mt-2 text-[10px] text-neutral">
+              {answer.length} 자
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
