@@ -211,29 +211,25 @@ export async function GET() {
   const activeStudentsToday = new Set<string>();
   const recentNotable: Array<{ at: string; kind: string; text: string; studentId?: string }> = [];
 
-  for (const e of allEvents) {
-    const ts = e.timestamp ? new Date(e.timestamp).getTime() : NaN;
-    if (!Number.isFinite(ts)) continue;
-    const verb = String(e.verb ?? "");
-    // student_id 컬럼이 채워진 새 events 는 그것을 우선. 과거 이벤트(NULL) 는
-    // actor.id 폴백 — 둘 다 없으면 빈 문자열.
-    const actorId =
-      e.studentId ??
-      (e.actor && typeof e.actor === "object" && "id" in e.actor
-        ? String((e.actor as { id?: string }).id ?? "")
-        : "");
-    if (verb.endsWith("submission-passed") || verb.endsWith("submission-failed")) {
+  // 제출 카운트·최근 통과는 권위 있는 submissions 테이블(students[].recentSubmissions)
+  // 에서 집계한다. events 테이블의 submission-passed/failed 행은 fire-and-forget
+  // 으로 기록돼 student_id NULL·누락 위험이 있어 trend 가 비어 보이는 원인이었다.
+  for (const s of students) {
+    for (const r of s.recentSubmissions) {
+      const ts = new Date(r.submittedAt).getTime();
+      if (!Number.isFinite(ts)) continue;
       if (ts >= startOfToday.getTime() && ts < startOfTomorrow.getTime()) {
         submittedAtsByDay.today += 1;
       } else if (ts >= startOfYesterday.getTime() && ts < startOfToday.getTime()) {
         submittedAtsByDay.yesterday += 1;
       }
-      if (verb.endsWith("submission-passed")) {
-        const recent =
-          now - ts < 10 * 60 * 1000
-            ? { at: e.timestamp!, kind: "passed", text: "제출 통과", studentId: actorId }
-            : null;
-        if (recent) recentNotable.push(recent);
+      if (r.passed && now - ts < 10 * 60 * 1000) {
+        recentNotable.push({
+          at: r.submittedAt,
+          kind: "passed",
+          text: "제출 통과",
+          studentId: s.id,
+        });
       }
     }
   }
@@ -241,6 +237,17 @@ export async function GET() {
     const ts = new Date(t.timestamp).getTime();
     if (Number.isFinite(ts) && ts >= startOfToday.getTime()) {
       activeStudentsToday.add(t.studentId);
+    }
+  }
+  // 제출도 활동 신호로 카운트 — 학생이 대화 없이 제출만 해도 active 로 잡혀야
+  // "오늘 활동 학생 N/M" 이 grid 와 정합.
+  for (const s of students) {
+    for (const r of s.recentSubmissions) {
+      const ts = new Date(r.submittedAt).getTime();
+      if (Number.isFinite(ts) && ts >= startOfToday.getTime()) {
+        activeStudentsToday.add(s.id);
+        break;
+      }
     }
   }
   const submissionsDelta = submittedAtsByDay.today - submittedAtsByDay.yesterday;
@@ -367,7 +374,7 @@ export async function GET() {
   const frustrationCountByDay: number[] = new Array(days).fill(0);
   const submissionsByDay = new Array(days).fill(0);
 
-  // For each day, aggregate events
+  // For each day, aggregate from submissions (authoritative) — events 폴백 제거.
   const dayStart = (offset: number): number => {
     const d = new Date(startOfToday);
     d.setDate(d.getDate() - (days - 1 - offset));
@@ -378,13 +385,14 @@ export async function GET() {
     const end = i === days - 1 ? startOfTomorrow.getTime() : dayStart(i + 1);
     let pass = 0;
     let fail = 0;
-    for (const e of allEvents) {
-      const ts = e.timestamp ? new Date(e.timestamp).getTime() : NaN;
-      if (!Number.isFinite(ts)) continue;
-      if (ts < begin || ts >= end) continue;
-      const verb = String(e.verb ?? "");
-      if (verb.endsWith("submission-passed")) pass += 1;
-      else if (verb.endsWith("submission-failed")) fail += 1;
+    for (const s of students) {
+      for (const r of s.recentSubmissions) {
+        const ts = new Date(r.submittedAt).getTime();
+        if (!Number.isFinite(ts)) continue;
+        if (ts < begin || ts >= end) continue;
+        if (r.passed) pass += 1;
+        else fail += 1;
+      }
     }
     const total = pass + fail;
     passRateByDay[i] = total > 0 ? pass / total : 0;
