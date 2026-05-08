@@ -4,3 +4,4 @@ export * from "./offloading";
 export * from "./conversation";
 export * from "./effect-sizes";
 export * from "./arcs";
+export * from "./text-mining";

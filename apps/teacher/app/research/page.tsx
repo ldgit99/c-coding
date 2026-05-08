@@ -63,6 +63,20 @@ export default function ResearchLabPage() {
       dataNeeded: "conversations (sequenced) + submission events",
     },
     {
+      href: "/research/text-mining",
+      tag: "Paper 6",
+      title: "Korean CS1 Discourse Patterns in AI-Tutor Dialogue",
+      venue: "Computers & Education / JCAL / IJAIED",
+      figures: [
+        "F1 Terminative ending distribution (interrogative/assertive/hedge/directive)",
+        "F2 Code-switching rate (Korean ↔ English) trajectory + per-student",
+        "F3 Lexical diversity MTLD (McCarthy 2005) per student",
+        "F4 Help-seeking strategy: instrumental vs executive (Newman 1990)",
+        "F5 Discourse marker frequency (그래서/근데/혹시 + 23 markers)",
+      ],
+      dataNeeded: "conversations (Korean utterances) — no external NLP deps",
+    },
+    {
       href: "/research/variables",
       tag: "Supplementary",
       title: "Variable Registry",
