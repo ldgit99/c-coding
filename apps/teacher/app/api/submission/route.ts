@@ -39,6 +39,25 @@ interface ConversationTurn {
   meta: Record<string, unknown> | null;
 }
 
+/**
+ * xAPI buildStatement 가 result 를 `{ extensions: { "https://cvibe.app/ext/<k>": v } }`
+ * 로 래핑해 events.result 컬럼에 저장한다. 클라이언트(SubmissionCodeModal) 는
+ * 평탄 키(result.summary, result.findings, ...)를 읽으므로 여기서 언래핑한다.
+ */
+function unwrapResultExtensions(
+  raw: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (!raw) return null;
+  const ext = (raw as { extensions?: Record<string, unknown> }).extensions;
+  if (!ext || typeof ext !== "object") return raw;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(ext)) {
+    const flat = k.split("/").pop() ?? k;
+    out[flat] = v;
+  }
+  return out;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const studentId = url.searchParams.get("studentId");
@@ -135,7 +154,9 @@ export async function GET(request: Request) {
           id: Number(r.id),
           kind,
           timestamp: (r.timestamp as string) ?? "",
-          result: (r.result as Record<string, unknown> | null) ?? null,
+          // xAPI buildStatement 가 result 필드를 .extensions["…/ext/<key>"] 로 래핑해
+          // 저장하므로 클라이언트가 기대하는 평탄 키로 다시 풀어준다.
+          result: unwrapResultExtensions(r.result as Record<string, unknown> | null),
         };
       });
 

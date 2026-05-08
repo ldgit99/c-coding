@@ -341,9 +341,13 @@ function AssignmentProgressSection({ rows }: { rows: AssignmentProgress[] }) {
                 ? { label: "진행 중", color: "text-primary" }
                 : { label: "초반부", color: "text-warning" };
           return (
-            <li key={r.code} className="px-5 py-2.5 text-[12px]">
-              <div className="flex items-center gap-3">
-                <div className="w-16 shrink-0 font-mono text-[11px] text-text-secondary">
+            <li key={r.code} className="text-[12px]">
+              <a
+                href={`/submissions?focus=${encodeURIComponent(r.code)}`}
+                title={`${r.title} 제출 현황 보기`}
+                className="group flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-bg"
+              >
+                <div className="w-16 shrink-0 font-mono text-[11px] text-text-secondary group-hover:text-primary">
                   {r.code.split("_")[0]}
                 </div>
                 <div className="min-w-0 flex-[1.5] truncate text-text-primary">{r.title}</div>
@@ -365,7 +369,10 @@ function AssignmentProgressSection({ rows }: { rows: AssignmentProgress[] }) {
                 <div className="w-16 shrink-0 text-right font-mono text-[10px] text-neutral">
                   {r.avgAttempts > 0 ? `${r.avgAttempts}회` : "—"}
                 </div>
-              </div>
+                <div className="w-4 shrink-0 text-right text-[11px] text-neutral opacity-0 transition-opacity group-hover:opacity-100">
+                  →
+                </div>
+              </a>
             </li>
           );
         })}

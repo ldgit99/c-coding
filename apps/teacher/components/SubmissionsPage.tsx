@@ -39,6 +39,7 @@ export function SubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [hideEmpty, setHideEmpty] = useState(false);
+  const [focusCode, setFocusCode] = useState<string | null>(null);
   const [modal, setModal] = useState<{
     studentId: string;
     studentName: string;
@@ -62,6 +63,34 @@ export function SubmissionsPage() {
       cancelled = true;
     };
   }, []);
+
+  // ?focus=<code> 가 들어오면 해당 과제 칼럼으로 스크롤하고 잠시 하이라이트.
+  // 데이터 로드 후에 DOM 이 그려져 있어야 하므로 data 의존.
+  useEffect(() => {
+    if (!data || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("focus");
+    if (!target) return;
+    const exists = data.assignments.some((a) => a.code === target);
+    if (!exists) return;
+    setFocusCode(target);
+    // 다음 frame 에서 querySelector — table 이 mount 된 직후
+    requestAnimationFrame(() => {
+      const el = document.querySelector(
+        `[data-assignment-col="${CSS.escape(target)}"]`,
+      );
+      if (el && "scrollIntoView" in el) {
+        (el as HTMLElement).scrollIntoView({
+          behavior: "smooth",
+          inline: "center",
+          block: "nearest",
+        });
+      }
+    });
+    // 3초 후 하이라이트 제거 — 시각적 노이즈 방지
+    const timer = window.setTimeout(() => setFocusCode(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [data]);
 
   const filteredStudents = useMemo(() => {
     const rows = data?.students ?? [];
@@ -165,20 +194,26 @@ export function SubmissionsPage() {
                 <th className="sticky left-0 z-10 bg-bg px-3 py-2 font-medium">
                   학생
                 </th>
-                {data?.assignments.map((a) => (
-                  <th
-                    key={a.code}
-                    className="whitespace-nowrap px-2 py-2 text-center font-medium"
-                    title={`${a.title} (난이도 ${a.difficulty})`}
-                  >
-                    <div className="font-mono text-[10px] text-text-primary">
-                      {a.code.split("_")[0]}
-                    </div>
-                    <div className="mt-0.5 max-w-[90px] truncate text-[10px] text-neutral">
-                      {a.title}
-                    </div>
-                  </th>
-                ))}
+                {data?.assignments.map((a) => {
+                  const focused = focusCode === a.code;
+                  return (
+                    <th
+                      key={a.code}
+                      data-assignment-col={a.code}
+                      className={`whitespace-nowrap px-2 py-2 text-center font-medium transition-colors ${
+                        focused ? "bg-primary/10 ring-2 ring-primary" : ""
+                      }`}
+                      title={`${a.title} (난이도 ${a.difficulty})`}
+                    >
+                      <div className="font-mono text-[10px] text-text-primary">
+                        {a.code.split("_")[0]}
+                      </div>
+                      <div className="mt-0.5 max-w-[90px] truncate text-[10px] text-neutral">
+                        {a.title}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="px-3 py-2 text-center font-medium">통과</th>
               </tr>
             </thead>
@@ -227,8 +262,14 @@ export function SubmissionsPage() {
                           lastAt: null,
                         };
                         const clickable = cell.attempts > 0;
+                        const focused = focusCode === a.code;
                         return (
-                          <td key={a.code} className="px-2 py-1 text-center">
+                          <td
+                            key={a.code}
+                            className={`px-2 py-1 text-center transition-colors ${
+                              focused ? "bg-primary/5" : ""
+                            }`}
+                          >
                             <StatusCell
                               cell={cell}
                               onClick={
@@ -260,8 +301,14 @@ export function SubmissionsPage() {
                   {perAssignment.map((p) => {
                     const rate = p.total > 0 ? p.passed / p.total : 0;
                     const pct = `${Math.round(rate * 100)}%`;
+                    const focused = focusCode === p.code;
                     return (
-                      <td key={p.code} className="px-2 py-2 text-center">
+                      <td
+                        key={p.code}
+                        className={`px-2 py-2 text-center transition-colors ${
+                          focused ? "bg-primary/10" : ""
+                        }`}
+                      >
                         <div className="font-mono text-[11px] text-text-primary">
                           {p.passed}/{p.total}
                         </div>

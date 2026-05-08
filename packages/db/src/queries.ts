@@ -47,21 +47,26 @@ export async function fetchClassroomData(
   try {
     // status='removed' 학생은 모든 집계에서 제외 (제적). status 컬럼이 없는
     // 마이그레이션 미적용 환경 대비 fallback 포함.
+    //
+    // cohort 필터는 grid 라우트와 동일하게 관대하게 둔다 — handle_new_user
+    // 트리거가 cohort_id 를 NULL/다른 값으로 채울 수 있어 엄격 매칭이면
+    // 실제 활동 중인 학생이 dashboard 집계에서 누락된다. 파일럿은 단일
+    // cohort 라 role=student 만 보장되면 이 cohort 의 학생으로 본다.
     let profiles: Array<Record<string, unknown>> | null = null;
     {
       const withStatus = await client
         .from("profiles")
         .select("id, display_name, cohort_id, status")
-        .eq("cohort_id", cohortId)
-        .eq("role", "student");
+        .eq("role", "student")
+        .or(`cohort_id.eq.${cohortId},cohort_id.is.null`);
       if (withStatus.error) {
         const code = (withStatus.error as { code?: string }).code;
         if (code === "42703" || /status/.test(withStatus.error.message)) {
           const fallback = await client
             .from("profiles")
             .select("id, display_name, cohort_id")
-            .eq("cohort_id", cohortId)
-            .eq("role", "student");
+            .eq("role", "student")
+            .or(`cohort_id.eq.${cohortId},cohort_id.is.null`);
           if (fallback.error) throw fallback.error;
           profiles = fallback.data;
         } else {
@@ -72,17 +77,43 @@ export async function fetchClassroomData(
       }
     }
     profiles = (profiles ?? []).filter((p) => p.status !== "removed");
+
+    // 추가로 — profiles 에 안 잡히지만 submissions 가 있는 orphan 학생도
+    // 합친다. grid 라우트와 동일 정책. assignments 쿼리는 student 집합과
+    // 무관하게 항상 필요해서 미리 시작.
+    const orphanProfilesPromise = (async () => {
+      const { data: subRows } = await client
+        .from("submissions")
+        .select("student_id");
+      const seen = new Set((profiles ?? []).map((p) => p.id as string));
+      const extras = new Set<string>();
+      for (const r of subRows ?? []) {
+        const sid = r.student_id as string | undefined;
+        if (sid && !seen.has(sid)) extras.add(sid);
+      }
+      if (extras.size === 0) return [] as Array<Record<string, unknown>>;
+      const { data: orphanRows } = await client
+        .from("profiles")
+        .select("id, display_name, cohort_id, status")
+        .in("id", Array.from(extras));
+      return (orphanRows ?? []).filter((p) => p.status !== "removed");
+    })();
+
+    const orphans = await orphanProfilesPromise;
+    profiles = [...(profiles ?? []), ...orphans];
     if (profiles.length === 0) {
       return { students: [], source: "supabase" };
     }
 
     const studentIds = profiles.map((p) => p.id as string);
-    const [masteryRes, miscRes, submissionsRes] = await Promise.all([
+    const [masteryRes, miscRes, submissionsRes, assignmentsRes] = await Promise.all([
       client.from("mastery").select("student_id, kc, value").in("student_id", studentIds),
       client
         .from("misconceptions")
         .select("student_id, kc, pattern, occurrences")
         .in("student_id", studentIds),
+      // 학생당 시도가 많으면 limit=studentIds*5 는 부족 — 11과제 × 학생 가정
+      // 만으로도 cap 가 차서 오래된 제출이 잘린다. 충분히 큰 상한으로 변경.
       client
         .from("submissions")
         .select(
@@ -90,8 +121,16 @@ export async function fetchClassroomData(
         )
         .in("student_id", studentIds)
         .order("submitted_at", { ascending: false })
-        .limit(studentIds.length * 5),
+        .limit(2000),
+      // assignments.id (uuid) → assignments.code 매핑. recentSubmissions[].assignmentId
+      // 의 contract 가 code 문자열이라 (overview·grid·demo data 모두 code 비교)
+      // 여기서 UUID → code 로 정규화한다.
+      client.from("assignments").select("id, code"),
     ]);
+    const assignmentCodeById = new Map<string, string>();
+    for (const a of assignmentsRes.data ?? []) {
+      assignmentCodeById.set(a.id as string, a.code as string);
+    }
 
     const students: ClassroomStudentRow[] = profiles.map((p) => {
       const id = p.id as string;
@@ -109,7 +148,11 @@ export async function fetchClassroomData(
 
       const studentSubs = (submissionsRes.data ?? []).filter((s) => s.student_id === id);
       const recentSubmissions = studentSubs.map((s) => ({
-        assignmentId: s.assignment_id as string,
+        // contract: code 문자열 (e.g. "A01_array_2d_sum"). 매핑 실패 시
+        // 원 UUID 를 그대로 두면 모든 consumer 의 code 비교가 빗나가므로
+        // 차라리 빈 문자열로 떨어뜨려 즉시 발견 가능하게 한다.
+        assignmentId:
+          assignmentCodeById.get(s.assignment_id as string) ?? "",
         finalScore: s.final_score != null ? Number(s.final_score) : null,
         passed: s.status === "passed",
         submittedAt: (s.submitted_at as string) ?? new Date().toISOString(),
