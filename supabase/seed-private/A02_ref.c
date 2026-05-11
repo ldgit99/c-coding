@@ -1,18 +1,32 @@
 #include <stdio.h>
 
-void swap(int *a, int *b);
-
 int main(void) {
-    int a, b;
-    scanf("%d %d", &a, &b);
-    printf("before swap() : a=%d, b=%d\n", a, b);
-    swap(&a, &b);
-    printf("after swap() : a=%d, b=%d\n", a, b);
-    return 0;
-}
+    int arr[] = { -8, 9, -20, 21, -26, -41, 45, -51, 78, 90 };
+    int max, min;
 
-void swap(int *a, int *b) {
-    int tmp = *a;
-    *a = *b;
-    *b = tmp;
+    int *p;
+
+    p = arr;
+    max = *arr;
+    min = *arr;
+
+    printf("arr[] = { ");
+
+    for (int i = 0; i < 10; i++) {
+        printf("%d ", *(p + i));
+
+        if (*(p + i) > max) {
+            max = *(p + i);
+        }
+
+        if (*(p + i) < min) {
+            min = *(p + i);
+        }
+    }
+
+    printf("}\n\n");
+    printf("최댓값: %d\n", max);
+    printf("최솟값: %d", min);
+
+    return 0;
 }

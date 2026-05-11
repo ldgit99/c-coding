@@ -156,38 +156,56 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A02_pointer_swap_fn',
-  1,
-  $$포인터와 함수$$,
-  $$두 정수 a, b 를 공백으로 구분해 입력받아, 포인터 매개변수를 사용하는 `void swap(int *a, int *b)` 함수로 두 값을 교환한 뒤 전후를 다음 형식으로 출력하라.
+  2,
+  $$포인터 순회로 배열 최댓값·최솟값$$,
+  $$정수 배열 `arr` 가 이미 선언돼 있고, 포인터 `p` 가 `arr` 의 첫 원소를 가리킨다. 빈 `for` 문 안을 채워 배열의 10 개 원소를 **포인터로 순회**하며 다음 세 가지를 한 번에 처리하라.
+
+1. 각 원소를 `printf("%d ", ...)` 로 한 칸 띄어 출력.
+2. `max` 가 지금까지의 최댓값이 되도록 갱신.
+3. `min` 이 지금까지의 최솟값이 되도록 갱신.
+
+반드시 인덱스 표기(`arr[i]`) 가 아닌 포인터 산술 (`*(p + i)`) 로 접근하라. `max`·`min` 은 첫 원소(`*arr`) 로 이미 초기화돼 있으니 그대로 사용하면 된다.
+
+## 예상 출력
 
 ```
-before swap() : a=<a>, b=<b>
-after swap() : a=<b>, b=<a>
-```
+arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }
 
-값 복사(pass by value)로는 교환되지 않는 이유를 코드에서 확인하는 것이 목적. main 에서는 `&a`, `&b` 로 주소를 넘기고, swap 내부에서는 `*a`, `*b` 로 역참조해 서로 교환한다.$$,
-  $$["pointer-basics","functions-params"]$$::jsonb,
-  3,
+최댓값: 90
+최솟값: -51
+```$$,
+  $$["pointer-basics","pointer-arithmetic","control-flow-loop"]$$::jsonb,
+  2,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-void swap(int *a, int *b);
-
 int main(void) {
-    int a, b;
-    scanf("%d %d", &a, &b);
-    printf("before swap() : a=%d, b=%d\n", a, b);
-    swap(&a, &b);
-    printf("after swap() : a=%d, b=%d\n", a, b);
+    int arr[] = { -8, 9, -20, 21, -26, -41, 45, -51, 78, 90 };
+    int max, min;
+
+    int *p;
+
+    p = arr;
+    max = *arr;
+    min = *arr;
+
+    printf("arr[] = { ");
+
+    // TODO: 포인터 p 를 사용해 arr 의 10 개 원소를 순회하며
+    //       (1) "%d " 형식으로 출력, (2) max 갱신, (3) min 갱신.
+    for (int i = 0; i < 10; i++) {
+
+    }
+
+    printf("}\n\n");
+    printf("최댓값: %d\n", max);
+    printf("최솟값: %d", min);
+
     return 0;
 }
-
-void swap(int *a, int *b) {
-    // TODO: 이 함수가 두 변수의 값을 바꾸도록 구현해보세요.
-}
 $$,
-  $$[{"input":"10 20","expected":"before swap() : a=10, b=20\nafter swap() : a=20, b=10\n","note":"기본 교환"},{"input":"7 7","expected":"before swap() : a=7, b=7\nafter swap() : a=7, b=7\n","note":"같은 값 (교환해도 동일)"}]$$::jsonb,
+  $$[{"input":"","expected":"arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51","note":"고정 배열 — 입력 없음. for 문이 비어 있으면 \"arr[] = { }\" 와 max/min 초기값만 찍힌다."}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

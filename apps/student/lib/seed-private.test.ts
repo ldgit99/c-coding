@@ -24,11 +24,14 @@ describe("seed-private loader (in-memory ASSIGNMENTS 기반)", () => {
     expect(ref).toMatch(/int\s+main/);
   });
 
-  it("loadReferenceSolution(A02_pointer_swap_fn)은 swap 함수 포함", async () => {
+  it("loadReferenceSolution(A02_pointer_swap_fn)은 포인터 순회 + max/min 갱신", async () => {
     const ref = await loadReferenceSolution("A02_pointer_swap_fn");
     expect(ref).not.toBeNull();
-    expect(ref).toContain("void swap");
-    expect(ref).toContain("*a = *b");
+    // 포인터 산술 표기 + 최댓값/최솟값 갱신 로직 확인
+    expect(ref).toMatch(/\*\(p\s*\+\s*i\)/);
+    expect(ref).toContain("max =");
+    expect(ref).toContain("min =");
+    expect(ref).toMatch(/printf\("%d "/);
   });
 
   it("존재하지 않는 code 는 null", async () => {

@@ -1,27 +1,17 @@
 [
   {
     "id": 1,
-    "input": "10 20",
-    "expected": "before swap() : a=10, b=20\nafter swap() : a=20, b=10\n"
+    "input": "",
+    "expected": "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51"
   },
   {
     "id": 2,
-    "input": "7 7",
-    "expected": "before swap() : a=7, b=7\nafter swap() : a=7, b=7\n"
+    "input": "",
+    "expected": "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51"
   },
   {
     "id": 3,
-    "input": "-5 3",
-    "expected": "before swap() : a=-5, b=3\nafter swap() : a=3, b=-5\n"
-  },
-  {
-    "id": 4,
-    "input": "0 100",
-    "expected": "before swap() : a=0, b=100\nafter swap() : a=100, b=0\n"
-  },
-  {
-    "id": 5,
-    "input": "123456 -987654",
-    "expected": "before swap() : a=123456, b=-987654\nafter swap() : a=-987654, b=123456\n"
+    "input": "",
+    "expected": "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51"
   }
 ]

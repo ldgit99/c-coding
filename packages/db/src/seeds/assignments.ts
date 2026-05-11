@@ -263,67 +263,100 @@ int main() {
   },
   {
     code: "A02_pointer_swap_fn",
-    version: 1,
-    title: "포인터와 함수",
+    version: 2,
+    title: "포인터 순회로 배열 최댓값·최솟값",
     template:
-      "두 정수 a, b 를 공백으로 구분해 입력받아, 포인터 매개변수를 사용하는 `void swap(int *a, int *b)` 함수로 두 값을 교환한 뒤 전후를 다음 형식으로 출력하라.\n\n```\nbefore swap() : a=<a>, b=<b>\nafter swap() : a=<b>, b=<a>\n```\n\n값 복사(pass by value)로는 교환되지 않는 이유를 코드에서 확인하는 것이 목적. main 에서는 `&a`, `&b` 로 주소를 넘기고, swap 내부에서는 `*a`, `*b` 로 역참조해 서로 교환한다.",
-    kcTags: ["pointer-basics", "functions-params"],
-    difficulty: 3,
+      "정수 배열 `arr` 가 이미 선언돼 있고, 포인터 `p` 가 `arr` 의 첫 원소를 가리킨다. 빈 `for` 문 안을 채워 배열의 10 개 원소를 **포인터로 순회**하며 다음 세 가지를 한 번에 처리하라.\n\n1. 각 원소를 `printf(\"%d \", ...)` 로 한 칸 띄어 출력.\n2. `max` 가 지금까지의 최댓값이 되도록 갱신.\n3. `min` 이 지금까지의 최솟값이 되도록 갱신.\n\n반드시 인덱스 표기(`arr[i]`) 가 아닌 포인터 산술 (`*(p + i)`) 로 접근하라. `max`·`min` 은 첫 원소(`*arr`) 로 이미 초기화돼 있으니 그대로 사용하면 된다.\n\n## 예상 출력\n\n```\narr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51\n```",
+    kcTags: ["pointer-basics", "pointer-arithmetic", "control-flow-loop"],
+    difficulty: 2,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
-void swap(int *a, int *b);
-
 int main(void) {
-    int a, b;
-    scanf("%d %d", &a, &b);
-    printf("before swap() : a=%d, b=%d\\n", a, b);
-    swap(&a, &b);
-    printf("after swap() : a=%d, b=%d\\n", a, b);
-    return 0;
-}
+    int arr[] = { -8, 9, -20, 21, -26, -41, 45, -51, 78, 90 };
+    int max, min;
 
-void swap(int *a, int *b) {
-    // TODO: 이 함수가 두 변수의 값을 바꾸도록 구현해보세요.
+    int *p;
+
+    p = arr;
+    max = *arr;
+    min = *arr;
+
+    printf("arr[] = { ");
+
+    // TODO: 포인터 p 를 사용해 arr 의 10 개 원소를 순회하며
+    //       (1) "%d " 형식으로 출력, (2) max 갱신, (3) min 갱신.
+    for (int i = 0; i < 10; i++) {
+
+    }
+
+    printf("}\\n\\n");
+    printf("최댓값: %d\\n", max);
+    printf("최솟값: %d", min);
+
+    return 0;
 }
 `,
     visibleTests: [
       {
-        input: "10 20",
-        expected: "before swap() : a=10, b=20\nafter swap() : a=20, b=10\n",
-        note: "기본 교환",
-      },
-      {
-        input: "7 7",
-        expected: "before swap() : a=7, b=7\nafter swap() : a=7, b=7\n",
-        note: "같은 값 (교환해도 동일)",
+        input: "",
+        expected:
+          "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51",
+        note: "고정 배열 — 입력 없음. for 문이 비어 있으면 \"arr[] = { }\" 와 max/min 초기값만 찍힌다.",
       },
     ],
     hiddenTests: [
-      { id: 1, input: "10 20", expected: "before swap() : a=10, b=20\nafter swap() : a=20, b=10\n" },
-      { id: 2, input: "7 7", expected: "before swap() : a=7, b=7\nafter swap() : a=7, b=7\n" },
-      { id: 3, input: "-5 3", expected: "before swap() : a=-5, b=3\nafter swap() : a=3, b=-5\n" },
-      { id: 4, input: "0 100", expected: "before swap() : a=0, b=100\nafter swap() : a=100, b=0\n" },
-      { id: 5, input: "123456 -987654", expected: "before swap() : a=123456, b=-987654\nafter swap() : a=-987654, b=123456\n" },
+      {
+        id: 1,
+        input: "",
+        expected:
+          "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51",
+      },
+      {
+        id: 2,
+        input: "",
+        expected:
+          "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51",
+      },
+      {
+        id: 3,
+        input: "",
+        expected:
+          "arr[] = { -8 9 -20 21 -26 -41 45 -51 78 90 }\n\n최댓값: 90\n최솟값: -51",
+      },
     ],
     referenceSolution: `#include <stdio.h>
 
-void swap(int *a, int *b);
-
 int main(void) {
-    int a, b;
-    scanf("%d %d", &a, &b);
-    printf("before swap() : a=%d, b=%d\\n", a, b);
-    swap(&a, &b);
-    printf("after swap() : a=%d, b=%d\\n", a, b);
-    return 0;
-}
+    int arr[] = { -8, 9, -20, 21, -26, -41, 45, -51, 78, 90 };
+    int max, min;
 
-void swap(int *a, int *b) {
-    int tmp = *a;
-    *a = *b;
-    *b = tmp;
+    int *p;
+
+    p = arr;
+    max = *arr;
+    min = *arr;
+
+    printf("arr[] = { ");
+
+    for (int i = 0; i < 10; i++) {
+        printf("%d ", *(p + i));
+
+        if (*(p + i) > max) {
+            max = *(p + i);
+        }
+
+        if (*(p + i) < min) {
+            min = *(p + i);
+        }
+    }
+
+    printf("}\\n\\n");
+    printf("최댓값: %d\\n", max);
+    printf("최솟값: %d", min);
+
+    return 0;
 }
 `,
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
