@@ -3,7 +3,6 @@
   "framework": "nextjs",
   "buildCommand": "cd ../.. && pnpm turbo run build --filter=@cvibe/student",
   "installCommand": "pnpm install --frozen-lockfile",
-  "ignoreCommand": "npx turbo-ignore @cvibe/student",
   "regions": ["icn1"],
   "functions": {
     "app/api/**/route.ts": {
