@@ -34,12 +34,41 @@ interface HealthResponse {
   env: { hasSupabase: boolean; hasStudentApp: boolean };
 }
 
+interface PurgeSummaryRow {
+  table: string;
+  matched: number;
+  deleted: number;
+  error?: string;
+}
+
+interface PurgeResponse {
+  ok?: boolean;
+  mode?: "dry-run" | "executed";
+  assignmentCode?: string;
+  before?: string;
+  summary?: PurgeSummaryRow[];
+  hint?: string;
+  error?: string;
+}
+
 export function SettingsPage() {
   const [data, setData] = useState<SettingsResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [reseedRunning, setReseedRunning] = useState(false);
   const [reseedFlash, setReseedFlash] = useState<string | null>(null);
+
+  // 옛 카탈로그 기록 cleanup 상태
+  const [purgeCode, setPurgeCode] = useState("A02_pointer_swap_fn");
+  // 기본 컷오프: 오늘 00:00 (현지 시각) — 새 문제 배포 이전 기록만 대상.
+  const [purgeBefore, setPurgeBefore] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  });
+  const [purgeDryRun, setPurgeDryRun] = useState<PurgeResponse | null>(null);
+  const [purgeRunning, setPurgeRunning] = useState(false);
+  const [purgeFlash, setPurgeFlash] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -53,6 +82,43 @@ export function SettingsPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runPurge = async (confirm: boolean) => {
+    setPurgeRunning(true);
+    setPurgeFlash(null);
+    try {
+      const res = await fetch("/api/admin/purge-assignment-history", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          assignmentCode: purgeCode,
+          before: purgeBefore,
+          confirm,
+        }),
+      });
+      const json = (await res.json()) as PurgeResponse;
+      if (json.ok) {
+        if (confirm) {
+          const total = (json.summary ?? []).reduce(
+            (s, r) => s + (r.deleted ?? 0),
+            0,
+          );
+          setPurgeFlash(`삭제 완료 — 총 ${total} row.`);
+          setPurgeDryRun(null);
+        } else {
+          setPurgeDryRun(json);
+          setPurgeFlash(null);
+        }
+      } else {
+        setPurgeFlash(`실패: ${json.error ?? "알 수 없는 오류"}`);
+      }
+    } catch (err) {
+      setPurgeFlash(String(err));
+    } finally {
+      setPurgeRunning(false);
+      if (confirm) setTimeout(() => setPurgeFlash(null), 8000);
     }
   };
 
@@ -242,6 +308,112 @@ export function SettingsPage() {
               )}
             </Section>
           )}
+
+          <Section
+            title="옛 카탈로그 기록 정리"
+            subtitle="문제가 새 본문으로 교체된 뒤, 옛 정답·옛 hidden test 로 평가된 row 를 timestamp 컷오프 이전으로 삭제"
+          >
+            <KV
+              label="대상 코드"
+              value={
+                <input
+                  type="text"
+                  value={purgeCode}
+                  onChange={(e) => {
+                    setPurgeCode(e.target.value);
+                    setPurgeDryRun(null);
+                  }}
+                  className="h-8 w-full max-w-[280px] rounded-md border border-border-soft bg-surface px-2 font-mono text-[12px] text-text-primary outline-none focus:border-primary"
+                />
+              }
+              hint="예: A02_pointer_swap_fn"
+            />
+            <KV
+              label="컷오프 (ISO)"
+              value={
+                <input
+                  type="text"
+                  value={purgeBefore}
+                  onChange={(e) => {
+                    setPurgeBefore(e.target.value);
+                    setPurgeDryRun(null);
+                  }}
+                  className="h-8 w-full max-w-[320px] rounded-md border border-border-soft bg-surface px-2 font-mono text-[11px] text-text-primary outline-none focus:border-primary"
+                />
+              }
+              hint="이 시각 이전 row 만 삭제 — 신규 기록 보호"
+            />
+            {purgeDryRun && purgeDryRun.summary && (
+              <div className="px-5 py-3">
+                <div className="mb-2 text-[11px] font-medium text-text-primary">
+                  Dry-run 결과 · 삭제될 row 수
+                </div>
+                <table className="w-full max-w-md text-[12px]">
+                  <thead>
+                    <tr className="text-left text-[10px] uppercase tracking-wider text-neutral">
+                      <th className="py-1">table</th>
+                      <th className="py-1">matched</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {purgeDryRun.summary.map((r) => (
+                      <tr key={r.table} className="border-t border-border-soft">
+                        <td className="py-1 font-mono">{r.table}</td>
+                        <td className="py-1 font-mono">
+                          {r.matched}
+                          {r.error && (
+                            <span className="ml-2 text-[10px] text-error">
+                              {r.error}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => runPurge(false)}
+                disabled={purgeRunning || !purgeCode || !purgeBefore}
+                className="h-8 rounded-md border border-border-soft bg-surface px-3 text-[12px] font-medium text-text-primary hover:border-primary disabled:opacity-50"
+              >
+                {purgeRunning && !purgeDryRun ? "조회 중…" : "Dry-run (count)"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!purgeDryRun) {
+                    setPurgeFlash("먼저 Dry-run 으로 영향 범위를 확인하세요.");
+                    setTimeout(() => setPurgeFlash(null), 4000);
+                    return;
+                  }
+                  const total = (purgeDryRun.summary ?? []).reduce(
+                    (s, r) => s + (r.matched ?? 0),
+                    0,
+                  );
+                  if (
+                    !confirm(
+                      `정말 ${total} row 를 영구 삭제할까요? 복구 불가입니다.`,
+                    )
+                  )
+                    return;
+                  void runPurge(true);
+                }}
+                disabled={purgeRunning || !purgeDryRun}
+                className="h-8 rounded-md border border-error/30 bg-error/10 px-3 text-[12px] font-medium text-error hover:bg-error/20 disabled:opacity-50"
+              >
+                {purgeRunning && purgeDryRun ? "삭제 중…" : "Delete (영구)"}
+              </button>
+            </div>
+            {purgeFlash && (
+              <div className="border-t border-border-soft bg-bg px-5 py-2 text-[12px] text-text-primary">
+                {purgeFlash}
+              </div>
+            )}
+          </Section>
 
           {health && (
             <Section
