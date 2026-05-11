@@ -15,6 +15,8 @@ import {
  * 받도록 FNV-1a 해시 기반(`packages/db/src/variant-assignment.ts`).
  * Week 10+에 실제 `assignment_variants` 테이블 연결 시에도 같은 규칙을
  * 공유한다.
+ *
+ * catalog-rev: 2026-05-12 A02 교체 (포인터 swap → 포인터 순회 + max/min).
  */
 export async function GET(request: Request) {
   const user = resolveUserFromRequest(request, { preferredRole: "student" });
