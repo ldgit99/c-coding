@@ -224,24 +224,58 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A03_arrays_basic',
-  1,
-  $$배열 합산$$,
-  $$길이 N인 정수 배열을 입력 받아 모든 원소의 합을 한 줄로 출력하라. 입력 첫 줄은 N, 둘째 줄은 공백으로 구분된 N개 정수.$$,
-  $$["arrays-indexing","control-flow-loop"]$$::jsonb,
+  2,
+  $$문자열 입력과 소문자 변환$$,
+  $$표준 입력에서 한 줄 문자열을 받아 알파벳을 모두 **소문자** 로 변환해 출력하라. 다음 두 가지를 직접 작성해야 한다.
+
+1. `fgets()` 로 한 줄을 받아 `s` 에 저장 — 버퍼 크기는 `sizeof(s)`, 입력 스트림은 `stdin`.
+2. 문자열의 모든 알파벳을 `tolower()` 로 변환 — `s[i]` 로 인덱스 접근하면서 `'\0'` 이 나올 때까지 순회.
+
+엔터(`\n`) 제거와 `printf` 출력은 이미 starter 코드에 포함돼 있다.
+
+## 입출력 예시
+
+```
+입력: HELLO
+출력: 문자열 입력: 소문자로 변환된 문자열: hello
+```
+
+## 힌트
+
+- `fgets(buffer, size, stdin)` 는 줄바꿈 포함해 최대 `size-1` 글자를 읽는다.
+- `tolower(c)` 는 대문자만 변환하고 소문자·숫자·공백·특수문자는 그대로 둔다 (`#include <ctype.h>`).
+- 루프 종료 조건: `s[i] != '\0'`.$$,
+  $$["io-formatting","control-flow-loop","arrays-indexing"]$$::jsonb,
   2,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 
 int main(void) {
-    int n;
-    scanf("%d", &n);
-    int arr[100];
-    // TODO: n 개 정수를 읽고 합을 출력해보세요.
+    char s[100];
+    int i;
+
+    printf("문자열 입력: ");
+
+    // TODO 1: fgets() 로 표준 입력에서 한 줄을 읽어 s 에 저장하세요.
+    //         (s, sizeof(s), stdin 인자 사용)
+
+
+    // fgets() 로 입력받은 문자열 끝의 엔터 제거
+    s[strcspn(s, "\n")] = '\0';
+
+    // TODO 2: 문자열의 모든 알파벳을 소문자로 변환하세요.
+    //         (tolower() 와 for 루프 사용, 종료 조건은 s[i] != '\0')
+
+
+    printf("소문자로 변환된 문자열: %s\n", s);
+
     return 0;
 }
 $$,
-  $$[{"input":"5\n1 2 3 4 5","expected":"15\n"},{"input":"3\n10 -5 7","expected":"12\n"}]$$::jsonb,
+  $$[{"input":"HELLO\n","expected":"문자열 입력: 소문자로 변환된 문자열: hello\n","note":"기본 — 모든 대문자"},{"input":"Hello World\n","expected":"문자열 입력: 소문자로 변환된 문자열: hello world\n","note":"공백 포함"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

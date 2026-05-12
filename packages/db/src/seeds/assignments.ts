@@ -363,52 +363,106 @@ int main(void) {
   },
   {
     code: "A03_arrays_basic",
-    version: 1,
-    title: "배열 합산",
+    version: 2,
+    title: "문자열 입력과 소문자 변환",
     template:
-      "길이 N인 정수 배열을 입력 받아 모든 원소의 합을 한 줄로 출력하라. 입력 첫 줄은 N, 둘째 줄은 공백으로 구분된 N개 정수.",
-    kcTags: ["arrays-indexing", "control-flow-loop"],
+      "표준 입력에서 한 줄 문자열을 받아 알파벳을 모두 **소문자** 로 변환해 출력하라. 다음 두 가지를 직접 작성해야 한다.\n\n1. `fgets()` 로 한 줄을 받아 `s` 에 저장 — 버퍼 크기는 `sizeof(s)`, 입력 스트림은 `stdin`.\n2. 문자열의 모든 알파벳을 `tolower()` 로 변환 — `s[i]` 로 인덱스 접근하면서 `'\\0'` 이 나올 때까지 순회.\n\n엔터(`\\n`) 제거와 `printf` 출력은 이미 starter 코드에 포함돼 있다.\n\n## 입출력 예시\n\n```\n입력: HELLO\n출력: 문자열 입력: 소문자로 변환된 문자열: hello\n```\n\n## 힌트\n\n- `fgets(buffer, size, stdin)` 는 줄바꿈 포함해 최대 `size-1` 글자를 읽는다.\n- `tolower(c)` 는 대문자만 변환하고 소문자·숫자·공백·특수문자는 그대로 둔다 (`#include <ctype.h>`).\n- 루프 종료 조건: `s[i] != '\\0'`.",
+    kcTags: ["io-formatting", "control-flow-loop", "arrays-indexing"],
     difficulty: 2,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 
 int main(void) {
-    int n;
-    scanf("%d", &n);
-    int arr[100];
-    // TODO: n 개 정수를 읽고 합을 출력해보세요.
+    char s[100];
+    int i;
+
+    printf("문자열 입력: ");
+
+    // TODO 1: fgets() 로 표준 입력에서 한 줄을 읽어 s 에 저장하세요.
+    //         (s, sizeof(s), stdin 인자 사용)
+
+
+    // fgets() 로 입력받은 문자열 끝의 엔터 제거
+    s[strcspn(s, "\\n")] = '\\0';
+
+    // TODO 2: 문자열의 모든 알파벳을 소문자로 변환하세요.
+    //         (tolower() 와 for 루프 사용, 종료 조건은 s[i] != '\\0')
+
+
+    printf("소문자로 변환된 문자열: %s\\n", s);
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "5\n1 2 3 4 5", expected: "15\n" },
-      { input: "3\n10 -5 7", expected: "12\n" },
+      {
+        input: "HELLO\n",
+        expected:
+          "문자열 입력: 소문자로 변환된 문자열: hello\n",
+        note: "기본 — 모든 대문자",
+      },
+      {
+        input: "Hello World\n",
+        expected:
+          "문자열 입력: 소문자로 변환된 문자열: hello world\n",
+        note: "공백 포함",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "5\n1 2 3 4 5", expected: "15\n" },
-      { id: 2, input: "3\n10 -5 7", expected: "12\n" },
-      { id: 3, input: "1\n42", expected: "42\n" },
-      { id: 4, input: "6\n-1 -2 -3 -4 -5 -6", expected: "-21\n" },
-      { id: 5, input: "4\n1000 2000 3000 4000", expected: "10000\n" },
+      {
+        id: 1,
+        input: "HELLO\n",
+        expected: "문자열 입력: 소문자로 변환된 문자열: hello\n",
+      },
+      {
+        id: 2,
+        input: "Hello World\n",
+        expected: "문자열 입력: 소문자로 변환된 문자열: hello world\n",
+      },
+      {
+        id: 3,
+        input: "C99 Programming\n",
+        expected: "문자열 입력: 소문자로 변환된 문자열: c99 programming\n",
+      },
+      {
+        id: 4,
+        input: "MiXeD CaSe StRiNg\n",
+        expected: "문자열 입력: 소문자로 변환된 문자열: mixed case string\n",
+      },
+      {
+        id: 5,
+        input: "already lowercase\n",
+        expected: "문자열 입력: 소문자로 변환된 문자열: already lowercase\n",
+      },
     ],
     referenceSolution: `#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 
 int main(void) {
-    int n;
-    if (scanf("%d", &n) != 1) return 1;
-    long sum = 0;
-    for (int i = 0; i < n; i++) {
-        int x;
-        scanf("%d", &x);
-        sum += x;
+    char s[100];
+    int i;
+
+    printf("문자열 입력: ");
+    fgets(s, sizeof(s), stdin);
+
+    // fgets()로 입력받은 문자열 끝의 엔터 제거
+    s[strcspn(s, "\\n")] = '\\0';
+
+    // 문자열의 모든 알파벳을 소문자로 변환
+    for (i = 0; s[i] != '\\0'; i++) {
+        s[i] = tolower(s[i]);
     }
-    printf("%ld\\n", sum);
+
+    printf("소문자로 변환된 문자열: %s\\n", s);
+
     return 0;
 }
 `,
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
-    variantCount: 6,
   },
   {
     code: "A04_array_max",
