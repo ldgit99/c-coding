@@ -60,3 +60,6 @@ Thumbs.db
 # Secrets
 *.pem
 *.key
+
+.vercel
+.env*.local
