@@ -3,14 +3,14 @@ name: Deploy to Vercel
 # Vercel GitHub 연동이 webhook 깨짐 사고 후 신뢰 잃음 (2026-05-12).
 # GitHub Actions 가 main 푸시마다 두 앱을 Vercel CLI 로 직접 배포.
 #
+# 빌드는 Vercel 인프라에서 원격 수행 (dashboard 의 buildCommand/installCommand
+# 사용). CI runner 는 단지 `vercel deploy --prod` 호출만 담당 — webhook 우회.
+#
 # 필요한 GitHub Secrets (Repository → Settings → Secrets and variables → Actions):
 #   - VERCEL_TOKEN              : https://vercel.com/account/tokens 에서 발급
 #   - VERCEL_ORG_ID             : 두 앱 공통 (계정/팀 ID)
 #   - VERCEL_PROJECT_ID_STUDENT : c-coding-student 프로젝트 ID
 #   - VERCEL_PROJECT_ID_TEACHER : c-coding-teacher 프로젝트 ID
-#
-# ORG_ID 와 PROJECT_ID 는 로컬에서 `vercel link` 한 후 생성된
-# `apps/{student,teacher}/.vercel/project.json` 에서 복사.
 
 on:
   push:
@@ -33,30 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
-      - name: Pull Vercel env (production)
-        working-directory: apps/student
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build with Vercel
-        working-directory: apps/student
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
       - name: Deploy to Vercel (production)
         working-directory: apps/student
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
 
   deploy-teacher:
     name: Deploy teacher app
@@ -67,27 +49,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
-      - name: Pull Vercel env (production)
-        working-directory: apps/teacher
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build with Vercel
-        working-directory: apps/teacher
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
       - name: Deploy to Vercel (production)
         working-directory: apps/teacher
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
