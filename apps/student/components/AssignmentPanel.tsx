@@ -355,7 +355,7 @@ export function AssignmentPanel({
  * 교수가 다음 주차 공개할 때 해당 prefix 추가. 추후 cohort 별로 동적 제어
  * 하려면 Supabase `assignments.active` 필드 또는 별도 release schedule 테이블로.
  */
-const UNLOCKED_PREFIXES = ["A00", "A01", "A02"];
+const UNLOCKED_PREFIXES = ["A00", "A01", "A02", "A03"];
 function isLocked(code: string): boolean {
   return !UNLOCKED_PREFIXES.some((p) => code.startsWith(p));
 }
