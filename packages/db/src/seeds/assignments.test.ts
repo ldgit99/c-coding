@@ -44,7 +44,9 @@ describe("ASSIGNMENTS — 카탈로그 무결성", () => {
   });
 
   it("getAssignmentByCode가 기대대로 동작", () => {
-    expect(getAssignmentByCode("A03_arrays_basic")?.title).toBe("배열 합산");
+    expect(getAssignmentByCode("A03_arrays_basic")?.title).toBe(
+      "문자열 입력과 소문자 변환",
+    );
     expect(getAssignmentByCode("nonexistent")).toBeUndefined();
   });
 
