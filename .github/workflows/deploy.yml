@@ -3,23 +3,22 @@ name: Deploy to Vercel
 # Vercel GitHub 연동이 webhook 깨짐 사고 후 신뢰 잃음 (2026-05-12).
 # GitHub Actions 가 main 푸시마다 두 앱을 Vercel CLI 로 직접 배포.
 #
-# 빌드는 Vercel 인프라에서 원격 수행 (dashboard 의 buildCommand/installCommand
-# 사용). CI runner 는 단지 `vercel deploy --prod` 호출만 담당 — webhook 우회.
+# 빌드는 Vercel 인프라에서 원격 수행 (dashboard 의 Root Directory =
+# apps/{student|teacher}, buildCommand·installCommand 모두 dashboard 의
+# 것 적용). CI runner 는 repo root 에서 `vercel deploy` 만 호출.
 #
-# 필요한 GitHub Secrets (Repository → Settings → Secrets and variables → Actions):
-#   - VERCEL_TOKEN              : https://vercel.com/account/tokens 에서 발급
-#   - VERCEL_ORG_ID             : 두 앱 공통 (계정/팀 ID)
-#   - VERCEL_PROJECT_ID_STUDENT : c-coding-student 프로젝트 ID
-#   - VERCEL_PROJECT_ID_TEACHER : c-coding-teacher 프로젝트 ID
+# 필요한 GitHub Secrets:
+#   - VERCEL_TOKEN
+#   - VERCEL_ORG_ID
+#   - VERCEL_PROJECT_ID_STUDENT
+#   - VERCEL_PROJECT_ID_TEACHER
 
 on:
   push:
     branches: [main]
-  # 수동 트리거 — Actions 탭에서 'Run workflow' 가능
   workflow_dispatch:
 
 concurrency:
-  # 같은 브랜치에 빠르게 여러 push 들어오면 마지막 것만 배포 (큐 누적 방지)
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
@@ -36,8 +35,9 @@ jobs:
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
+      # repo root 에서 실행 — Vercel 이 PROJECT_ID 로 dashboard 의
+      # Root Directory(apps/student) 를 적용해 그 안에서 빌드.
       - name: Deploy to Vercel (production)
-        working-directory: apps/student
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
 
   deploy-teacher:
@@ -53,5 +53,4 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: Deploy to Vercel (production)
-        working-directory: apps/teacher
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
