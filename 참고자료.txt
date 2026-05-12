@@ -132,3 +132,132 @@
 **“AI-학습-교사 간 상호작용을 조율하는 컨트롤 타워”**입니다.
 
 
+---
+
+# 후기 (2026-05-13)
+
+이 메모는 프로젝트 시작 시점의 초안이다. 실제 구현은 [research.md](research.md) 의 12 주 로드맵 + 운영 이터레이션 25 회를 거쳐, **9 개 멀티 에이전트 · 11 개 과제 · 교사 7-layer 코크핏 · xAPI 분석 레이어 · 자동 배포 인프라**까지 확장됐다. 초안의 핵심 직관 (3 패널 · Navigator · 짝프로그래밍) 은 그대로 유지하되, 다음 영역이 본격적으로 구체화됐다.
+
+- 원본의 **"AI 챗봇"** → 역할이 분리된 **9 개 전문 에이전트** (라우팅 · 힌트 · 코드리뷰 · 디버깅 · 평가 · 학생 모델링 · 과제 생성 · 교사 보조 · 안전 필터)
+- 원본의 **"AI 개입 수준 강/중/약"** → 실제 동작이 다른 **4-mode spectrum** (solo · pair · coach · exam) + HINT_CEILING + Safety 유사도 임계 차등
+- 원본의 **"리플렉션 + 대화 로그"** → **xAPI events · turn-level conversations · KC mastery · misconceptions** + 결정적 BKT 갱신 cron
+- 원본의 **"학습 분석"** → 교사 실시간 대시보드 + **Research Lab** (Paper 1 · 3 시각화: cascade · offloading · conversation arcs · linguistic profile)
+
+상세 스펙은 [research.md](research.md) §5–§11, 운영 이력·플레이북은 [CLAUDE.md](CLAUDE.md) 의 *변경 이력 표* 와 *운영 플레이북* 섹션 참조.
+
+---
+
+# 부록 A. 전체 아키텍처 그림 (2026-05-13)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  학생 앱 (c-coding-student.vercel.app · Next.js 15 RSC)                     │
+│  ┌────────────────┬─────────────────────┬─────────────────────────────┐    │
+│  │ AssignmentPanel│ Monaco C 에디터     │ AIPanel                     │    │
+│  │ - 학습목표     │ - C99 highlight     │ [대화] [힌트] [리뷰] [성찰] │    │
+│  │ - 진행 막대    │ - lint findings     │ Accept Gate (자기설명 모달) │    │
+│  │ - 자동 진입    │ - "왜 이 에러?"     │ ModeSwitch (solo/pair/coach │    │
+│  │ - variant 배지 │ - 실행 ▶            │              /exam)         │    │
+│  └────────────────┴─────────────────────┴─────────────────────────────┘    │
+│  하단: ProgressTracker · FocusMode 15분 · StuckDiagnostic · Walkthrough     │
+└────────────────────────────────────────┬────────────────────────────────────┘
+                                         │ HTTPS · service_role
+                                         ▼
+       ┌────────────────────────┐    ┌──────────────────────┐    ┌──────────────────┐
+       │ Supabase Postgres      │    │ Anthropic API        │    │ Judge0 (옵션)    │
+       │ - profiles · cohorts   │    │ Haiku 4.5 분류·필터  │    │ - C 컴파일·실행  │
+       │ - assignments          │    │ Sonnet 4.6 튜터·리뷰 │    │ - hidden tests   │
+       │ - submissions          │    │ Opus 4.7  생성·요약  │    │ - 2s/64MB 샌드박스│
+       │ - conversations (uuid) │    │ + prompt caching     │    └──────────────────┘
+       │ - events (xAPI)        │    └──────────────────────┘
+       │ - mastery · miscon.    │
+       │ - drafts · intervent.  │    ┌──────────────────────┐
+       │ RLS + service_role     │    │ Langfuse (옵션)      │
+       └──────────┬─────────────┘    │ - trace · usage      │
+                  │                  │ - 비용·품질 추적     │
+                  ▼                  └──────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  교사 앱 (c-coding-teacher.vercel.app)                                      │
+│  사이드바: 개요 · 개입 큐 · 학생 명단 · 제출 현황 · 대화 분석 · 연구 · 설정 │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ 개요 화면 (의사결정 코크핏 7 layers)                                 │  │
+│  │  1. Health Cards (🟢 flow · 🟡 watch · 🔴 critical)                  │  │
+│  │  2. At-Risk Strip (urgency 정렬 top 10)                              │  │
+│  │  3. Today at a glance (오늘/어제 비교)                               │  │
+│  │  4. Trend Sparks (지난 7일 일배치)                                   │  │
+│  │  5. Action Cards (자동 인사이트 3개)                                 │  │
+│  │  6. Live Events SSE (해석화된 5분 윈도우)                            │  │
+│  │  7. ModeDonut (실시간 모드 분포 20초 폴링)                           │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │ 설정 화면: Catalog Drift · DB Writes · 옛 카탈로그 기록 정리         │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │ 연구 화면: cascade · offloading · conversation-arcs · linguistic     │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+배포: GitHub main push → GitHub Actions Workflow → Vercel CLI 두 앱 병렬 배포
+Cron (Hobby 일배치): 학생 03:00 UTC student-modeler · 교사 09:00 UTC drift-check
+```
+
+---
+
+# 부록 B. 9 개 하위 에이전트 기능 카탈로그
+
+| # | 에이전트 | 모델 | 핵심 역할 | I/O 권한 | 주요 출력 |
+|---|---|---|---|---|---|
+| 1 | **Supervisor** | Haiku 4.5 | 학생 발화 → intent 분류 → 적절한 전문 에이전트로 라우팅 | 모든 학생 입력 · SessionState | route, intent, reason |
+| 2 | **Pedagogy Coach** | Sonnet 4.6 | Socratic 4 단계 힌트 + mode 별 페이싱 + 자기설명 요구 | 학생 상태 · 대화 · KC · lint findings | hint, hintLevel, hintType, relatedKC, requiresSelfExplanation |
+| 3 | **Code Reviewer** | Sonnet 4.6 + tools | 3 축 정적 분석 (correctness · memory safety · style) + 환각 BLOCKER 강등 | 학생 코드 · reference solution · run signals | findings[severity, line, kc, message, suggestion], topIssues |
+| 4 | **Runtime Debugger** | Haiku 4.5 | 실행 결과 + 에러 메시지를 초보자 언어로 해석 + 원인 가설 2~3 개 | WASM/Judge0 실행 결과 | studentFacingMessage, hypotheses[cause, evidence, investigationQuestion, kc] |
+| 5 | **Assessment** | Sonnet 4.6 + 결정론적 | 4 축 루브릭 채점 (correctness 0.5 · style 0.15 · memory 0.2 · reflection 0.15) + KC delta + Dependency Factor | 제출물 · hidden tests · code review findings · reflection | rubricScores, finalScore, kcDelta, dependencyFactor, evidence |
+| 6 | **Student Modeler** | (배치 cron) | events · submissions 를 BKT 스타일로 누적 → KC 숙련도 · 오개념 갱신 · fading signal | events · submissions → mastery · misconceptions | mastery[value, confidence, observations], misconceptions[pattern, occurrences] |
+| 7 | **Problem Architect** | Opus 4.7 | 새 과제 생성 + 결정적 variant 파생 (FNV-1a 해시 표절 방지) | 교사 전용 | AssignmentSeed (code, template, kcTags, rubric, hiddenTests, referenceSolution) |
+| 8 | **Teacher Copilot** | Opus 4.7 | 클래스 진행 요약 + 개입 권고 (약/중/강) + 공통 오개념 집계 | 전체 학생 집계 데이터 | summary, interventionQueue[level, reasons], misconceptions, KC insights |
+| 9 | **Safety Guard** | Haiku 4.5 + 결정론적 | 답 유출 차단 (Jaccard 유사도 mode 별 0.10/0.25/0.40) · PII · 프롬프트 인젝션 · 시험 모드 코드 금지 | 모든 inbound/outbound | verdict (block/allow), reasons, sanitizedPayload |
+
+### 에이전트 간 상호작용 흐름
+
+```
+학생 발화
+  │
+  ▼
+[Supervisor] ─ Safety Guard inbound ─┐
+  │                                   │
+  ├─ hint_request ──▶ [Pedagogy Coach]
+  ├─ code_review  ──▶ [Code Reviewer] ─▶ Anthropic + lintC
+  ├─ debug        ──▶ [Runtime Debugger]
+  └─ submit       ──▶ [Assessment] ─┬─▶ runHiddenTests
+                                     └─▶ Code Reviewer
+                                         │
+                                         ▼
+                                  submissions INSERT (evidence)
+                                         │
+                                         ▼
+                                  events INSERT (xAPI)
+                                         │
+                          매일 03:00 UTC ▼
+                              [Student Modeler] cron
+                                         │
+                                         ▼
+                              mastery · misconceptions UPSERT
+                                         │
+                                         ▼
+                              [Teacher Copilot] 요약 ──▶ 교사 대시보드
+
+         교사 입력 ──▶ [Problem Architect] ──▶ 새 variant
+         모든 I/O ──▶ [Safety Guard] 필터
+```
+
+### 에이전트별 시스템 프롬프트 위치
+
+- 정의: `.claude/agents/<name>.md` (9 개)
+- 런타임: `packages/agents/src/runtime/<name>.ts`
+- 도메인 스킬: `.claude/skills/{socratic-hinting, c-code-review, rubric-grading, kc-mastery-tracking, problem-templating, xapi-event, cvibe-orchestrator}/`
+
+### 비용 최적화 전략
+
+- **Haiku 4.5** (분류·필터·디버깅 해석): Supervisor · Safety Guard · Runtime Debugger
+- **Sonnet 4.6** (일상 튜터링·리뷰·채점, 70% 토큰 효율): Pedagogy Coach · Code Reviewer · Assessment · Student Modeler
+- **Opus 4.7** (저빈도 고품질): Problem Architect · Teacher Copilot
+- **Prompt caching**: 모든 시스템 프롬프트 — 최대 90% 비용 절감
+- **Batch API**: Student Modeler 야간 일배치 — 추가 50% 절감 (옵션)
