@@ -1,27 +1,27 @@
 [
   {
     "id": 1,
-    "input": "HELLO\n",
-    "expected": "문자열 입력: 소문자로 변환된 문자열: hello\n"
+    "input": "a\n",
+    "expected": "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> A\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함"
   },
   {
     "id": 2,
-    "input": "Hello World\n",
-    "expected": "문자열 입력: 소문자로 변환된 문자열: hello world\n"
+    "input": "Z\n",
+    "expected": "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> Z\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함"
   },
   {
     "id": 3,
-    "input": "C99 Programming\n",
-    "expected": "문자열 입력: 소문자로 변환된 문자열: c99 programming\n"
+    "input": "5\n",
+    "expected": "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> 5\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함"
   },
   {
     "id": 4,
-    "input": "MiXeD CaSe StRiNg\n",
-    "expected": "문자열 입력: 소문자로 변환된 문자열: mixed case string\n"
+    "input": "a\nb\nc\n",
+    "expected": "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> A\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> B\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> C\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함"
   },
   {
     "id": 5,
-    "input": "already lowercase\n",
-    "expected": "문자열 입력: 소문자로 변환된 문자열: already lowercase\n"
+    "input": "Hello\n",
+    "expected": "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> H\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함"
   }
 ]

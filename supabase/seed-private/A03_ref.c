@@ -1,23 +1,29 @@
 #include <stdio.h>
-#include <string.h>
 #include <ctype.h>
 
-int main(void) {
-    char s[100];
-    int i;
+int main() {
+    int ch;
 
-    printf("문자열 입력: ");
-    fgets(s, sizeof(s), stdin);
+    while (1) {
+        printf("\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> ");
 
-    // fgets()로 입력받은 문자열 끝의 엔터 제거
-    s[strcspn(s, "\n")] = '\0';
+        ch = getchar();
 
-    // 문자열의 모든 알파벳을 소문자로 변환
-    for (i = 0; s[i] != '\0'; i++) {
-        s[i] = tolower(s[i]);
+        // EOF 입력 시 반복 종료
+        if (ch == EOF) {
+            break;
+        }
+
+        // 대문자로 변환 후 출력
+        putchar(toupper(ch));
+        printf("\n");
+
+        // 입력 버퍼 비우기
+        while ((ch = getchar()) != '\n' && ch != EOF) {
+        }
     }
 
-    printf("소문자로 변환된 문자열: %s\n", s);
+    printf("\nEOF가 입력되어 반복 종료함");
 
     return 0;
 }

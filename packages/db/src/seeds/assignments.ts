@@ -363,101 +363,117 @@ int main(void) {
   },
   {
     code: "A03_arrays_basic",
-    version: 2,
-    title: "문자열 입력과 소문자 변환",
+    version: 3,
+    title: "문자 입력 반복과 대문자 변환",
     template:
-      "표준 입력에서 한 줄 문자열을 받아 알파벳을 모두 **소문자** 로 변환해 출력하라. 다음 두 가지를 직접 작성해야 한다.\n\n1. `fgets()` 로 한 줄을 받아 `s` 에 저장 — 버퍼 크기는 `sizeof(s)`, 입력 스트림은 `stdin`.\n2. 문자열의 모든 알파벳을 `tolower()` 로 변환 — `s[i]` 로 인덱스 접근하면서 `'\\0'` 이 나올 때까지 순회.\n\n엔터(`\\n`) 제거와 `printf` 출력은 이미 starter 코드에 포함돼 있다.\n\n## 입출력 예시\n\n```\n입력: HELLO\n출력: 문자열 입력: 소문자로 변환된 문자열: hello\n```\n\n## 힌트\n\n- `fgets(buffer, size, stdin)` 는 줄바꿈 포함해 최대 `size-1` 글자를 읽는다.\n- `tolower(c)` 는 대문자만 변환하고 소문자·숫자·공백·특수문자는 그대로 둔다 (`#include <ctype.h>`).\n- 루프 종료 조건: `s[i] != '\\0'`.",
-    kcTags: ["io-formatting", "control-flow-loop", "arrays-indexing"],
+      "표준 입력에서 **한 글자씩** 읽어 대문자로 변환해 출력하는 프로그램을 작성하라. 한 번 글자를 처리한 뒤에는 같은 줄에 남아 있는 나머지 문자를 모두 버린(입력 버퍼 비우기) 다음, 다시 다음 글자 입력을 기다린다. `EOF`(Ctrl+Z) 가 들어오면 반복을 종료한다.\n\n다음 두 부분을 직접 작성해야 한다.\n\n1. **대문자 변환 후 출력** — `toupper(ch)` 의 결과를 `putchar()` 로 출력하고, 그 뒤에 `printf(\"\\n\")` 으로 줄바꿈.\n2. **입력 버퍼 비우기** — `while ((ch = getchar()) != '\\n' && ch != EOF) { }` 로 같은 줄에 남아 있는 글자를 모두 소진. 이 루프가 없으면 다음 반복에서 `getchar()` 가 이전 줄의 잔여 문자를 읽어 버린다.\n\n프롬프트 출력, `getchar()` 호출, EOF 검사, 종료 메시지는 starter 코드에 이미 포함되어 있다.\n\n## 입출력 예시\n\n```\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> a\nA\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> ^Z\nEOF가 입력되어 반복 종료함\n```\n\n## 힌트\n\n- `toupper(c)` 는 소문자만 변환하고 대문자·숫자·공백·특수문자는 그대로 둔다 (`#include <ctype.h>`).\n- `putchar()` 는 정수를 받아 그에 해당하는 문자 한 글자를 출력한다.\n- 입력 버퍼 비우기 루프는 본문(`{}`) 가 비어 있어도 된다. **조건식이 핵심**.\n- `getchar()` 는 입력의 끝(EOF) 에서 `EOF` 매크로(보통 `-1`) 를 반환한다.",
+    kcTags: ["io-formatting", "control-flow-loop", "control-flow-if"],
     difficulty: 2,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
-#include <string.h>
 #include <ctype.h>
 
-int main(void) {
-    char s[100];
-    int i;
+int main() {
+    int ch;
 
-    printf("문자열 입력: ");
+    while (1) {
+        printf("\\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> ");
 
-    // TODO 1: fgets() 로 표준 입력에서 한 줄을 읽어 s 에 저장하세요.
-    //         (s, sizeof(s), stdin 인자 사용)
+        ch = getchar();
+
+        // EOF 입력 시 반복 종료
+        if (ch == EOF) {
+            break;
+        }
+
+        // TODO 1: ch 를 대문자로 변환해 한 글자 출력하고, 줄바꿈도 출력하세요.
+        //         (toupper(ch) 의 결과를 putchar 로, 그 뒤에 printf("\\n"))
 
 
-    // fgets() 로 입력받은 문자열 끝의 엔터 제거
-    s[strcspn(s, "\\n")] = '\\0';
-
-    // TODO 2: 문자열의 모든 알파벳을 소문자로 변환하세요.
-    //         (tolower() 와 for 루프 사용, 종료 조건은 s[i] != '\\0')
+        // TODO 2: 같은 줄에 남아 있는 문자들을 모두 버려 입력 버퍼를 비우세요.
+        //         (getchar() 의 반환값이 '\\n' 또는 EOF 가 될 때까지 반복)
 
 
-    printf("소문자로 변환된 문자열: %s\\n", s);
+    }
+
+    printf("\\nEOF가 입력되어 반복 종료함");
 
     return 0;
 }
 `,
     visibleTests: [
       {
-        input: "HELLO\n",
+        input: "a\n",
         expected:
-          "문자열 입력: 소문자로 변환된 문자열: hello\n",
-        note: "기본 — 모든 대문자",
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> A\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
+        note: "기본 — 'a' 입력 한 번 후 Ctrl+Z(EOF)",
       },
       {
-        input: "Hello World\n",
+        input: "Hello\n",
         expected:
-          "문자열 입력: 소문자로 변환된 문자열: hello world\n",
-        note: "공백 포함",
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> H\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
+        note: "한 줄에 여러 글자가 와도 첫 글자만 처리 — 나머지는 버퍼 비우기로 버려짐",
       },
     ],
     hiddenTests: [
       {
         id: 1,
-        input: "HELLO\n",
-        expected: "문자열 입력: 소문자로 변환된 문자열: hello\n",
+        input: "a\n",
+        expected:
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> A\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
       },
       {
         id: 2,
-        input: "Hello World\n",
-        expected: "문자열 입력: 소문자로 변환된 문자열: hello world\n",
+        input: "Z\n",
+        expected:
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> Z\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
       },
       {
         id: 3,
-        input: "C99 Programming\n",
-        expected: "문자열 입력: 소문자로 변환된 문자열: c99 programming\n",
+        input: "5\n",
+        expected:
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> 5\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
       },
       {
         id: 4,
-        input: "MiXeD CaSe StRiNg\n",
-        expected: "문자열 입력: 소문자로 변환된 문자열: mixed case string\n",
+        input: "a\nb\nc\n",
+        expected:
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> A\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> B\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> C\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
       },
       {
         id: 5,
-        input: "already lowercase\n",
-        expected: "문자열 입력: 소문자로 변환된 문자열: already lowercase\n",
+        input: "Hello\n",
+        expected:
+          "\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> H\n\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> \nEOF가 입력되어 반복 종료함",
       },
     ],
     referenceSolution: `#include <stdio.h>
-#include <string.h>
 #include <ctype.h>
 
-int main(void) {
-    char s[100];
-    int i;
+int main() {
+    int ch;
 
-    printf("문자열 입력: ");
-    fgets(s, sizeof(s), stdin);
+    while (1) {
+        printf("\\n키보드로부터 1개의 문자 입력(반복 종료: Ctrl+Z)>> ");
 
-    // fgets()로 입력받은 문자열 끝의 엔터 제거
-    s[strcspn(s, "\\n")] = '\\0';
+        ch = getchar();
 
-    // 문자열의 모든 알파벳을 소문자로 변환
-    for (i = 0; s[i] != '\\0'; i++) {
-        s[i] = tolower(s[i]);
+        // EOF 입력 시 반복 종료
+        if (ch == EOF) {
+            break;
+        }
+
+        // 대문자로 변환 후 출력
+        putchar(toupper(ch));
+        printf("\\n");
+
+        // 입력 버퍼 비우기
+        while ((ch = getchar()) != '\\n' && ch != EOF) {
+        }
     }
 
-    printf("소문자로 변환된 문자열: %s\\n", s);
+    printf("\\nEOF가 입력되어 반복 종료함");
 
     return 0;
 }

@@ -7,11 +7,12 @@ describe("seed-private loader (in-memory ASSIGNMENTS 기반)", () => {
     const tests = await loadHiddenTests("A03_arrays_basic");
     expect(tests).not.toBeNull();
     expect(tests!.length).toBe(5);
-    expect(tests![0]!).toEqual({
-      id: 1,
-      input: "HELLO\n",
-      expected: "문자열 입력: 소문자로 변환된 문자열: hello\n",
-    });
+    expect(tests![0]!.id).toBe(1);
+    expect(tests![0]!.input).toBe("a\n");
+    expect(tests![0]!.expected).toContain("키보드로부터 1개의 문자 입력");
+    expect(tests![0]!.expected).toContain("EOF가 입력되어 반복 종료함");
+    // toupper('a') = 'A' 가 출력에 포함되어야 함
+    expect(tests![0]!.expected).toMatch(/>>\s*A\n/);
   });
 
   it("loadHiddenTests(존재하지 않는 code)는 null", async () => {
