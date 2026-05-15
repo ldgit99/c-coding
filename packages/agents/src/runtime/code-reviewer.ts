@@ -109,41 +109,56 @@ export async function reviewCode(input: ReviewInput): Promise<RequestReviewOutpu
   });
   const startedAt = new Date();
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 1200,
-    system: cacheSystemPrompt(CODE_REVIEWER_SYSTEM_PROMPT),
-    messages: [{ role: "user", content: userMessage }],
-  });
+  // Anthropic 호출 격리 — rate limit·5xx·네트워크 장애 시 학생 제출이 죽지 않도록
+  // mock fallback 으로 강등. 결정론적 채점(correctness·style·memory_safety)은
+  // 그대로 진행되고, code-review 만 비활성 상태로 표시된다.
+  try {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1200,
+      system: cacheSystemPrompt(CODE_REVIEWER_SYSTEM_PROMPT),
+      messages: [{ role: "user", content: userMessage }],
+    });
 
-  const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
-  const review = parseReviewResponse(text, analysisMode);
-  // 방어선 — LLM 이 system prompt 를 어기고 proposedCode 를 냈더라도 제거.
-  for (const f of review.findings) {
-    if (f.proposedCode) delete (f as { proposedCode?: string }).proposedCode;
+    const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
+    const review = parseReviewResponse(text, analysisMode);
+    // 방어선 — LLM 이 system prompt 를 어기고 proposedCode 를 냈더라도 제거.
+    for (const f of review.findings) {
+      if (f.proposedCode) delete (f as { proposedCode?: string }).proposedCode;
+    }
+    // 결정적 후처리 — 통과 신호가 있으면 correctness BLOCKER 환각 차단.
+    // 학생 코드가 이미 동작 검증된 정답일 때 LLM 이 환각 BLOCKER 를 내면
+    // 학생 학습을 가로막는다. 외부 신호(hidden test 통과 / 컴파일 성공) 로
+    // severity 를 결정적으로 강등.
+    downgradeHallucinatedBlockers(review, input);
+
+    recordGeneration(trace, {
+      name: "code-reviewer.messages.create",
+      model,
+      input: userMessage,
+      output: text,
+      startTime: startedAt,
+      endTime: new Date(),
+      usage: {
+        promptTokens: response.usage?.input_tokens,
+        completionTokens: response.usage?.output_tokens,
+      },
+      metadata: { findingsCount: review.findings.length, topIssues: review.topIssues },
+    });
+    await flushTrace(trace);
+
+    return { review, usedModel: model, mocked: false };
+  } catch (err) {
+    console.warn(`[code-reviewer] Anthropic 호출 실패 → mock fallback · ${String(err)}`);
+    const review: ReviewOutput = {
+      findings: [],
+      topIssues: [],
+      analysisMode,
+      summary: "AI 코드 리뷰가 일시적으로 불가합니다. 정확성·메모리 안전성·스타일 평가는 정상 진행됩니다.",
+    };
+    downgradeHallucinatedBlockers(review, input);
+    return { review, usedModel: `${model}+fallback`, mocked: true };
   }
-  // 결정적 후처리 — 통과 신호가 있으면 correctness BLOCKER 환각 차단.
-  // 학생 코드가 이미 동작 검증된 정답일 때 LLM 이 환각 BLOCKER 를 내면
-  // 학생 학습을 가로막는다. 외부 신호(hidden test 통과 / 컴파일 성공) 로
-  // severity 를 결정적으로 강등.
-  downgradeHallucinatedBlockers(review, input);
-
-  recordGeneration(trace, {
-    name: "code-reviewer.messages.create",
-    model,
-    input: userMessage,
-    output: text,
-    startTime: startedAt,
-    endTime: new Date(),
-    usage: {
-      promptTokens: response.usage?.input_tokens,
-      completionTokens: response.usage?.output_tokens,
-    },
-    metadata: { findingsCount: review.findings.length, topIssues: review.topIssues },
-  });
-  await flushTrace(trace);
-
-  return { review, usedModel: model, mocked: false };
 }
 
 function formatReviewUserMessage(input: ReviewInput, mode: ReviewOutput["analysisMode"]): string {

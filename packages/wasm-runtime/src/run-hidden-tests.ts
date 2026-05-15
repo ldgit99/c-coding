@@ -5,8 +5,11 @@ import type { Backend, RunCInput, RunCResult } from "./types";
  *
  * Assessment가 `hiddenTestResults`를 입력으로 받지만, 이걸 실제로 생성하는
  * 경로가 이번 이터레이션 이전에는 비어 있었다. 여기서 각 hidden test를
- * 순차 실행하고(동시성 낮춰 Judge0 rate limit 회피), stdout을 expected와
- * 비교해 passed 여부를 판정한다.
+ * **bounded concurrency** 로 실행하고, stdout을 expected와 비교해 passed 여부를
+ * 판정한다.
+ *
+ * 2026-05-15: Vercel 함수 30s 타임아웃 회피를 위해 순차 → 동시성 3 으로 전환.
+ * Judge0 rate limit 우려 시 input.concurrency=1 로 호출하면 옛 동작 복원.
  *
  * 학생 코드 실행이므로 타임아웃/메모리 상한 그대로 유지. 타임아웃은
  * passed=false, errorType='timeout'으로 기록.
@@ -37,6 +40,12 @@ export interface RunHiddenTestsInput {
   tests: HiddenTest[];
   timeoutMs?: number;
   memLimitMb?: number;
+  /**
+   * 동시 실행 테스트 수. 기본 3 — Vercel 함수 30s 타임아웃 회피용. 학생 코드
+   * 간 전역 상태 격리는 backend 가 책임(요청별 새 컨테이너). Judge0 rate limit
+   * 이 빡빡한 환경이면 1 로 낮추면 옛 순차 동작.
+   */
+  concurrency?: number;
 }
 
 export interface RunHiddenTestsOutput {
@@ -46,13 +55,12 @@ export interface RunHiddenTestsOutput {
   passedRatio: number;
 }
 
-/**
- * 기본 동시성 1 — Judge0 rate limit이 엄격한 경우가 많고, 학생 코드의
- * 글로벌 상태(전역 변수) 격리를 최대한 보장하기 위해.
- */
 export async function runHiddenTests(input: RunHiddenTestsInput): Promise<RunHiddenTestsOutput> {
-  const results: HiddenTestResult[] = [];
-  for (const test of input.tests) {
+  const concurrency = Math.max(1, input.concurrency ?? 3);
+
+  // 단일 테스트 실행 함수 — 기존 순차 로직을 그대로 함수화. 예외는
+  // results 항목으로 변환되어 반환되므로 throw 가 외부로 새지 않는다.
+  const runOne = async (test: HiddenTest): Promise<HiddenTestResult> => {
     const runInput: RunCInput = {
       code: input.code,
       stdin: test.input,
@@ -64,44 +72,48 @@ export async function runHiddenTests(input: RunHiddenTestsInput): Promise<RunHid
     try {
       result = await input.backend.runC(runInput);
     } catch (err) {
-      results.push({
+      return {
         id: test.id,
         passed: false,
         errorType: "environment",
         durationMs: Date.now() - startedAt,
         actual: `[exception] ${String(err)}`,
-      });
-      continue;
+      };
     }
 
     if (!result.executed || result.errorType) {
-      results.push({
+      return {
         id: test.id,
         passed: false,
         actual: result.stdout,
         expected: test.expected,
         errorType: result.errorType,
         durationMs: result.durationMs,
-      });
-      continue;
+      };
     }
 
     // 관대(lenient) 모드 비교 — 2026-04-22 전환.
     // 학생이 공백·개행 실수로 감점당하지 않도록, 로직 정확성만 평가한다.
-    // - \r\n → \n 정규화 (Windows · Judge0 출력 차이 흡수)
-    // - 라인별로 양끝 트림 + 여러 공백을 하나로 squash
-    // - 빈 줄은 모두 제거
-    // - 최종 비교는 정규화된 문자열 간 === . trimTrailingNewline 옵션은 유지
-    //   (test 단위로 엄격 모드 복원 가능) 하지만 기본 동작이 관대.
     const actual = lenientNormalize(result.stdout, test.trimTrailingNewline);
     const expected = lenientNormalize(test.expected, test.trimTrailingNewline);
-    results.push({
+    return {
       id: test.id,
       passed: actual === expected,
       actual: result.stdout,
       expected: test.expected,
       durationMs: result.durationMs,
-    });
+    };
+  };
+
+  // Bounded concurrency — 한 번에 최대 N 개 동시 실행. 한 배치가 끝나면
+  // 다음 배치 시작. 5개 × 3초 직렬 = 15초 → 동시성 3 으로 ≈ 6초.
+  const results: HiddenTestResult[] = new Array(input.tests.length);
+  for (let i = 0; i < input.tests.length; i += concurrency) {
+    const batch = input.tests.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map(runOne));
+    for (let j = 0; j < batchResults.length; j++) {
+      results[i + j] = batchResults[j]!;
+    }
   }
 
   const passed = results.filter((r) => r.passed).length;

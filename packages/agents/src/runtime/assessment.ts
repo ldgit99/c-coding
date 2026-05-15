@@ -223,38 +223,44 @@ async function evaluateReflection(input: AssessmentInput): Promise<ReflectionEva
   "notes": "..."
 }`,
   ].join("\n");
-  const response = await client.messages.create({
-    model,
-    max_tokens: 400,
-    system: cacheSystemPrompt(ASSESSMENT_SYSTEM_PROMPT),
-    messages: [{ role: "user", content: prompt }],
-  });
-  const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) {
-    try {
-      const parsed = JSON.parse(match[0]) as {
-        specificity: number;
-        metacognition: number;
-        alternatives: number;
-        selfAssessment: number;
-        notes?: string;
-      };
-      const score =
-        parsed.specificity * 0.3 +
-        parsed.metacognition * 0.3 +
-        parsed.alternatives * 0.2 +
-        parsed.selfAssessment * 0.2;
-      return {
-        score: clamp01(score),
-        quality: parsed,
-        notes: parsed.notes ?? "",
-        mocked: false,
-        model,
-      };
-    } catch {
-      // fall through
+  // Anthropic 호출 격리 — rate limit·5xx·timeout 시 mock heuristic 으로 강등.
+  // 학생 제출이 LLM 장애로 차단되지 않도록.
+  try {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 400,
+      system: cacheSystemPrompt(ASSESSMENT_SYSTEM_PROMPT),
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = response.content.map((b) => ("text" in b ? b.text : "")).join("\n");
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[0]) as {
+          specificity: number;
+          metacognition: number;
+          alternatives: number;
+          selfAssessment: number;
+          notes?: string;
+        };
+        const score =
+          parsed.specificity * 0.3 +
+          parsed.metacognition * 0.3 +
+          parsed.alternatives * 0.2 +
+          parsed.selfAssessment * 0.2;
+        return {
+          score: clamp01(score),
+          quality: parsed,
+          notes: parsed.notes ?? "",
+          mocked: false,
+          model,
+        };
+      } catch {
+        // JSON 파싱 실패 — 아래 mock fallback
+      }
     }
+  } catch (err) {
+    console.warn(`[assessment.reflection] Anthropic 호출 실패 → mock fallback · ${String(err)}`);
   }
   return mockReflectionEval(input.submission.reflection);
 }

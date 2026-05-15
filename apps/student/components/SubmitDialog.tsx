@@ -91,8 +91,25 @@ export function SubmitDialog({
         }),
       });
       if (!res.ok) {
-        const msg = await res.text();
-        setError(`제출 실패: ${msg}`);
+        // 서버가 JSON 으로 친절 메시지를 주면 사용 — 빈 본문이면 status 코드로 추론.
+        let userMessage: string | null = null;
+        try {
+          const payload = (await res.clone().json()) as { userMessage?: string; error?: string };
+          userMessage = payload.userMessage ?? payload.error ?? null;
+        } catch {
+          // JSON 아님 — text 로 fallback
+          const text = await res.text();
+          if (text.trim().length > 0) userMessage = text;
+        }
+        if (!userMessage) {
+          userMessage =
+            res.status === 504
+              ? "채점이 시간 안에 끝나지 않았어요. 잠시 후 다시 시도해주세요."
+              : res.status >= 500
+                ? "서버에 일시적인 문제가 있어요. 잠시 후 다시 시도해주세요."
+                : `요청이 거절됐어요 (코드 ${res.status}).`;
+        }
+        setError(`제출 실패: ${userMessage}`);
         return;
       }
       const parsed = (await res.json()) as SubmitResponse;

@@ -57,6 +57,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "reflection은 필수 객체다" }, { status: 400 });
   }
 
+  try {
+    return await handleSubmit(request, body);
+  } catch (err) {
+    // 외곽 안전망 — reviewCode·evaluateReflection 은 자체 fallback 이 있고
+    // insertSubmission 은 result-pattern 이라 사실상 여기까지 오는 건 매우 드물다.
+    // 하지만 학생에게 빈 "제출 실패: " 가 절대 보이지 않도록 마지막 가드.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[submit] uncaught exception · ${message}`, err);
+    return NextResponse.json(
+      {
+        error: "submission_failed",
+        userMessage:
+          "제출 처리 중 일시적인 문제가 발생했어요. 잠시 후 다시 시도해주세요. 계속되면 교사에게 알려주세요.",
+        detail: message,
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function handleSubmit(request: Request, body: SubmitRequestBody) {
   // 과제 카탈로그에서 kcTags·rubric 조회 (클라이언트 body에 id만 와도 됨)
   const catalog = body.assignment?.id ? getAssignmentByCode(body.assignment.id) : undefined;
   const effectiveAssignment = {
