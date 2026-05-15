@@ -76,6 +76,12 @@ interface AIPanelProps {
   /** 최고 hint level 변화를 상위로 통지 — SubmitDialog dependency flag 산출. */
   onMaxHintLevelChange?: (level: 1 | 2 | 3 | 4) => void;
   /**
+   * 동일 과제에서 힌트가 누적 임계 (기본 5 회) 에 도달했을 때 1회 발사.
+   * 부모가 격려 토스트로 전환 — 도움 요청을 학습 전략으로 긍정 안내 (부록 C ⑥).
+   * assignmentCode 가 바뀌면 카운터 리셋.
+   */
+  onHelpAffirm?: () => void;
+  /**
    * Coach 모드에서 컴파일·런타임 에러 발생 시 AI 가 먼저 말을 거는 트리거.
    * 부모가 새로운 error 이벤트마다 고유 id 를 올려주면 AIPanel 이 proactive
    * 턴을 1회 주입한다. null 이면 발화 안 함.
@@ -228,12 +234,18 @@ export function AIPanel({
   assignmentKcTags,
   elapsedSec = 0,
   onMaxHintLevelChange,
+  onHelpAffirm,
   lastRunError,
   lastRunResult,
   editorFocus,
   editorStdin,
   examMode = false,
 }: AIPanelProps) {
+  // 부록 C ⑥ — 힌트 누적 격려: 동일 과제에서 5회 받으면 1회 토스트.
+  // ref 로 카운터 보존 (리렌더 무관), assignmentCode 변경 시 useEffect 로 리셋.
+  const hintAffirmCountRef = useRef(0);
+  const hintAffirmFiredRef = useRef(false);
+  const HELP_AFFIRM_THRESHOLD = 5;
   const [tab, setTab] = useState<Tab>("chat");
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -279,6 +291,12 @@ export function AIPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
+
+  // 과제 전환 시 힌트 누적 카운터 리셋 — 격려 토스트는 과제당 1회.
+  useEffect(() => {
+    hintAffirmCountRef.current = 0;
+    hintAffirmFiredRef.current = false;
+  }, [assignmentCode]);
 
   // history 변화 시 캐시 저장 — 최근 50턴만
   useEffect(() => {
@@ -492,6 +510,16 @@ export function AIPanel({
       if (!blocked) {
         setSupportLevel((prev) => Math.max(prev, data.hint!.hintLevel) as 0 | 1 | 2 | 3);
         onMaxHintLevelChange?.(data.hint!.hintLevel);
+        // 부록 C ⑥ 정서적 안정 — 힌트 누적 5회 도달 시 1회 격려 토스트.
+        // 도움 요청 = 학습 전략이라는 메시지를 학생에게 명시적으로 전달.
+        hintAffirmCountRef.current += 1;
+        if (
+          !hintAffirmFiredRef.current &&
+          hintAffirmCountRef.current >= HELP_AFFIRM_THRESHOLD
+        ) {
+          hintAffirmFiredRef.current = true;
+          onHelpAffirm?.();
+        }
       }
 
       // L4 후 복붙 감지를 위해 스냅샷 저장 (차단된 응답은 제외)

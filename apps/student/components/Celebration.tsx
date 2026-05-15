@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export interface CelebrationMessage {
   id: string;
-  kind: "compile" | "visible-test" | "submit";
+  kind: "compile" | "visible-test" | "submit" | "help-affirm";
   title: string;
   body?: string;
 }
@@ -45,10 +45,18 @@ export function Celebration({ message, onDismiss }: Props) {
       ? "border-success/40 bg-success/10 text-success"
       : message.kind === "visible-test"
         ? "border-primary/40 bg-primary/10 text-primary"
-        : "border-warning/40 bg-warning/10 text-warning";
+        : message.kind === "help-affirm"
+          ? "border-primary/30 bg-primary/5 text-primary"
+          : "border-warning/40 bg-warning/10 text-warning";
 
   const icon =
-    message.kind === "submit" ? "🎉" : message.kind === "visible-test" ? "🎯" : "👏";
+    message.kind === "submit"
+      ? "🎉"
+      : message.kind === "visible-test"
+        ? "🎯"
+        : message.kind === "help-affirm"
+          ? "👍"
+          : "👏";
 
   return (
     <div

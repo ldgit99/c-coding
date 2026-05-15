@@ -459,6 +459,14 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
               onMaxHintLevelChange={(lvl) =>
                 setMaxHintLevel((prev) => Math.max(prev, lvl))
               }
+              onHelpAffirm={() =>
+                setCelebration({
+                  id: `help-affirm:${assignment?.code ?? "none"}:${Date.now()}`,
+                  kind: "help-affirm",
+                  title: "도움 잘 활용하고 있어 👍",
+                  body: "막힐 때 질문하는 것도 학습 전략의 일부야.",
+                })
+              }
               lastRunError={lastRunError}
               lastRunResult={lastRunResult}
               editorFocus={editorFocus}
