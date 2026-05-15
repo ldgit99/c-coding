@@ -92,16 +92,11 @@ export function SubmitDialog({
       });
       if (!res.ok) {
         // 서버가 JSON 으로 친절 메시지를 주면 사용 — 빈 본문이면 status 코드로 추론.
+        // 서버 응답의 detail 필드는 학생 화면 노출 금지 — Vercel Logs/교사 디버깅용.
         let userMessage: string | null = null;
-        let detail: string | null = null;
         try {
-          const payload = (await res.clone().json()) as {
-            userMessage?: string;
-            error?: string;
-            detail?: string;
-          };
+          const payload = (await res.clone().json()) as { userMessage?: string; error?: string };
           userMessage = payload.userMessage ?? payload.error ?? null;
-          detail = payload.detail ?? null;
         } catch {
           // JSON 아님 — text 로 fallback
           const text = await res.text();
@@ -115,9 +110,7 @@ export function SubmitDialog({
                 ? "서버에 일시적인 문제가 있어요. 잠시 후 다시 시도해주세요."
                 : `요청이 거절됐어요 (코드 ${res.status}).`;
         }
-        // 진단 모드 — detail 이 있으면 함께 표시. 운영 안정화 후 제거 예정.
-        const composed = detail ? `${userMessage}\n\n[진단] ${detail}` : userMessage;
-        setError(`제출 실패: ${composed}`);
+        setError(`제출 실패: ${userMessage}`);
         return;
       }
       const parsed = (await res.json()) as SubmitResponse;
