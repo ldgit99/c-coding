@@ -79,6 +79,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "functions-params": "함수 파라미터로 값·포인터 전달 차이를 구분한다",
   "memory-allocation": "malloc·free로 동적 메모리를 안전하게 관리한다",
   recursion: "재귀 함수의 기저 사례와 점화식을 설계한다",
+  "strings-basic": "strcmp·strcpy 같은 문자열 함수로 단어를 비교하고 복사한다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {
@@ -486,7 +487,7 @@ int main() {
     title: "단어 정렬 프로그램",
     template:
       "공백으로 구분된 **세 개의 영어 단어** 를 입력받아 **사전순(알파벳순)** 으로 정렬해 출력하라. 단어 비교는 `strcmp`, 단어 교환은 `temp` 버퍼와 `strcpy` 를 사용한다.\n\n학생이 작성해야 할 부분은 **세 쌍의 비교 + 교환 블록** 이다.\n\n1. `str1` 과 `str2` 비교 → `strcmp(str1, str2) > 0` 이면 `temp` 를 거쳐 두 단어 교환\n2. `str1` 과 `str3` 비교 → 마찬가지\n3. `str2` 와 `str3` 비교 → 마찬가지\n\n세 번의 비교가 끝나면 `str1 ≤ str2 ≤ str3` 가 되어 있다 (선택정렬과 같은 아이디어).\n\n## 입출력 예시\n\n```\n세 개의 단어 입력: kiwi banana apple\n사전순 출력: apple banana kiwi\n```\n\n## 힌트\n\n- `strcmp(a, b)` 는 `a < b` 면 음수, 같으면 0, `a > b` 면 양수를 돌려준다. 즉 \"a 가 b 보다 사전순으로 뒤에\" 있는지를 보려면 `strcmp(a, b) > 0` 을 쓴다.\n- 문자열 변수끼리는 `=` 로 대입할 수 없다. 반드시 `strcpy(목적지, 원본)` 을 써야 한다.\n- `strcpy(temp, str1); strcpy(str1, str2); strcpy(str2, temp);` 처럼 **temp 를 거쳐** 두 문자열을 교환한다.\n- `string.h` 를 이미 include 했으니 추가 헤더는 필요 없다.",
-    kcTags: ["arrays-indexing", "control-flow-if", "io-formatting"],
+    kcTags: ["strings-basic", "control-flow-if", "arrays-indexing"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,

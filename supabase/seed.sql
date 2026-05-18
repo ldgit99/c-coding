@@ -329,7 +329,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 - 문자열 변수끼리는 `=` 로 대입할 수 없다. 반드시 `strcpy(목적지, 원본)` 을 써야 한다.
 - `strcpy(temp, str1); strcpy(str1, str2); strcpy(str2, temp);` 처럼 **temp 를 거쳐** 두 문자열을 교환한다.
 - `string.h` 를 이미 include 했으니 추가 헤더는 필요 없다.$$,
-  $$["arrays-indexing","control-flow-if","io-formatting"]$$::jsonb,
+  $$["strings-basic","control-flow-if","arrays-indexing"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
