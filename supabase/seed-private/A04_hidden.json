@@ -1,22 +1,27 @@
 [
   {
     "id": 1,
-    "input": "5\n3 1 4 1 5",
-    "expected": "max=5 idx=4\n"
+    "input": "kiwi banana apple",
+    "expected": "세 개의 단어 입력: 사전순 출력: apple banana kiwi\n"
   },
   {
     "id": 2,
-    "input": "4\n2 2 2 2",
-    "expected": "max=2 idx=0\n"
+    "input": "apple banana kiwi",
+    "expected": "세 개의 단어 입력: 사전순 출력: apple banana kiwi\n"
   },
   {
     "id": 3,
-    "input": "3\n-1 -2 -3",
-    "expected": "max=-1 idx=0\n"
+    "input": "banana kiwi apple",
+    "expected": "세 개의 단어 입력: 사전순 출력: apple banana kiwi\n"
   },
   {
     "id": 4,
-    "input": "6\n1 9 5 9 3 9",
-    "expected": "max=9 idx=1\n"
+    "input": "cat ant bee",
+    "expected": "세 개의 단어 입력: 사전순 출력: ant bee cat\n"
+  },
+  {
+    "id": 5,
+    "input": "zebra apple lemon",
+    "expected": "세 개의 단어 입력: 사전순 출력: apple lemon zebra\n"
   }
 ]

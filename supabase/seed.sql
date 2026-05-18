@@ -304,25 +304,61 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A04_array_max',
-  1,
-  $$배열 최댓값$$,
-  $$길이 N인 정수 배열에서 최댓값과 그 인덱스(0-base)를 출력하라. 최댓값이 여러 번이면 가장 앞의 인덱스.$$,
-  $$["arrays-indexing","control-flow-loop","variables-types"]$$::jsonb,
+  2,
+  $$단어 정렬 프로그램$$,
+  $$공백으로 구분된 **세 개의 영어 단어** 를 입력받아 **사전순(알파벳순)** 으로 정렬해 출력하라. 단어 비교는 `strcmp`, 단어 교환은 `temp` 버퍼와 `strcpy` 를 사용한다.
+
+학생이 작성해야 할 부분은 **세 쌍의 비교 + 교환 블록** 이다.
+
+1. `str1` 과 `str2` 비교 → `strcmp(str1, str2) > 0` 이면 `temp` 를 거쳐 두 단어 교환
+2. `str1` 과 `str3` 비교 → 마찬가지
+3. `str2` 와 `str3` 비교 → 마찬가지
+
+세 번의 비교가 끝나면 `str1 ≤ str2 ≤ str3` 가 되어 있다 (선택정렬과 같은 아이디어).
+
+## 입출력 예시
+
+```
+세 개의 단어 입력: kiwi banana apple
+사전순 출력: apple banana kiwi
+```
+
+## 힌트
+
+- `strcmp(a, b)` 는 `a < b` 면 음수, 같으면 0, `a > b` 면 양수를 돌려준다. 즉 "a 가 b 보다 사전순으로 뒤에" 있는지를 보려면 `strcmp(a, b) > 0` 을 쓴다.
+- 문자열 변수끼리는 `=` 로 대입할 수 없다. 반드시 `strcpy(목적지, 원본)` 을 써야 한다.
+- `strcpy(temp, str1); strcpy(str1, str2); strcpy(str2, temp);` 처럼 **temp 를 거쳐** 두 문자열을 교환한다.
+- `string.h` 를 이미 include 했으니 추가 헤더는 필요 없다.$$,
+  $$["arrays-indexing","control-flow-if","io-formatting"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
+#include <string.h>
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    int arr[100];
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    // TODO: 최댓값과 그 인덱스를 형식에 맞춰 출력해보세요.
+int main(void)
+{
+    char str1[100], str2[100], str3[100];
+    char temp[100];
+
+    printf("세 개의 단어 입력: ");
+    scanf("%s %s %s", str1, str2, str3);
+
+    // TODO 1: str1 과 str2 비교 — str1 이 str2 보다 사전순으로 뒤면 둘을 교환
+
+
+    // TODO 2: str1 과 str3 비교 — str1 이 str3 보다 사전순으로 뒤면 둘을 교환
+
+
+    // TODO 3: str2 와 str3 비교 — str2 가 str3 보다 사전순으로 뒤면 둘을 교환
+
+
+    printf("사전순 출력: %s %s %s\n", str1, str2, str3);
+
     return 0;
 }
 $$,
-  $$[{"input":"5\n3 1 4 1 5","expected":"max=5 idx=4\n"},{"input":"4\n2 2 2 2","expected":"max=2 idx=0\n"}]$$::jsonb,
+  $$[{"input":"kiwi banana apple","expected":"세 개의 단어 입력: 사전순 출력: apple banana kiwi\n","note":"예시 입력 — 정반대 순서. 세 번의 비교 모두 교환이 일어남."},{"input":"apple banana kiwi","expected":"세 개의 단어 입력: 사전순 출력: apple banana kiwi\n","note":"이미 정렬된 입력 — 한 번도 교환이 일어나면 안 됨."}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

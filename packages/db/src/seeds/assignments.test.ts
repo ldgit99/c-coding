@@ -47,6 +47,7 @@ describe("ASSIGNMENTS — 카탈로그 무결성", () => {
     expect(getAssignmentByCode("A03_arrays_basic")?.title).toBe(
       "문자 입력 반복과 대문자 변환",
     );
+    expect(getAssignmentByCode("A04_array_max")?.title).toBe("단어 정렬 프로그램");
     expect(getAssignmentByCode("nonexistent")).toBeUndefined();
   });
 

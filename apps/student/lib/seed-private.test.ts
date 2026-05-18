@@ -39,6 +39,15 @@ describe("seed-private loader (in-memory ASSIGNMENTS 기반)", () => {
     expect(ref).toMatch(/printf\("%d "/);
   });
 
+  it("loadReferenceSolution(A04_array_max)은 strcmp/strcpy 기반 세 단어 정렬", async () => {
+    const ref = await loadReferenceSolution("A04_array_max");
+    expect(ref).not.toBeNull();
+    expect(ref).toContain("strcmp");
+    expect(ref).toContain("strcpy");
+    expect(ref).toContain("temp");
+    expect(ref).toContain("사전순 출력");
+  });
+
   it("존재하지 않는 code 는 null", async () => {
     expect(await loadReferenceSolution("XYZ_nonexistent")).toBeNull();
   });
