@@ -71,7 +71,7 @@ export function filePrefixForCode(code: string): string {
 const KC_OBJECTIVES: Record<string, string> = {
   "variables-types": "정수·실수·문자 변수를 선언하고 적절한 자료형을 선택한다",
   "io-formatting": "printf·scanf 형식 지정자로 값을 입출력한다",
-  "control-flow-if": "if·else if·else로 조건 분기를 구성한다",
+  "control-flow-if": "if문으로 조건 분기를 구성한다",
   "control-flow-loop": "for·while 반복문으로 동일 작업을 효율적으로 반복한다",
   "arrays-indexing": "배열을 선언하고 인덱스로 원소를 안전하게 접근한다",
   "pointer-basics": "포인터 선언·역참조·주소 연산자의 의미를 설명한다",
@@ -79,7 +79,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "functions-params": "함수 파라미터로 값·포인터 전달 차이를 구분한다",
   "memory-allocation": "malloc·free로 동적 메모리를 안전하게 관리한다",
   recursion: "재귀 함수의 기저 사례와 점화식을 설계한다",
-  "strings-basic": "strcmp·strcpy 같은 문자열 함수로 단어를 비교하고 복사한다",
+  "strings-basic": "문자열 함수로 단어를 비교하고 복사한다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {

@@ -214,7 +214,16 @@ async function evaluateReflection(input: AssessmentInput): Promise<ReflectionEva
     JSON.stringify(input.submission.reflection, null, 2),
     `</reflection>`,
     "",
-    "research.md §3.4 5개 질문에 대한 학생 응답을 다음 4개 요소로 평가하라. 각 0~1 점수 + 간단 근거.",
+    "대학교 1학년 C 입문 학생의 성찰 응답을 다음 4개 요소로 평가하라. 각 0~1.",
+    "",
+    "## 평가 원칙 (중요)",
+    "- 대상은 **CS1 초보**. 학술적 깊이가 아니라 **자기 사고를 한 문장이라도 적었는가** 가 기준.",
+    "- 짧아도 **핵심·진정성이 보이면 0.85~1.0**. 한두 문장으로 막힌 지점·이유·다음 행동을 짚었으면 1.0 가능.",
+    "- **0.4 이하**는 (a) 빈답, (b) 동어반복(\"어려웠다\"만), (c) 질문과 무관한 답, (d) 명백한 복붙·자동완성 같은 경우에만.",
+    "- 모범답안 길이를 강요하지 말 것. 한 줄짜리 진심이 다섯 줄 형식답보다 높을 수 있다.",
+    "- 학생을 깎아내릴 사유가 명확하지 않으면 **너그러운 쪽으로 라운드업**.",
+    "",
+    "## 출력 (JSON 만)",
     `{
   "specificity": 0.0,
   "metacognition": 0.0,
@@ -266,23 +275,32 @@ async function evaluateReflection(input: AssessmentInput): Promise<ReflectionEva
 }
 
 function mockReflectionEval(reflection: ReflectionInput): ReflectionEval {
-  // 응답 길이·키워드 기반 heuristic.
+  // 응답 길이·키워드 기반 heuristic. CS1 1학년 대상이라 너그럽게.
   // 2026-04-22 시안 A: 5문항 → 3문항 (Q1 통합 · Q3 · Q5). Q4 는 옵셔널 유지.
-  // Q4 가 비어 있으면 Q1 길이에서 metacognition 을 파생 — 새 UI 의 Q1 문구는
-  // "어떻게 해결했나" 가 포함돼 있어 단일 필드가 두 축을 대표함.
+  // 2026-05-18: heuristic 도 만점 가능하도록 하드 캡 제거 + threshold 완화.
   const q = (s?: string) => (s ?? "").trim();
-  const q1Len = q(reflection.Q1_difficult).length;
-  const q4Len = q(reflection.Q4_why).length;
-  const specificity = Math.min(1, q1Len / 90);
-  const metacognition = q4Len > 0 ? Math.min(1, q4Len / 50) : q1Len > 40 ? 0.6 : 0.2;
-  const alternatives = q(reflection.Q3_alternatives).length > 10 ? 0.8 : 0;
-  const selfAssessment = q(reflection.Q5_next_time).length > 15 ? 0.6 : 0.2;
+  const q1 = q(reflection.Q1_difficult);
+  const q3 = q(reflection.Q3_alternatives);
+  const q4 = q(reflection.Q4_why);
+  const q5 = q(reflection.Q5_next_time);
+
+  // 비어 있지 않으면 최소 floor 0.5 부터 시작 — "써냈다" 자체에 가산.
+  const lenScore = (s: string, target: number) =>
+    s.length === 0 ? 0 : Math.min(1, 0.5 + (s.length / target) * 0.5);
+
+  const specificity = lenScore(q1, 60);
+  // 3문항 UI 에서는 Q4 가 항상 비어 있음. 새 Q1 문구가 "어떻게 해결했나" 를
+  // 포함하므로 q1 길이를 metacognition 의 proxy 로 사용 (target 은 약간 더 길게).
+  const metacognition = q4.length > 0 ? lenScore(q4, 35) : lenScore(q1, 50);
+  const alternatives = lenScore(q3, 20);
+  const selfAssessment = lenScore(q5, 25);
+
   const score =
     specificity * 0.3 + metacognition * 0.3 + alternatives * 0.2 + selfAssessment * 0.2;
   return {
     score: clamp01(score),
     quality: { specificity, metacognition, alternatives, selfAssessment },
-    notes: "[mock] 길이·키워드 기반 휴리스틱",
+    notes: "[mock] 길이·키워드 기반 휴리스틱 (CS1 너그러운 기준)",
     mocked: true,
     model: "mock",
   };
