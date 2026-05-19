@@ -304,7 +304,7 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A04_array_max',
-  3,
+  4,
   $$단어 정렬 프로그램$$,
   $$공백으로 구분된 **세 개의 영어 단어** 를 입력받아 **사전순(알파벳순)** 으로 정렬해 출력하라.
 
@@ -324,11 +324,18 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 int main(void)
 {
     char str1[100], str2[100], str3[100];
+    char temp[100];
 
     printf("세 개의 단어 입력: ");
     scanf("%s %s %s", str1, str2, str3);
 
-    // TODO: 세 단어를 사전순(알파벳순)으로 정렬하세요.
+    // TODO 1: str1 과 str2 비교 — str1 이 str2 보다 사전순으로 뒤면 둘을 교환
+
+
+    // TODO 2: str1 과 str3 비교 — str1 이 str3 보다 사전순으로 뒤면 둘을 교환
+
+
+    // TODO 3: str2 와 str3 비교 — str2 가 str3 보다 사전순으로 뒤면 둘을 교환
 
 
     printf("사전순 출력: %s %s %s\n", str1, str2, str3);
