@@ -362,7 +362,7 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A05_pointer_swap',
-  2,
+  3,
   $$함수 포인터 배열로 사칙연산$$,
   $$네 개의 사칙연산 함수(add / sub / mul / div) 를 작성하고, 이들을 **함수 포인터 배열** 로 묶어 인덱스로 호출하는 프로그램을 완성하라.
 
@@ -381,25 +381,17 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-// TODO 1: 두 정수의 합을 반환하는 add 함수
-int add(int a, int b) {
-    return 0;
-}
+// TODO 1: 두 정수의 합을 반환하는 add 함수를 작성하세요.
 
-// TODO 2: 두 정수의 차를 반환하는 sub 함수
-int sub(int a, int b) {
-    return 0;
-}
 
-// TODO 3: 두 정수의 곱을 반환하는 mul 함수
-int mul(int a, int b) {
-    return 0;
-}
+// TODO 2: 두 정수의 차를 반환하는 sub 함수를 작성하세요.
 
-// TODO 4: 두 정수를 나눈 몫을 반환하는 div 함수
-int div(int a, int b) {
-    return 0;
-}
+
+// TODO 3: 두 정수의 곱을 반환하는 mul 함수를 작성하세요.
+
+
+// TODO 4: 두 정수를 나눈 몫을 반환하는 div 함수를 작성하세요.
+
 
 int main(void)
 {
