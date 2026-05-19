@@ -375,7 +375,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 곱셈 결과: 100
 나눗셈 결과: 4
 ```$$,
-  $$["pointer-basics","functions-params"]$$::jsonb,
+  $$["function-pointers","functions-params","pointer-basics"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,

@@ -80,6 +80,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "memory-allocation": "malloc·free로 동적 메모리를 안전하게 관리한다",
   recursion: "재귀 함수의 기저 사례와 점화식을 설계한다",
   "strings-basic": "문자열 함수로 단어를 비교하고 복사한다",
+  "function-pointers": "함수 포인터 배열로 동작을 인덱스로 골라 호출한다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {
@@ -600,7 +601,7 @@ int main(void)
     title: "함수 포인터 배열로 사칙연산",
     template:
       "네 개의 사칙연산 함수(add / sub / mul / div) 를 작성하고, 이들을 **함수 포인터 배열** 로 묶어 인덱스로 호출하는 프로그램을 완성하라.\n\n## 입출력 예시\n\n```\n두 정수 입력: 20 5\n덧셈 결과: 25\n뺄셈 결과: 15\n곱셈 결과: 100\n나눗셈 결과: 4\n```",
-    kcTags: ["pointer-basics", "functions-params"],
+    kcTags: ["function-pointers", "functions-params", "pointer-basics"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
