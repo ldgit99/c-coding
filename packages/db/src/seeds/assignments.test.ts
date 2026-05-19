@@ -48,6 +48,7 @@ describe("ASSIGNMENTS — 카탈로그 무결성", () => {
       "문자 입력 반복과 대문자 변환",
     );
     expect(getAssignmentByCode("A04_array_max")?.title).toBe("단어 정렬 프로그램");
+    expect(getAssignmentByCode("A05_pointer_swap")?.title).toBe("함수 포인터 배열로 사칙연산");
     expect(getAssignmentByCode("nonexistent")).toBeUndefined();
   });
 

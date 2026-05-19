@@ -362,28 +362,64 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A05_pointer_swap',
-  1,
-  $$포인터로 값 교환$$,
-  $$두 정수 포인터를 받아 값을 교환하는 함수 `void swap(int *a, int *b)`를 구현하고, main에서 두 입력을 받아 swap 후 출력하라.$$,
+  2,
+  $$함수 포인터 배열로 사칙연산$$,
+  $$네 개의 사칙연산 함수(add / sub / mul / div) 를 작성하고, 이들을 **함수 포인터 배열** 로 묶어 인덱스로 호출하는 프로그램을 완성하라.
+
+## 입출력 예시
+
+```
+두 정수 입력: 20 5
+덧셈 결과: 25
+뺄셈 결과: 15
+곱셈 결과: 100
+나눗셈 결과: 4
+```$$,
   $$["pointer-basics","functions-params"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-void swap(int *a, int *b) {
-    // TODO
+// TODO 1: 두 정수의 합을 반환하는 add 함수
+int add(int a, int b) {
+    return 0;
 }
 
-int main(void) {
-    int x, y;
-    scanf("%d %d", &x, &y);
-    swap(&x, &y);
-    printf("%d %d\n", x, y);
+// TODO 2: 두 정수의 차를 반환하는 sub 함수
+int sub(int a, int b) {
+    return 0;
+}
+
+// TODO 3: 두 정수의 곱을 반환하는 mul 함수
+int mul(int a, int b) {
+    return 0;
+}
+
+// TODO 4: 두 정수를 나눈 몫을 반환하는 div 함수
+int div(int a, int b) {
+    return 0;
+}
+
+int main(void)
+{
+    int num1, num2;
+
+    // TODO 5: add, sub, mul, div 를 담는 함수 포인터 배열 fp 를 선언·초기화하세요.
+
+
+    printf("두 정수 입력: ");
+    scanf("%d %d", &num1, &num2);
+
+    printf("덧셈 결과: %d\n", fp[0](num1, num2));
+    printf("뺄셈 결과: %d\n", fp[1](num1, num2));
+    printf("곱셈 결과: %d\n", fp[2](num1, num2));
+    printf("나눗셈 결과: %d\n", fp[3](num1, num2));
+
     return 0;
 }
 $$,
-  $$[{"input":"3 7","expected":"7 3\n"},{"input":"-1 0","expected":"0 -1\n"}]$$::jsonb,
+  $$[{"input":"20 5","expected":"두 정수 입력: 덧셈 결과: 25\n뺄셈 결과: 15\n곱셈 결과: 100\n나눗셈 결과: 4\n","note":"예시 입력 — 20 / 5"},{"input":"10 2","expected":"두 정수 입력: 덧셈 결과: 12\n뺄셈 결과: 8\n곱셈 결과: 20\n나눗셈 결과: 5\n","note":"기본 정수 케이스"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

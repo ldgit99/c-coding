@@ -596,57 +596,131 @@ int main(void)
   },
   {
     code: "A05_pointer_swap",
-    version: 1,
-    title: "포인터로 값 교환",
+    version: 2,
+    title: "함수 포인터 배열로 사칙연산",
     template:
-      "두 정수 포인터를 받아 값을 교환하는 함수 `void swap(int *a, int *b)`를 구현하고, main에서 두 입력을 받아 swap 후 출력하라.",
+      "네 개의 사칙연산 함수(add / sub / mul / div) 를 작성하고, 이들을 **함수 포인터 배열** 로 묶어 인덱스로 호출하는 프로그램을 완성하라.\n\n## 입출력 예시\n\n```\n두 정수 입력: 20 5\n덧셈 결과: 25\n뺄셈 결과: 15\n곱셈 결과: 100\n나눗셈 결과: 4\n```",
     kcTags: ["pointer-basics", "functions-params"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
-void swap(int *a, int *b) {
-    // TODO
+// TODO 1: 두 정수의 합을 반환하는 add 함수
+int add(int a, int b) {
+    return 0;
 }
 
-int main(void) {
-    int x, y;
-    scanf("%d %d", &x, &y);
-    swap(&x, &y);
-    printf("%d %d\\n", x, y);
+// TODO 2: 두 정수의 차를 반환하는 sub 함수
+int sub(int a, int b) {
+    return 0;
+}
+
+// TODO 3: 두 정수의 곱을 반환하는 mul 함수
+int mul(int a, int b) {
+    return 0;
+}
+
+// TODO 4: 두 정수를 나눈 몫을 반환하는 div 함수
+int div(int a, int b) {
+    return 0;
+}
+
+int main(void)
+{
+    int num1, num2;
+
+    // TODO 5: add, sub, mul, div 를 담는 함수 포인터 배열 fp 를 선언·초기화하세요.
+
+
+    printf("두 정수 입력: ");
+    scanf("%d %d", &num1, &num2);
+
+    printf("덧셈 결과: %d\\n", fp[0](num1, num2));
+    printf("뺄셈 결과: %d\\n", fp[1](num1, num2));
+    printf("곱셈 결과: %d\\n", fp[2](num1, num2));
+    printf("나눗셈 결과: %d\\n", fp[3](num1, num2));
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "3 7", expected: "7 3\n" },
-      { input: "-1 0", expected: "0 -1\n" },
+      {
+        input: "20 5",
+        expected: "두 정수 입력: 덧셈 결과: 25\n뺄셈 결과: 15\n곱셈 결과: 100\n나눗셈 결과: 4\n",
+        note: "예시 입력 — 20 / 5",
+      },
+      {
+        input: "10 2",
+        expected: "두 정수 입력: 덧셈 결과: 12\n뺄셈 결과: 8\n곱셈 결과: 20\n나눗셈 결과: 5\n",
+        note: "기본 정수 케이스",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "3 7", expected: "7 3\n" },
-      { id: 2, input: "-1 0", expected: "0 -1\n" },
-      { id: 3, input: "5 5", expected: "5 5\n" },
-      { id: 4, input: "100 200", expected: "200 100\n" },
+      {
+        id: 1,
+        input: "20 5",
+        expected: "두 정수 입력: 덧셈 결과: 25\n뺄셈 결과: 15\n곱셈 결과: 100\n나눗셈 결과: 4\n",
+      },
+      {
+        id: 2,
+        input: "10 2",
+        expected: "두 정수 입력: 덧셈 결과: 12\n뺄셈 결과: 8\n곱셈 결과: 20\n나눗셈 결과: 5\n",
+      },
+      {
+        id: 3,
+        input: "100 25",
+        expected: "두 정수 입력: 덧셈 결과: 125\n뺄셈 결과: 75\n곱셈 결과: 2500\n나눗셈 결과: 4\n",
+      },
+      {
+        id: 4,
+        input: "7 3",
+        expected: "두 정수 입력: 덧셈 결과: 10\n뺄셈 결과: 4\n곱셈 결과: 21\n나눗셈 결과: 2\n",
+      },
+      {
+        id: 5,
+        input: "-10 3",
+        expected: "두 정수 입력: 덧셈 결과: -7\n뺄셈 결과: -13\n곱셈 결과: -30\n나눗셈 결과: -3\n",
+      },
     ],
     referenceSolution: `#include <stdio.h>
 
-void swap(int *a, int *b) {
-    int tmp = *a;
-    *a = *b;
-    *b = tmp;
+// 사칙연산 함수
+int add(int a, int b) {
+    return a + b;
 }
 
-int main(void) {
-    int x, y;
-    if (scanf("%d %d", &x, &y) != 2) return 1;
-    swap(&x, &y);
-    printf("%d %d\\n", x, y);
+int sub(int a, int b) {
+    return a - b;
+}
+
+int mul(int a, int b) {
+    return a * b;
+}
+
+int div(int a, int b) {
+    return a / b;
+}
+
+int main(void)
+{
+    int num1, num2;
+
+    // 함수 포인터 배열
+    int (*fp[4])(int, int) = { add, sub, mul, div };
+
+    printf("두 정수 입력: ");
+    scanf("%d %d", &num1, &num2);
+
+    printf("덧셈 결과: %d\\n", fp[0](num1, num2));
+    printf("뺄셈 결과: %d\\n", fp[1](num1, num2));
+    printf("곱셈 결과: %d\\n", fp[2](num1, num2));
+    printf("나눗셈 결과: %d\\n", fp[3](num1, num2));
+
     return 0;
 }
 `,
-    hiddenTestsPath: "supabase/seed-private/A05_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
-    variantCount: 4,
   },
   {
     code: "A06_array_reverse",
