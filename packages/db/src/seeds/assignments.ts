@@ -717,10 +717,10 @@ int main(void)
   },
   {
     code: "A06_array_reverse",
-    version: 2,
+    version: 3,
     title: "malloc과 realloc으로 동적 배열 확장",
     template:
-      "`malloc` 으로 정수 **3개** 공간을 동적 할당해 10, 20, 30 을 채워 출력한 뒤, `realloc` 으로 크기를 **5개** 로 확장하고 새로 늘어난 두 칸에 40, 50 을 저장해 다시 출력하라.\n\n네 곳의 TODO 를 채우면 된다.\n\n1. `malloc(3 * sizeof(int))` 로 정수 3개 공간 할당 후 `arr` 에 대입.\n2. `realloc(arr, 5 * sizeof(int))` 로 배열 크기를 5 로 확장 (반환값을 다시 `arr` 에 받기).\n3. realloc 반환값이 `NULL` 인지 검사 — 실패 메시지 출력 후 `return 1`.\n4. `arr[3] = 40;` `arr[4] = 50;` 으로 새 칸 두 곳을 채우기.\n\n출력문, NULL 검사 스켈레톤, 값 저장 루프, `free(arr)` 는 starter 코드에 이미 작성되어 있다. 입력은 없다.\n\n## 예상 출력\n\n```\n기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 \n```\n\n## 학습 포인트\n\n- `malloc` 의 반환값은 `void*` 이므로 `(int*)` 로 캐스팅해 받는다.\n- `realloc(ptr, new_size)` 는 기존 데이터를 보존하면서 영역을 늘려준다. 새 위치로 이동될 수 있어 **반드시 반환값을 다시 `arr` 에 대입**해야 한다.\n- realloc 이 실패하면 `NULL` 을 반환하지만 **원본 `arr` 은 해제되지 않는다**. 입문 단계에선 실패 시 그냥 종료하는 패턴으로 충분.",
+      "동적 메모리로 정수 3개 공간을 만들어 출력한 뒤, 크기를 5개로 확장해 두 칸을 더 채우고 다시 출력하라. starter 코드의 TODO 1~4 를 채우면 된다. 입력은 없다.\n\n## 예상 출력\n\n```\n기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 \n```",
     kcTags: ["memory-allocation", "pointer-basics", "control-flow-loop"],
     difficulty: 3,
     rubric: { correctness: 0.45, style: 0.1, memory_safety: 0.3, reflection: 0.15 },
