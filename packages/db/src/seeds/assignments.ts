@@ -717,53 +717,134 @@ int main(void)
   },
   {
     code: "A06_array_reverse",
-    version: 1,
-    title: "포인터 순회로 배열 역출력",
+    version: 2,
+    title: "malloc과 realloc으로 동적 배열 확장",
     template:
-      "길이 N인 정수 배열을 포인터 산술로 순회하며 역순으로 한 줄에 공백 구분 출력하라. arr[i] 대신 `*(p+i)` 같은 포인터 표기만 사용.",
-    kcTags: ["pointer-arithmetic", "arrays-indexing"],
+      "`malloc` 으로 정수 **3개** 공간을 동적 할당해 10, 20, 30 을 채워 출력한 뒤, `realloc` 으로 크기를 **5개** 로 확장하고 새로 늘어난 두 칸에 40, 50 을 저장해 다시 출력하라.\n\n네 곳의 TODO 를 채우면 된다.\n\n1. `malloc(3 * sizeof(int))` 로 정수 3개 공간 할당 후 `arr` 에 대입.\n2. `realloc(arr, 5 * sizeof(int))` 로 배열 크기를 5 로 확장 (반환값을 다시 `arr` 에 받기).\n3. realloc 반환값이 `NULL` 인지 검사 — 실패 메시지 출력 후 `return 1`.\n4. `arr[3] = 40;` `arr[4] = 50;` 으로 새 칸 두 곳을 채우기.\n\n출력문, NULL 검사 스켈레톤, 값 저장 루프, `free(arr)` 는 starter 코드에 이미 작성되어 있다. 입력은 없다.\n\n## 예상 출력\n\n```\n기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 \n```\n\n## 학습 포인트\n\n- `malloc` 의 반환값은 `void*` 이므로 `(int*)` 로 캐스팅해 받는다.\n- `realloc(ptr, new_size)` 는 기존 데이터를 보존하면서 영역을 늘려준다. 새 위치로 이동될 수 있어 **반드시 반환값을 다시 `arr` 에 대입**해야 한다.\n- realloc 이 실패하면 `NULL` 을 반환하지만 **원본 `arr` 은 해제되지 않는다**. 입문 단계에선 실패 시 그냥 종료하는 패턴으로 충분.",
+    kcTags: ["memory-allocation", "pointer-basics", "control-flow-loop"],
     difficulty: 3,
-    rubric: DEFAULT_RUBRIC,
+    rubric: { correctness: 0.45, style: 0.1, memory_safety: 0.3, reflection: 0.15 },
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
+#include <stdlib.h>
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    int arr[100];
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    int *p = arr;
-    // TODO: 포인터로 배열을 탐색하며 결과를 출력해보세요.
+int main()
+{
+    int* arr;
+    int i;
+
+    // TODO 1 : malloc( )을 활용하여 3개의 정수 공간 할당
+
+
+    if (arr == NULL) {
+        printf("메모리 할당 실패\\n");
+        return 1;
+    }
+
+    // 값 저장
+    for (i = 0; i < 3; i++) {
+        arr[i] = (i + 1) * 10;
+    }
+
+    printf("기존 배열:\\n");
+    for (i = 0; i < 3; i++) {
+        printf("%d ", arr[i]);
+    }
+
+    // TODO 2 : realloc( )를 활용하여 배열 크기를 5개로 확장
+
+
+    // TODO 3 : 메모리 재할당 실패 여부 확인
+
+
+    // TODO 4 : 늘어난 새 공간에 40과 50 저장
+
+
+    printf("\\n\\n확장된 배열:\\n");
+    for (i = 0; i < 5; i++) {
+        printf("%d ", arr[i]);
+    }
+
+    // 메모리 해제
+    free(arr);
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "4\n1 2 3 4", expected: "4 3 2 1\n" },
-      { input: "1\n42", expected: "42\n" },
+      {
+        input: "",
+        expected: "기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 ",
+        note: "입력 없음 — 고정된 값(10,20,30 → 40,50 추가) 출력",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "4\n1 2 3 4", expected: "4 3 2 1\n" },
-      { id: 2, input: "1\n42", expected: "42\n" },
-      { id: 3, input: "5\n10 20 30 40 50", expected: "50 40 30 20 10\n" },
-      { id: 4, input: "3\n-1 0 -1", expected: "-1 0 -1\n" },
+      {
+        id: 1,
+        input: "",
+        expected: "기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 ",
+      },
+      {
+        id: 2,
+        input: "",
+        expected: "기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 ",
+      },
+      {
+        id: 3,
+        input: "",
+        expected: "기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 ",
+      },
     ],
     referenceSolution: `#include <stdio.h>
+#include <stdlib.h>
 
-int main(void) {
-    int n;
-    if (scanf("%d", &n) != 1) return 1;
-    int arr[100];
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    int *p = arr;
-    for (int i = n - 1; i >= 0; i--) {
-        printf("%d", *(p + i));
-        if (i > 0) printf(" ");
+int main()
+{
+    int* arr;
+    int i;
+
+    // 3개의 정수 공간 할당
+    arr = (int*)malloc(3 * sizeof(int));
+
+    if (arr == NULL) {
+        printf("메모리 할당 실패\\n");
+        return 1;
     }
-    printf("\\n");
+
+    // 값 저장
+    for (i = 0; i < 3; i++) {
+        arr[i] = (i + 1) * 10;
+    }
+
+    printf("기존 배열:\\n");
+    for (i = 0; i < 3; i++) {
+        printf("%d ", arr[i]);
+    }
+
+    // 배열 크기를 5개로 확장
+    arr = (int*)realloc(arr, 5 * sizeof(int));
+
+    // 재할당 실패 검사
+    if (arr == NULL) {
+        printf("메모리 재할당 실패\\n");
+        return 1;
+    }
+
+    // 늘어난 새 공간에 40과 50 저장
+    arr[3] = 40;
+    arr[4] = 50;
+
+    printf("\\n\\n확장된 배열:\\n");
+    for (i = 0; i < 5; i++) {
+        printf("%d ", arr[i]);
+    }
+
+    // 메모리 해제
+    free(arr);
+
     return 0;
 }
 `,
-    hiddenTestsPath: "supabase/seed-private/A06_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {
