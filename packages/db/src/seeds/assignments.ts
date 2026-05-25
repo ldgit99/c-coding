@@ -78,6 +78,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "pointer-arithmetic": "포인터 산술로 배열을 순회하고 경계를 넘지 않게 한다",
   "functions-params": "함수 파라미터로 값·포인터 전달 차이를 구분한다",
   "memory-allocation": "malloc·free로 동적 메모리를 안전하게 관리한다",
+  "memory-realloc": "realloc 으로 동적 배열의 크기를 늘린다",
   recursion: "재귀 함수의 기저 사례와 점화식을 설계한다",
   "strings-basic": "문자열 함수로 단어를 비교하고 복사한다",
   "function-pointers": "함수 포인터 배열로 동작을 인덱스로 골라 호출한다",
@@ -721,7 +722,7 @@ int main(void)
     title: "malloc과 realloc으로 동적 배열 확장",
     template:
       "동적 메모리로 정수 3개 공간을 만들어 출력한 뒤, 크기를 5개로 확장해 두 칸을 더 채우고 다시 출력하라. starter 코드의 TODO 1~4 를 채우면 된다. 입력은 없다.\n\n## 예상 출력\n\n```\n기존 배열:\n10 20 30 \n\n확장된 배열:\n10 20 30 40 50 \n```",
-    kcTags: ["memory-allocation", "pointer-basics", "control-flow-loop"],
+    kcTags: ["memory-allocation", "memory-realloc", "control-flow-loop"],
     difficulty: 3,
     rubric: { correctness: 0.45, style: 0.1, memory_safety: 0.3, reflection: 0.15 },
     constraints: DEFAULT_CONSTRAINTS,

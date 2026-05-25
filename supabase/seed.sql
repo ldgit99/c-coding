@@ -443,7 +443,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 확장된 배열:
 10 20 30 40 50 
 ```$$,
-  $$["memory-allocation","pointer-basics","control-flow-loop"]$$::jsonb,
+  $$["memory-allocation","memory-realloc","control-flow-loop"]$$::jsonb,
   3,
   $${"correctness":0.45,"style":0.1,"memory_safety":0.3,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
