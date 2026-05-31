@@ -855,7 +855,7 @@ int main()
     version: 2,
     title: "구조체 중첩으로 학생 성적 관리",
     template:
-      "구조체(`struct`)로 한 학생의 성적 정보를 관리하는 프로그램을 완성하라. 두 개의 구조체를 정의해야 한다.\n\n- **Score** — 국어·영어·수학 점수를 담는 구조체 (모두 정수형 멤버: `korean`, `english`, `math`)\n- **Student** — 학생 이름(`char name[50]`)과 성적(`Score` 구조체)을 **중첩(nested)** 으로 담는 구조체\n\n`main` 에는 이미 한 학생의 데이터가 저장돼 있다. 다음 네 부분을 직접 채워라.\n\n1. **Score 구조체 정의** (TODO 1)\n2. **Student 구조체 정의** — `Score` 를 멤버로 중첩 (TODO 2)\n3. **총점·평균 계산** (TODO 3) — 세 점수의 합을 `total` 에, 평균을 `average`(실수)에. 평균은 `3.0` 으로 나눠 소수가 떨어지게 하라.\n4. **출력** (TODO 4) — 아래 형식 그대로.\n\n입력은 없다.\n\n## 예상 출력\n\n```\nName: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n```\n\n## 힌트\n\n- 구조체 멤버 접근은 점(`.`) 연산자: `student.exam.korean`.\n- 중첩 구조체는 `student.exam` 으로 안쪽 구조체에 닿고, 다시 `.korean` 으로 멤버에 닿는다.\n- 정수 합을 실수 평균으로 만들려면 `3.0`(실수) 으로 나눠야 한다. `/ 3` 으로 나누면 정수 나눗셈이 된다.\n- 이름은 `%s`, 점수·총점은 `%d`, 평균은 `%.2f`(소수점 2자리) 로 출력한다.",
+      "구조체(`struct`)로 한 학생의 성적 정보를 관리하는 프로그램을 완성하라.\n\n- **Score** — 국어·영어·수학 점수(정수)를 담는 구조체\n- **Student** — 이름과 성적(`Score`)을 **중첩(nested)** 으로 담는 구조체\n\n`main` 에는 한 학생의 데이터가 이미 저장돼 있다. starter 의 TODO 1~4(구조체 두 개 정의 → 총점·평균 계산 → 출력)를 채워라. 평균은 실수로 출력한다. 입력은 없다.\n\n## 예상 출력\n\n```\nName: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n```",
     kcTags: ["structs-basic", "structs-nested", "io-formatting"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
