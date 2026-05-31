@@ -512,24 +512,80 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A07_malloc_resize',
-  1,
-  $$malloc과 동적 배열$$,
-  $$입력 N에 대해 malloc으로 N개 정수 배열을 할당, 입력 N개 값을 읽고 뒤집어 출력한 뒤 반드시 free하라. 누수 금지.$$,
-  $$["memory-allocation","arrays-indexing","control-flow-loop"]$$::jsonb,
-  4,
-  $${"correctness":0.45,"style":0.1,"memory_safety":0.3,"reflection":0.15}$$::jsonb,
+  2,
+  $$구조체 중첩으로 학생 성적 관리$$,
+  $$구조체(`struct`)로 한 학생의 성적 정보를 관리하는 프로그램을 완성하라. 두 개의 구조체를 정의해야 한다.
+
+- **Score** — 국어·영어·수학 점수를 담는 구조체 (모두 정수형 멤버: `korean`, `english`, `math`)
+- **Student** — 학생 이름(`char name[50]`)과 성적(`Score` 구조체)을 **중첩(nested)** 으로 담는 구조체
+
+`main` 에는 이미 한 학생의 데이터가 저장돼 있다. 다음 네 부분을 직접 채워라.
+
+1. **Score 구조체 정의** (TODO 1)
+2. **Student 구조체 정의** — `Score` 를 멤버로 중첩 (TODO 2)
+3. **총점·평균 계산** (TODO 3) — 세 점수의 합을 `total` 에, 평균을 `average`(실수)에. 평균은 `3.0` 으로 나눠 소수가 떨어지게 하라.
+4. **출력** (TODO 4) — 아래 형식 그대로.
+
+입력은 없다.
+
+## 예상 출력
+
+```
+Name: Kim Min Jun
+Korean: 90
+English: 85
+Math: 95
+Total: 270
+Average: 90.00
+```
+
+## 힌트
+
+- 구조체 멤버 접근은 점(`.`) 연산자: `student.exam.korean`.
+- 중첩 구조체는 `student.exam` 으로 안쪽 구조체에 닿고, 다시 `.korean` 으로 멤버에 닿는다.
+- 정수 합을 실수 평균으로 만들려면 `3.0`(실수) 으로 나눠야 한다. `/ 3` 으로 나누면 정수 나눗셈이 된다.
+- 이름은 `%s`, 점수·총점은 `%d`, 평균은 `%.2f`(소수점 2자리) 로 출력한다.$$,
+  $$["structs-basic","structs-nested","io-formatting"]$$::jsonb,
+  3,
+  $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    // TODO: 동적 메모리를 할당하고 결과를 출력한 뒤 정리해보세요.
+// TODO 1. 성적 정보를 나타내는 구조체 Score 를 정의하세요.
+//         (korean, english, math — 모두 정수형 멤버)
+
+
+// TODO 2. 학생 정보를 나타내는 구조체 Student 를 정의하세요.
+//         (이름을 담는 char name[50] + 성적 구조체(Score)를 멤버로 중첩)
+
+
+int main(void)
+{
+    struct Student student;
+    int total;
+    double average;
+
+    // 데이터 저장
+    strcpy(student.name, "Kim Min Jun");
+    student.exam.korean = 90;
+    student.exam.english = 85;
+    student.exam.math = 95;
+
+    // TODO 3. 총점(total)과 평균(average)을 계산하세요.
+    //         평균은 3.0 으로 나눠 실수로 떨어지게 하세요.
+
+
+    // TODO 4. 아래 형식대로 출력하세요. (각 줄 끝에 줄바꿈)
+    //   Name: 이름
+    //   Korean: 점수 / English: 점수 / Math: 점수
+    //   Total: 총점 / Average: 평균(소수점 2자리)
+
+
     return 0;
 }
 $$,
-  $$[{"input":"3\n1 2 3","expected":"3 2 1\n"},{"input":"5\n10 20 30 40 50","expected":"50 40 30 20 10\n"}]$$::jsonb,
+  $$[{"input":"","expected":"Name: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n","note":"입력 없음 — 고정된 학생 데이터(90,85,95 → 총점 270, 평균 90.00) 출력"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

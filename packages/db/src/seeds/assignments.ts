@@ -82,6 +82,8 @@ const KC_OBJECTIVES: Record<string, string> = {
   recursion: "재귀 함수의 기저 사례와 점화식을 설계한다",
   "strings-basic": "문자열 함수로 단어를 비교하고 복사한다",
   "function-pointers": "함수 포인터 배열로 동작을 인덱스로 골라 호출한다",
+  "structs-basic": "구조체를 정의하고 멤버에 점(.) 연산자로 접근한다",
+  "structs-nested": "구조체 안에 구조체를 중첩하고 중첩 멤버에 접근한다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {
@@ -850,55 +852,122 @@ int main()
   },
   {
     code: "A07_malloc_resize",
-    version: 1,
-    title: "malloc과 동적 배열",
+    version: 2,
+    title: "구조체 중첩으로 학생 성적 관리",
     template:
-      "입력 N에 대해 malloc으로 N개 정수 배열을 할당, 입력 N개 값을 읽고 뒤집어 출력한 뒤 반드시 free하라. 누수 금지.",
-    kcTags: ["memory-allocation", "arrays-indexing", "control-flow-loop"],
-    difficulty: 4,
-    rubric: { correctness: 0.45, style: 0.1, memory_safety: 0.3, reflection: 0.15 },
+      "구조체(`struct`)로 한 학생의 성적 정보를 관리하는 프로그램을 완성하라. 두 개의 구조체를 정의해야 한다.\n\n- **Score** — 국어·영어·수학 점수를 담는 구조체 (모두 정수형 멤버: `korean`, `english`, `math`)\n- **Student** — 학생 이름(`char name[50]`)과 성적(`Score` 구조체)을 **중첩(nested)** 으로 담는 구조체\n\n`main` 에는 이미 한 학생의 데이터가 저장돼 있다. 다음 네 부분을 직접 채워라.\n\n1. **Score 구조체 정의** (TODO 1)\n2. **Student 구조체 정의** — `Score` 를 멤버로 중첩 (TODO 2)\n3. **총점·평균 계산** (TODO 3) — 세 점수의 합을 `total` 에, 평균을 `average`(실수)에. 평균은 `3.0` 으로 나눠 소수가 떨어지게 하라.\n4. **출력** (TODO 4) — 아래 형식 그대로.\n\n입력은 없다.\n\n## 예상 출력\n\n```\nName: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n```\n\n## 힌트\n\n- 구조체 멤버 접근은 점(`.`) 연산자: `student.exam.korean`.\n- 중첩 구조체는 `student.exam` 으로 안쪽 구조체에 닿고, 다시 `.korean` 으로 멤버에 닿는다.\n- 정수 합을 실수 평균으로 만들려면 `3.0`(실수) 으로 나눠야 한다. `/ 3` 으로 나누면 정수 나눗셈이 된다.\n- 이름은 `%s`, 점수·총점은 `%d`, 평균은 `%.2f`(소수점 2자리) 로 출력한다.",
+    kcTags: ["structs-basic", "structs-nested", "io-formatting"],
+    difficulty: 3,
+    rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    // TODO: 동적 메모리를 할당하고 결과를 출력한 뒤 정리해보세요.
+// TODO 1. 성적 정보를 나타내는 구조체 Score 를 정의하세요.
+//         (korean, english, math — 모두 정수형 멤버)
+
+
+// TODO 2. 학생 정보를 나타내는 구조체 Student 를 정의하세요.
+//         (이름을 담는 char name[50] + 성적 구조체(Score)를 멤버로 중첩)
+
+
+int main(void)
+{
+    struct Student student;
+    int total;
+    double average;
+
+    // 데이터 저장
+    strcpy(student.name, "Kim Min Jun");
+    student.exam.korean = 90;
+    student.exam.english = 85;
+    student.exam.math = 95;
+
+    // TODO 3. 총점(total)과 평균(average)을 계산하세요.
+    //         평균은 3.0 으로 나눠 실수로 떨어지게 하세요.
+
+
+    // TODO 4. 아래 형식대로 출력하세요. (각 줄 끝에 줄바꿈)
+    //   Name: 이름
+    //   Korean: 점수 / English: 점수 / Math: 점수
+    //   Total: 총점 / Average: 평균(소수점 2자리)
+
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "3\n1 2 3", expected: "3 2 1\n" },
-      { input: "5\n10 20 30 40 50", expected: "50 40 30 20 10\n" },
+      {
+        input: "",
+        expected:
+          "Name: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n",
+        note: "입력 없음 — 고정된 학생 데이터(90,85,95 → 총점 270, 평균 90.00) 출력",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "3\n1 2 3", expected: "3 2 1\n" },
-      { id: 2, input: "5\n10 20 30 40 50", expected: "50 40 30 20 10\n" },
-      { id: 3, input: "1\n99", expected: "99\n" },
-      { id: 4, input: "6\n-1 -2 -3 -4 -5 -6", expected: "-6 -5 -4 -3 -2 -1\n" },
+      {
+        id: 1,
+        input: "",
+        expected:
+          "Name: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n",
+      },
+      {
+        id: 2,
+        input: "",
+        expected:
+          "Name: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n",
+      },
+      {
+        id: 3,
+        input: "",
+        expected:
+          "Name: Kim Min Jun\nKorean: 90\nEnglish: 85\nMath: 95\nTotal: 270\nAverage: 90.00\n",
+      },
     ],
     referenceSolution: `#include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
-int main(void) {
-    int n;
-    if (scanf("%d", &n) != 1) return 1;
-    int *arr = malloc(sizeof(int) * n);
-    if (!arr) return 1;
-    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
-    for (int i = n - 1; i >= 0; i--) {
-        printf("%d", arr[i]);
-        if (i > 0) printf(" ");
-    }
-    printf("\\n");
-    free(arr);
+// 성적 정보를 나타내는 구조체
+struct Score {
+    int korean;
+    int english;
+    int math;
+};
+
+// 학생 정보를 나타내는 구조체 (Score 중첩)
+struct Student {
+    char name[50];
+    struct Score exam;
+};
+
+int main(void)
+{
+    struct Student student;
+    int total;
+    double average;
+
+    // 데이터 저장
+    strcpy(student.name, "Kim Min Jun");
+    student.exam.korean = 90;
+    student.exam.english = 85;
+    student.exam.math = 95;
+
+    // 총점과 평균 계산
+    total = student.exam.korean + student.exam.english + student.exam.math;
+    average = total / 3.0;
+
+    // 데이터 출력
+    printf("Name: %s\\n", student.name);
+    printf("Korean: %d\\n", student.exam.korean);
+    printf("English: %d\\n", student.exam.english);
+    printf("Math: %d\\n", student.exam.math);
+    printf("Total: %d\\n", total);
+    printf("Average: %.2f\\n", average);
+
     return 0;
 }
 `,
-    hiddenTestsPath: "supabase/seed-private/A07_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
-    variantCount: 5,
   },
   {
     code: "A08_factorial_iter",
