@@ -144,6 +144,41 @@ vercel --prod
 - **lenient normalize 와 expected 형식**: `printf("문자열 입력: ")` 다음 줄바꿈 없이 `printf("결과: %s\n", s)` 호출 시 stdout 은 *한 줄로* `"문자열 입력: 결과: hello\n"`. expected 도 한 줄로 작성.
 - **vercel.json `ignoreCommand`**: `turbo-ignore` 가 monorepo 의 transitive dep 변화를 못 잡으면 모든 push 를 스킵함. 학생 앱은 이미 제거. 재발 시 GitHub Actions 가 backup.
 
+### 7. 과제 본문(template = "문제 자세히 보기") 작성 규칙
+
+학생이 보는 **"문제 자세히 보기"(AssignmentSeed.template)** 는 항상 **간결하게** 작성한다. 정답을 알려주는 힌트는 본문이 아니라 starter 의 `// TODO` 주석에 둔다. 본문에 힌트를 길게 적으면 학생이 스스로 떠올릴 기회를 뺏는다 (AI 과의존 방지라는 프로젝트 목표와 충돌).
+
+**본문에 들어가는 것 (이것만):**
+
+1. **한 줄 문제 정의** — 무엇을 만드는지.
+2. **요구 명세** — 정의할 구조/함수/제약을 bullet 으로 (멤버명·시그니처 등 *세부 식별자는 starter TODO 주석에 있으니 본문에서 반복하지 않는다*).
+3. **채울 부분 안내** — "starter 의 TODO 1~N 을 채워라" 한 문장. 단계별로 잘게 쪼개 설명하지 않는다.
+4. **입력 유무** ("입력은 없다" 등).
+5. **`## 예상 출력`** — 코드블록으로 정확한 출력 (이건 반드시 포함).
+
+**본문에서 빼는 것 (= starter TODO 주석으로 이동):**
+
+- ❌ `## 힌트` 섹션에 **푸는 방법**을 적는 것 — 점 연산자 예시(`student.exam.korean`), 정수/실수 나눗셈 트릭(`3.0` vs `/3`), 사용할 형식 지정자(`%s`·`%d`·`%.2f`), 정답 코드 조각(`while ((ch = getchar()) != '\n' ...)`).
+- ❌ 멤버명·변수명·함수 시그니처를 본문과 starter 양쪽에 중복.
+- ❌ "1. … 2. … 3. …" 식으로 각 TODO 를 문장으로 다시 풀어쓰는 것.
+
+> 개념적 주의(예: "정수 나눗셈 주의") 정도의 **가벼운 환기**는 허용하지만, *어떻게* 하는지까지 적으면 힌트 과다다. 단계별 Socratic 힌트는 본문이 아니라 Pedagogy Coach 가 런타임에 게이팅으로 제공한다.
+
+**예 (A07 구조체 과제 — 권장 형태):**
+
+```
+구조체(struct)로 한 학생의 성적 정보를 관리하는 프로그램을 완성하라.
+
+- Score — 국어·영어·수학 점수(정수)를 담는 구조체
+- Student — 이름과 성적(Score)을 중첩(nested)으로 담는 구조체
+
+main 에는 한 학생의 데이터가 이미 저장돼 있다. starter 의 TODO 1~4
+(구조체 두 개 정의 → 총점·평균 계산 → 출력)를 채워라. 평균은 실수로 출력한다. 입력은 없다.
+
+## 예상 출력
+...
+```
+
 ---
 
 **변경 이력:**
@@ -186,3 +221,4 @@ vercel --prod
 | 2026-04-22 | 버그/CI 정리 — Celebration 토스트 useEffect deps 에 onDismiss 포함돼 부모 리렌더마다 타이머 리셋되던 버그 수정(ref + message.id 만 deps). GitHub Actions `pnpm/action-setup@v4` Multiple versions 에러(workflow version:9 + package.json packageManager 충돌) 해결 — version:9 줄 제거. 디버그 엔드포인트 `/api/debug/env` 삭제. | `apps/student/components/Celebration.tsx`, `.github/workflows/{ci,e2e,lighthouse}.yml`, `apps/teacher/app/api/debug/env` 삭제 | 파일럿 전 안정화 |
 | 2026-05-01 | 학생 데이터 파이프라인 보강 (12회 commit) — events DB persist + run/AI 분석 영구 저장, code-reviewer 환각 BLOCKER 차단(정답·통과 신호 주입), A01 5x4 행·열 합산 문제로 교체, hiddenTests + referenceSolution 을 assignments.ts 인라인 (seed-private 자동 export), 제출 매트릭스 셀 클릭 모달, AI 분석 탭, 사용성 6종(starter TODO 완화 등), AssignmentPanel 마지막 작업 과제 자동 복원·통과 시 다음 과제 자동 진입. | `apps/student/app/api/{run,submit,chat,review,debug}`, `apps/teacher/components/SubmissionCodeModal.tsx`, `packages/db/src/seeds/assignments.ts`, `packages/agents/src/runtime/code-reviewer.ts` | 데이터 영속성·UX 안정화 |
 | 2026-05-12 | 데이터 파이프라인 #1~#11 보강 + A02·A03 카탈로그 교체 + Vercel 배포 회복. (1) Student Modeler cron (매일 03:00 UTC) → mastery/misconceptions 갱신, (2) events.student_id ctx 결정적 채움, (3) conversations.assignment_id text→uuid, (4) DB write counters + `/api/health/db-writes`, (5) 교사앱 fetchAnalyticsFromDb 직접 SELECT (학생앱 프록시 제거), (6) status='removed' 학생 모든 집계에서 제외, (7) admin endpoint requireTeacher 가드, (8) dump dependency/transfer 실DB 기반, (9) submissions.evidence 에 hidden test 결과 저장, (10) drift-check cron + `/settings` Reseed Assignments 버튼, (11) `/api/health` 통합. A02: 포인터 함수 swap → 포인터 산술 순회+max/min. A03: 배열 합산 → fgets+tolower 문자열 처리. `UNLOCKED_PREFIXES` 에 A02, A03 추가. **Vercel webhook 11일 끊김 사고** — `.github/workflows/deploy.yml` (GitHub Actions Vercel CLI 직접 배포) 로 영구 우회. `/api/admin/purge-assignment-history` (dry-run + confirm 2단계) + `/settings` UI 추가. | 광범위 (변경 이력 자세히는 git log 참조) | 운영 안정성 + 데이터 무결성 + 카탈로그 교체 플레이북 검증 |
+| 2026-05-31 | A07 카탈로그 교체 (malloc 동적 배열 → 구조체 중첩 학생 성적 관리) + 본문 작성 규칙 명문화. `code` 슬러그 유지·version 1→2, struct Score/Student(중첩) 정의 TODO 1~4, kcTags structs-basic/structs-nested, KC 학습목표 2개 추가, `UNLOCKED_PREFIXES` 에 A07. 본문 힌트가 정답(점 연산자·3.0 나눗셈·형식 지정자)을 노출해 간소화. **운영 플레이북 §7 "과제 본문(template) 작성 규칙" 신설** — 본문은 명세+예상출력만, 푸는 방법 힌트는 starter TODO 주석으로. | `packages/db/src/seeds/assignments.ts`, `apps/student/components/AssignmentPanel.tsx`, `supabase/seed*`, `CLAUDE.md` | 학생 본문 간결화 + AI 과의존 방지 원칙 일관 적용 |
