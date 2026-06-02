@@ -590,28 +590,71 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A08_factorial_iter',
-  1,
-  $$반복문으로 팩토리얼$$,
-  $$정수 n (0 ≤ n ≤ 12) 을 입력받아 n!을 반복문으로 계산해 출력하라. 재귀 금지.$$,
-  $$["functions-params","control-flow-loop","control-flow-if","variables-types"]$$::jsonb,
+  2,
+  $$구조체 포인터로 학생 성적 처리$$,
+  $$구조체 포인터를 함수에 넘겨 여러 학생의 성적을 처리하는 프로그램을 완성하라.
+
+- **Student** — 이름(`name[50]`)과 점수(`score`)를 담는 구조체
+- **printStudents** — 학생 배열(구조체 포인터)과 학생 수를 받아 모든 학생의 이름·점수를 출력
+- **getAverage** — 학생 배열과 학생 수를 받아 평균 점수를 `double` 로 반환
+
+`main` 에는 학생 3명(Kim·Lee·Park)이 이미 저장돼 있다. starter 의 TODO 1~3(구조체 정의 → 출력 함수 → 평균 함수)을 채워라. 두 함수의 원형(prototype)은 starter 에 제시돼 있다. 입력은 없다.
+
+## 예상 출력
+
+```
+학생 정보 출력
+이름: Kim, 점수: 90
+이름: Lee, 점수: 80
+이름: Park, 점수: 70
+
+평균 점수: 80.00
+```$$,
+  $$["structs-pointer","functions-params","structs-basic","variables-types"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-long factorial_iter(int n) {
-    // TODO: 반복문으로 n! 을 계산해보세요.
-    return 1;
+// TODO 1. 학생의 이름(name[50])과 점수(score)를 담는 구조체 Student 를 정의하세요.
+
+
+// TODO 2. printStudents 함수를 완성하세요.
+//   - 모든 학생의 이름과 점수를 한 줄씩 출력합니다.
+//   - 구조체 포인터(students)로 멤버에 접근하고, for 문으로 size 만큼 반복하세요.
+//   - 첫 줄에 "학생 정보 출력" 을 먼저 출력합니다. (예상 출력 참고)
+void printStudents(struct Student *students, int size)
+{
+    // 여기를 채우세요.
 }
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    printf("%ld\n", factorial_iter(n));
+// TODO 3. getAverage 함수를 완성하세요.
+//   - 모든 학생의 점수를 더한 뒤 평균을 double 로 반환합니다.
+double getAverage(struct Student *students, int size)
+{
+    // 여기를 채우세요.
+    return 0.0;
+}
+
+int main(void)
+{
+    struct Student students[3] = {
+        {"Kim", 90},
+        {"Lee", 80},
+        {"Park", 70}
+    };
+
+    double average;
+
+    printStudents(students, 3);
+
+    average = getAverage(students, 3);
+    printf("\n평균 점수: %.2f\n", average);
+
     return 0;
 }
 $$,
-  $$[{"input":"5","expected":"120\n"},{"input":"0","expected":"1\n"},{"input":"10","expected":"3628800\n"}]$$::jsonb,
+  $$[{"input":"","expected":"학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n","note":"입력 없음 — 고정된 학생 3명(90,80,70 → 평균 80.00) 출력"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

@@ -84,6 +84,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "function-pointers": "함수 포인터 배열로 동작을 인덱스로 골라 호출한다",
   "structs-basic": "구조체를 정의하고 멤버에 점(.) 연산자로 접근한다",
   "structs-nested": "구조체 안에 구조체를 중첩하고 중첩 멤버에 접근한다",
+  "structs-pointer": "구조체 포인터를 함수에 넘기고 화살표(->) 연산자로 멤버에 접근한다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {
@@ -971,56 +972,127 @@ int main(void)
   },
   {
     code: "A08_factorial_iter",
-    version: 1,
-    title: "반복문으로 팩토리얼",
+    version: 2,
+    title: "구조체 포인터로 학생 성적 처리",
     template:
-      "정수 n (0 ≤ n ≤ 12) 을 입력받아 n!을 반복문으로 계산해 출력하라. 재귀 금지.",
-    kcTags: ["functions-params", "control-flow-loop", "control-flow-if", "variables-types"],
+      "구조체 포인터를 함수에 넘겨 여러 학생의 성적을 처리하는 프로그램을 완성하라.\n\n- **Student** — 이름(`name[50]`)과 점수(`score`)를 담는 구조체\n- **printStudents** — 학생 배열(구조체 포인터)과 학생 수를 받아 모든 학생의 이름·점수를 출력\n- **getAverage** — 학생 배열과 학생 수를 받아 평균 점수를 `double` 로 반환\n\n`main` 에는 학생 3명(Kim·Lee·Park)이 이미 저장돼 있다. starter 의 TODO 1~3(구조체 정의 → 출력 함수 → 평균 함수)을 채워라. 두 함수의 원형(prototype)은 starter 에 제시돼 있다. 입력은 없다.\n\n## 예상 출력\n\n```\n학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n```",
+    kcTags: ["structs-pointer", "functions-params", "structs-basic", "variables-types"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
-long factorial_iter(int n) {
-    // TODO: 반복문으로 n! 을 계산해보세요.
-    return 1;
+// TODO 1. 학생의 이름(name[50])과 점수(score)를 담는 구조체 Student 를 정의하세요.
+
+
+// TODO 2. printStudents 함수를 완성하세요.
+//   - 모든 학생의 이름과 점수를 한 줄씩 출력합니다.
+//   - 구조체 포인터(students)로 멤버에 접근하고, for 문으로 size 만큼 반복하세요.
+//   - 첫 줄에 "학생 정보 출력" 을 먼저 출력합니다. (예상 출력 참고)
+void printStudents(struct Student *students, int size)
+{
+    // 여기를 채우세요.
 }
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    printf("%ld\\n", factorial_iter(n));
+// TODO 3. getAverage 함수를 완성하세요.
+//   - 모든 학생의 점수를 더한 뒤 평균을 double 로 반환합니다.
+double getAverage(struct Student *students, int size)
+{
+    // 여기를 채우세요.
+    return 0.0;
+}
+
+int main(void)
+{
+    struct Student students[3] = {
+        {"Kim", 90},
+        {"Lee", 80},
+        {"Park", 70}
+    };
+
+    double average;
+
+    printStudents(students, 3);
+
+    average = getAverage(students, 3);
+    printf("\\n평균 점수: %.2f\\n", average);
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "5", expected: "120\n" },
-      { input: "0", expected: "1\n" },
-      { input: "10", expected: "3628800\n" },
+      {
+        input: "",
+        expected:
+          "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n",
+        note: "입력 없음 — 고정된 학생 3명(90,80,70 → 평균 80.00) 출력",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "0", expected: "1\n" },
-      { id: 2, input: "1", expected: "1\n" },
-      { id: 3, input: "5", expected: "120\n" },
-      { id: 4, input: "10", expected: "3628800\n" },
-      { id: 5, input: "12", expected: "479001600\n" },
+      {
+        id: 1,
+        input: "",
+        expected:
+          "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n",
+      },
+      {
+        id: 2,
+        input: "",
+        expected:
+          "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n",
+      },
+      {
+        id: 3,
+        input: "",
+        expected:
+          "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n",
+      },
     ],
     referenceSolution: `#include <stdio.h>
 
-long factorial_iter(int n) {
-    long result = 1;
-    for (int i = 2; i <= n; i++) result *= i;
-    return result;
+struct Student {
+    char name[50];
+    int score;
+};
+
+void printStudents(struct Student *students, int size)
+{
+    printf("학생 정보 출력\\n");
+    for (int i = 0; i < size; i++) {
+        printf("이름: %s, 점수: %d\\n",
+               (students + i)->name,
+               (students + i)->score);
+    }
 }
 
-int main(void) {
-    int n;
-    if (scanf("%d", &n) != 1) return 1;
-    printf("%ld\\n", factorial_iter(n));
+double getAverage(struct Student *students, int size)
+{
+    int sum = 0;
+    for (int i = 0; i < size; i++) {
+        sum += (students + i)->score;
+    }
+
+    return (double)sum / size;
+}
+
+int main(void)
+{
+    struct Student students[3] = {
+        {"Kim", 90},
+        {"Lee", 80},
+        {"Park", 70}
+    };
+
+    double average;
+
+    printStudents(students, 3);
+
+    average = getAverage(students, 3);
+    printf("\\n평균 점수: %.2f\\n", average);
+
     return 0;
 }
 `,
-    hiddenTestsPath: "supabase/seed-private/A08_hidden.json",
     reflectionPrompts: DEFAULT_REFLECTION_PROMPTS,
   },
   {

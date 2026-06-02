@@ -1,27 +1,17 @@
 [
   {
     "id": 1,
-    "input": "0",
-    "expected": "1\n"
+    "input": "",
+    "expected": "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n"
   },
   {
     "id": 2,
-    "input": "1",
-    "expected": "1\n"
+    "input": "",
+    "expected": "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n"
   },
   {
     "id": 3,
-    "input": "5",
-    "expected": "120\n"
-  },
-  {
-    "id": 4,
-    "input": "10",
-    "expected": "3628800\n"
-  },
-  {
-    "id": 5,
-    "input": "12",
-    "expected": "479001600\n"
+    "input": "",
+    "expected": "학생 정보 출력\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n"
   }
 ]
