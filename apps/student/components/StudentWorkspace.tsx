@@ -21,6 +21,8 @@ interface SubmissionRow {
   assignmentTitle: string | null;
   kcTags: string[];
   difficulty: number | null;
+  code?: string | null;
+  reflection?: Record<string, string> | null;
   finalScore: number | null;
   passed: boolean;
   rubricScores: Record<string, number | null> | null;
@@ -31,6 +33,7 @@ interface MySubmissionsResponse {
   studentId: string;
   submissions: SubmissionRow[];
   source: "supabase" | "memory";
+  referenceSolutions?: Record<string, string>;
 }
 
 export function StudentWorkspace({ user }: { user: AppUser }) {
@@ -70,6 +73,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
 
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [submissionsSource, setSubmissionsSource] = useState<"supabase" | "memory">("memory");
+  const [referenceSolutions, setReferenceSolutions] = useState<Record<string, string>>({});
   const [submissionsLoaded, setSubmissionsLoaded] = useState(false);
   const [showMyLearning, setShowMyLearning] = useState(false);
 
@@ -134,6 +138,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
       const data = (await res.json()) as MySubmissionsResponse;
       setSubmissions(data.submissions ?? []);
       setSubmissionsSource(data.source);
+      setReferenceSolutions(data.referenceSolutions ?? {});
     } catch {
       // ignore
     } finally {
@@ -506,6 +511,7 @@ export function StudentWorkspace({ user }: { user: AppUser }) {
         <MyLearningDialog
           submissions={submissions}
           source={submissionsSource}
+          referenceSolutions={referenceSolutions}
           onClose={() => setShowMyLearning(false)}
         />
       )}

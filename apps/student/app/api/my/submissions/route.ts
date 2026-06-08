@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createServiceRoleClientIfAvailable } from "@cvibe/db";
 
+import { loadReferenceSolution } from "@/lib/seed-private";
 import { getRouteHandlerUser } from "@/lib/session";
 
 /**
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("submissions")
       .select(
-        "id, assignment_id, code, final_score, status, rubric_scores, submitted_at, evaluated_at, assignments!inner(code, title, kc_tags, difficulty)",
+        "id, assignment_id, code, reflection, final_score, status, rubric_scores, submitted_at, evaluated_at, assignments!inner(code, title, kc_tags, difficulty)",
       )
       .eq("student_id", user.id)
       .order("submitted_at", { ascending: false })
@@ -54,6 +55,8 @@ export async function GET(request: Request) {
         assignmentTitle: assignment?.title ?? null,
         kcTags: assignment?.kc_tags ?? [],
         difficulty: assignment?.difficulty ?? null,
+        code: (row.code as string) ?? null,
+        reflection: (row.reflection as Record<string, string> | null) ?? null,
         finalScore: row.final_score != null ? Number(row.final_score) : null,
         passed: row.status === "passed",
         rubricScores: row.rubric_scores as Record<string, number | null> | null,
@@ -61,8 +64,19 @@ export async function GET(request: Request) {
       };
     });
 
+    // 정답(reference solution) 은 이미 통과한 과제에 대해서만 노출 — 미통과 과제의
+    // 정답을 "내 학습" 에서 베끼는 것을 막는다 (Safety Guard·AI 과의존 방지 원칙).
+    const passedCodes = new Set(
+      submissions.filter((s) => s.passed && s.assignmentCode).map((s) => s.assignmentCode as string),
+    );
+    const referenceSolutions: Record<string, string> = {};
+    for (const code of passedCodes) {
+      const ref = await loadReferenceSolution(code);
+      if (ref) referenceSolutions[code] = ref;
+    }
+
     return NextResponse.json(
-      { studentId: user.id, submissions, source: "supabase" },
+      { studentId: user.id, submissions, source: "supabase", referenceSolutions },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (err) {

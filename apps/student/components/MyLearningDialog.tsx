@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { computeProficiency, computeWeeklyGrowth } from "@/lib/proficiency";
 
 interface SubmissionRow {
@@ -8,6 +10,8 @@ interface SubmissionRow {
   assignmentTitle: string | null;
   kcTags: string[];
   difficulty: number | null;
+  code?: string | null;
+  reflection?: Record<string, string> | null;
   finalScore: number | null;
   passed: boolean;
   rubricScores: Record<string, number | null> | null;
@@ -17,10 +21,18 @@ interface SubmissionRow {
 interface Props {
   submissions: SubmissionRow[];
   source: "supabase" | "memory";
+  referenceSolutions?: Record<string, string>;
   onClose: () => void;
 }
 
-export function MyLearningDialog({ submissions, source, onClose }: Props) {
+/** reflection jsonb 의 Q-key → 학생에게 보일 질문 문구 (SubmitDialog 와 동일). */
+const REFLECTION_LABELS: Record<string, string> = {
+  Q1_difficult: "가장 어려웠던 부분과 해결 방법",
+  Q3_alternatives: "다른 방법 / 이 방식을 택한 이유",
+  Q5_next_time: "비슷한 문제를 다시 만나면 다르게 할 점",
+};
+
+export function MyLearningDialog({ submissions, source, referenceSolutions, onClose }: Props) {
   const byAssignment = new Map<string, SubmissionRow[]>();
   for (const s of submissions) {
     if (!s.assignmentCode) continue;
@@ -150,43 +162,17 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
               </p>
             ) : (
               <ul className="space-y-2">
-                {submissions.slice(0, 10).map((s) => {
-                  const prof = s.rubricScores
-                    ? computeProficiency({
-                        correctness: s.rubricScores.correctness ?? null,
-                        style: s.rubricScores.style ?? null,
-                        memory_safety: s.rubricScores.memory_safety ?? null,
-                        reflection: s.rubricScores.reflection ?? null,
-                      })
-                    : null;
-                  return (
-                    <li
-                      key={s.id}
-                      className="rounded-lg border border-border-soft bg-bg px-4 py-2.5"
-                    >
-                      <div className="flex items-baseline justify-between">
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-mono text-[11px] text-neutral">
-                            {s.assignmentCode?.slice(0, 3)}
-                          </span>
-                          <span className="text-[13px] text-text-primary">
-                            {s.assignmentTitle ?? s.assignmentCode}
-                          </span>
-                        </div>
-                        {prof && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${prof.badgeClass}`}
-                          >
-                            {prof.icon} {prof.label}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 font-mono text-[10px] text-neutral">
-                        {new Date(s.submittedAt).toLocaleString("ko-KR")}
-                      </div>
-                    </li>
-                  );
-                })}
+                {submissions.slice(0, 10).map((s) => (
+                  <SubmissionItem
+                    key={s.id}
+                    submission={s}
+                    referenceSolution={
+                      s.passed && s.assignmentCode
+                        ? referenceSolutions?.[s.assignmentCode]
+                        : undefined
+                    }
+                  />
+                ))}
               </ul>
             )}
           </section>
@@ -198,6 +184,135 @@ export function MyLearningDialog({ submissions, source, onClose }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SubmissionItem({
+  submission: s,
+  referenceSolution,
+}: {
+  submission: SubmissionRow;
+  referenceSolution?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const prof = s.rubricScores
+    ? computeProficiency({
+        correctness: s.rubricScores.correctness ?? null,
+        style: s.rubricScores.style ?? null,
+        memory_safety: s.rubricScores.memory_safety ?? null,
+        reflection: s.rubricScores.reflection ?? null,
+      })
+    : null;
+
+  const reflectionEntries = s.reflection
+    ? Object.entries(s.reflection).filter(([, v]) => (v ?? "").trim().length > 0)
+    : [];
+
+  return (
+    <li className="rounded-lg border border-border-soft bg-bg">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-baseline justify-between px-4 py-2.5 text-left transition-colors hover:bg-surface"
+        aria-expanded={open}
+      >
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-[10px] text-neutral">{open ? "▾" : "▸"}</span>
+          <span className="font-mono text-[11px] text-neutral">
+            {s.assignmentCode?.slice(0, 3)}
+          </span>
+          <span className="text-[13px] text-text-primary">
+            {s.assignmentTitle ?? s.assignmentCode}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-[10px] text-neutral">
+            {new Date(s.submittedAt).toLocaleDateString("ko-KR")}
+          </span>
+          {prof && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${prof.badgeClass}`}
+            >
+              {prof.icon} {prof.label}
+            </span>
+          )}
+        </div>
+      </button>
+
+      {open && (
+        <div className="space-y-4 border-t border-border-soft px-4 py-3">
+          <div className="font-mono text-[10px] text-neutral">
+            {new Date(s.submittedAt).toLocaleString("ko-KR")}
+          </div>
+
+          <CodeBlock label="내가 제출한 코드" code={s.code ?? ""} emptyText="저장된 코드가 없어요." />
+
+          <div>
+            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral">
+              성찰일지
+            </div>
+            {reflectionEntries.length === 0 ? (
+              <p className="text-[12px] text-text-secondary">작성한 성찰 내용이 없어요.</p>
+            ) : (
+              <ul className="space-y-2">
+                {reflectionEntries.map(([key, value]) => (
+                  <li key={key} className="rounded-md border border-border-soft bg-surface px-3 py-2">
+                    <div className="text-[11px] font-medium text-text-primary">
+                      {REFLECTION_LABELS[key] ?? key}
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-text-secondary">
+                      {value}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {referenceSolution ? (
+            <CodeBlock
+              label="정답 코드 (통과한 과제만 공개)"
+              code={referenceSolution}
+              accent
+            />
+          ) : (
+            <p className="text-[11px] text-neutral">
+              정답 코드는 이 과제를 통과한 뒤에 여기에서 볼 수 있어요.
+            </p>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+function CodeBlock({
+  label,
+  code,
+  emptyText,
+  accent,
+}: {
+  label: string;
+  code: string;
+  emptyText?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral">
+        {label}
+      </div>
+      {code.trim().length === 0 ? (
+        <p className="text-[12px] text-text-secondary">{emptyText ?? "내용이 없어요."}</p>
+      ) : (
+        <pre
+          className={`max-h-72 overflow-auto rounded-md border p-3 font-mono text-[11px] leading-relaxed text-text-primary ${
+            accent ? "border-success/40 bg-success/5" : "border-border-soft bg-surface"
+          }`}
+        >
+          <code>{code}</code>
+        </pre>
+      )}
     </div>
   );
 }
