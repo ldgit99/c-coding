@@ -53,6 +53,23 @@ export function MyLearningDialog({ submissions, source, referenceSolutions, onCl
     return p.passed;
   }).length;
 
+  // 과제(A01~A10)별로 "가장 최근에 제출한 것" 1건씩만 — 재제출 중복 제거.
+  // 최신순 정렬 후 assignmentCode 별 첫 항목만 취한다.
+  const latestPerAssignment: SubmissionRow[] = (() => {
+    const sorted = [...submissions].sort(
+      (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+    );
+    const seen = new Set<string>();
+    const out: SubmissionRow[] = [];
+    for (const s of sorted) {
+      const key = s.assignmentCode ?? s.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out.slice(0, 10);
+  })();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-text-primary/40 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border-soft bg-surface shadow-card">
@@ -93,9 +110,9 @@ export function MyLearningDialog({ submissions, source, referenceSolutions, onCl
 
           <section className="mt-6">
             <div className="mb-3 text-[10px] font-medium uppercase tracking-wider text-neutral">
-              최근 제출 (시간순)
+              과제별 최근 제출
             </div>
-            {submissions.length === 0 ? (
+            {latestPerAssignment.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
                 {source === "memory"
                   ? "데모 모드에선 제출 이력이 저장되지 않아요."
@@ -103,7 +120,7 @@ export function MyLearningDialog({ submissions, source, referenceSolutions, onCl
               </p>
             ) : (
               <ul className="space-y-2">
-                {submissions.slice(0, 10).map((s) => (
+                {latestPerAssignment.map((s) => (
                   <SubmissionItem
                     key={s.id}
                     submission={s}
