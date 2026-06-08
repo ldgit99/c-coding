@@ -1205,39 +1205,167 @@ int main(void)
   },
   {
     code: "A10_printf_table",
-    version: 1,
-    title: "printf 포맷과 구구단",
+    version: 2,
+    title: "구조체 배열과 함수로 성적 처리",
     template:
-      "정수 N(1~9)을 입력 받아 N단 전체를 `%d x %d = %2d` 포맷으로 출력하라. 숫자 폭 정렬 필수.",
-    kcTags: ["io-formatting", "control-flow-loop"],
-    difficulty: 2,
+      "구조체 배열과 함수로 학생들의 성적을 처리하는 프로그램을 완성하라.\n\n- `struct Student`(이름·점수) 배열이 `main` 에 이미 준비돼 있다.\n- 전체 학생 출력 · 평균 계산 · 평균 이상 학생 출력, 세 함수를 완성한다.\n\n함수 원형(prototype)은 starter 에 주어져 있다. starter 의 TODO 1~3 을 각 함수 본문에 채워라. 평균은 실수(double)로 계산한다. 입력은 없다.\n\n## 예상 출력\n\n```\n전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n```",
+    kcTags: ["structs-basic", "functions-params", "control-flow-loop"],
+    difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    // TODO: n 단 구구단을 형식에 맞춰 출력해보세요.
+struct Student {
+    char name[50];
+    int score;
+};
+
+/*
+TODO 1. 전체 학생 정보를 출력하는 함수를 완성하시오.
+    가. for문을 사용하여 학생 수(size)만큼 반복한다.
+    나. 각 학생의 이름과 점수를 출력한다.
+    다. 구조체 포인터 students를 이용하여 각 학생 정보에 접근한다.
+    라. 출력 형식은 다음과 같이 한다. 이름: Kim, 점수: 90
+*/
+void printStudents(struct Student *students, int size) {
+    printf("전체 학생 정보\\n");
+
+    // 여기에 TODO 1 을 구현하세요.
+}
+
+/*
+TODO 2. 학생들의 평균 점수를 계산하는 함수를 완성하시오.
+    가. 점수의 합계를 저장할 변수 sum을 선언하고 0으로 초기화한다.
+    나. for문을 사용하여 모든 학생의 점수를 합산한다.
+    다. 합계를 학생 수(size)로 나누어 평균을 계산한다.
+    라. 평균은 소수점이 나올 수 있으므로 double형으로 반환한다.
+*/
+double getAverage(struct Student *students, int size) {
+    // 여기에 TODO 2 를 구현하세요.
+    return 0;
+}
+
+/*
+TODO 3. 평균 점수 이상인 학생만 출력하는 함수를 완성하시오.
+    가. for문을 사용하여 모든 학생을 확인한다.
+    나. if문을 사용하여 학생의 점수가 평균 점수 이상인지 검사한다.
+    다. 평균 이상인 학생의 이름과 점수를 출력한다.
+*/
+void printAboveAverage(struct Student *students, int size, double average) {
+    printf("\\n평균 이상 학생\\n");
+
+    // 여기에 TODO 3 을 구현하세요.
+}
+
+int main(void)
+{
+    struct Student students[3] = {
+        {"Kim", 90},
+        {"Lee", 80},
+        {"Park", 70}
+    };
+
+    double average;
+
+    printStudents(students, 3);
+
+    average = getAverage(students, 3);
+    printf("\\n평균 점수: %.2f\\n", average);
+
+    printAboveAverage(students, 3, average);
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "2", expected: "2 x 1 =  2\n2 x 2 =  4\n2 x 3 =  6\n2 x 4 =  8\n2 x 5 = 10\n2 x 6 = 12\n2 x 7 = 14\n2 x 8 = 16\n2 x 9 = 18\n" },
+      {
+        input: "",
+        expected:
+          "전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n",
+        note: "입력 없음 — 고정 학생 데이터(90,80,70 → 평균 80.00, 평균 이상 Kim·Lee)",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "2", expected: "2 x 1 =  2\n2 x 2 =  4\n2 x 3 =  6\n2 x 4 =  8\n2 x 5 = 10\n2 x 6 = 12\n2 x 7 = 14\n2 x 8 = 16\n2 x 9 = 18\n" },
-      { id: 2, input: "5", expected: "5 x 1 =  5\n5 x 2 = 10\n5 x 3 = 15\n5 x 4 = 20\n5 x 5 = 25\n5 x 6 = 30\n5 x 7 = 35\n5 x 8 = 40\n5 x 9 = 45\n" },
-      { id: 3, input: "9", expected: "9 x 1 =  9\n9 x 2 = 18\n9 x 3 = 27\n9 x 4 = 36\n9 x 5 = 45\n9 x 6 = 54\n9 x 7 = 63\n9 x 8 = 72\n9 x 9 = 81\n" },
+      {
+        id: 1,
+        input: "",
+        expected:
+          "전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n",
+      },
+      {
+        id: 2,
+        input: "",
+        expected:
+          "전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n",
+      },
+      {
+        id: 3,
+        input: "",
+        expected:
+          "전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n",
+      },
     ],
     referenceSolution: `#include <stdio.h>
 
-int main(void) {
-    int n;
-    if (scanf("%d", &n) != 1) return 1;
-    for (int i = 1; i <= 9; i++) {
-        printf("%d x %d = %2d\\n", n, i, n * i);
+struct Student {
+    char name[50];
+    int score;
+};
+
+void printStudents(struct Student *students, int size) {
+    int i;
+
+    printf("전체 학생 정보\\n");
+
+    for (i = 0; i < size; i++) {
+        printf("이름: %s, 점수: %d\\n",
+               students[i].name,
+               students[i].score);
     }
+}
+
+double getAverage(struct Student *students, int size) {
+    int i;
+    int sum = 0;
+
+    for (i = 0; i < size; i++) {
+        sum += students[i].score;
+    }
+
+    return (double)sum / size;
+}
+
+void printAboveAverage(struct Student *students, int size, double average) {
+    int i;
+
+    printf("\\n평균 이상 학생\\n");
+
+    for (i = 0; i < size; i++) {
+        if (students[i].score >= average) {
+            printf("이름: %s, 점수: %d\\n",
+                   students[i].name,
+                   students[i].score);
+        }
+    }
+}
+
+int main(void)
+{
+    struct Student students[3] = {
+        {"Kim", 90},
+        {"Lee", 80},
+        {"Park", 70}
+    };
+
+    double average;
+
+    printStudents(students, 3);
+
+    average = getAverage(students, 3);
+    printf("\\n평균 점수: %.2f\\n", average);
+
+    printAboveAverage(students, 3, average);
+
     return 0;
 }
 `,

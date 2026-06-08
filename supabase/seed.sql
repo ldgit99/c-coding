@@ -749,23 +749,98 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A10_printf_table',
-  1,
-  $$printf 포맷과 구구단$$,
-  $$정수 N(1~9)을 입력 받아 N단 전체를 `%d x %d = %2d` 포맷으로 출력하라. 숫자 폭 정렬 필수.$$,
-  $$["io-formatting","control-flow-loop"]$$::jsonb,
   2,
+  $$구조체 배열과 함수로 성적 처리$$,
+  $$구조체 배열과 함수로 학생들의 성적을 처리하는 프로그램을 완성하라.
+
+- `struct Student`(이름·점수) 배열이 `main` 에 이미 준비돼 있다.
+- 전체 학생 출력 · 평균 계산 · 평균 이상 학생 출력, 세 함수를 완성한다.
+
+함수 원형(prototype)은 starter 에 주어져 있다. starter 의 TODO 1~3 을 각 함수 본문에 채워라. 평균은 실수(double)로 계산한다. 입력은 없다.
+
+## 예상 출력
+
+```
+전체 학생 정보
+이름: Kim, 점수: 90
+이름: Lee, 점수: 80
+이름: Park, 점수: 70
+
+평균 점수: 80.00
+
+평균 이상 학생
+이름: Kim, 점수: 90
+이름: Lee, 점수: 80
+```$$,
+  $$["structs-basic","functions-params","control-flow-loop"]$$::jsonb,
+  3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    // TODO: n 단 구구단을 형식에 맞춰 출력해보세요.
+struct Student {
+    char name[50];
+    int score;
+};
+
+/*
+TODO 1. 전체 학생 정보를 출력하는 함수를 완성하시오.
+    가. for문을 사용하여 학생 수(size)만큼 반복한다.
+    나. 각 학생의 이름과 점수를 출력한다.
+    다. 구조체 포인터 students를 이용하여 각 학생 정보에 접근한다.
+    라. 출력 형식은 다음과 같이 한다. 이름: Kim, 점수: 90
+*/
+void printStudents(struct Student *students, int size) {
+    printf("전체 학생 정보\n");
+
+    // 여기에 TODO 1 을 구현하세요.
+}
+
+/*
+TODO 2. 학생들의 평균 점수를 계산하는 함수를 완성하시오.
+    가. 점수의 합계를 저장할 변수 sum을 선언하고 0으로 초기화한다.
+    나. for문을 사용하여 모든 학생의 점수를 합산한다.
+    다. 합계를 학생 수(size)로 나누어 평균을 계산한다.
+    라. 평균은 소수점이 나올 수 있으므로 double형으로 반환한다.
+*/
+double getAverage(struct Student *students, int size) {
+    // 여기에 TODO 2 를 구현하세요.
+    return 0;
+}
+
+/*
+TODO 3. 평균 점수 이상인 학생만 출력하는 함수를 완성하시오.
+    가. for문을 사용하여 모든 학생을 확인한다.
+    나. if문을 사용하여 학생의 점수가 평균 점수 이상인지 검사한다.
+    다. 평균 이상인 학생의 이름과 점수를 출력한다.
+*/
+void printAboveAverage(struct Student *students, int size, double average) {
+    printf("\n평균 이상 학생\n");
+
+    // 여기에 TODO 3 을 구현하세요.
+}
+
+int main(void)
+{
+    struct Student students[3] = {
+        {"Kim", 90},
+        {"Lee", 80},
+        {"Park", 70}
+    };
+
+    double average;
+
+    printStudents(students, 3);
+
+    average = getAverage(students, 3);
+    printf("\n평균 점수: %.2f\n", average);
+
+    printAboveAverage(students, 3, average);
+
     return 0;
 }
 $$,
-  $$[{"input":"2","expected":"2 x 1 =  2\n2 x 2 =  4\n2 x 3 =  6\n2 x 4 =  8\n2 x 5 = 10\n2 x 6 = 12\n2 x 7 = 14\n2 x 8 = 16\n2 x 9 = 18\n"}]$$::jsonb,
+  $$[{"input":"","expected":"전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n","note":"입력 없음 — 고정 학생 데이터(90,80,70 → 평균 80.00, 평균 이상 Kim·Lee)"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,
