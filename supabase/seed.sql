@@ -688,7 +688,7 @@ insert into public.assignments (code, version, title, template, kc_tags, difficu
 ```
 파일에서 읽은 문자열: Let's wrap it up here.
 ```$$,
-  $$["file-io","io-formatting"]$$::jsonb,
+  $$["file-io","file-error-handling"]$$::jsonb,
   3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,

@@ -86,6 +86,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "structs-nested": "구조체 안에 구조체를 중첩하고 중첩 멤버에 접근한다",
   "structs-pointer": "구조체 포인터를 함수에 넘기고 화살표(->) 연산자로 멤버에 접근한다",
   "file-io": "fopen·fprintf·fgets·fclose 로 파일에 문자열을 쓰고 다시 읽는다",
+  "file-error-handling": "파일 열기에 실패했을 때 오류 메시지를 출력한다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {
@@ -1102,7 +1103,7 @@ int main(void)
     title: "파일 입출력",
     template:
       "파일에 문자열을 저장한 뒤 다시 읽어 화면에 출력하는 프로그램을 완성하라.\n\n- `hello.txt` 파일에 주어진 문자열(`message`)을 쓴다.\n- 같은 파일을 다시 열어 내용을 읽어 화면에 출력한다.\n- 파일 열기에 실패하면 `\"파일을 열 수 없습니다.\"` 를 출력하고 종료한다.\n\n`main` 에는 저장할 문자열과 읽어 올 버퍼가 이미 준비돼 있다. starter 의 TODO 1~7(쓰기 모드 열기 → 실패 검사 → 쓰기 → 읽기 모드 열기 → 실패 검사 → 읽기 → 출력)을 채워라. 입력은 없다.\n\n## 예상 출력\n\n```\n파일에서 읽은 문자열: Let's wrap it up here.\n```",
-    kcTags: ["file-io", "io-formatting"],
+    kcTags: ["file-io", "file-error-handling"],
     difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
