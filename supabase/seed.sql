@@ -750,7 +750,7 @@ $$,
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A10_printf_table',
   2,
-  $$구조체 배열과 함수로 성적 처리$$,
+  $$종합문제$$,
   $$구조체 배열과 함수로 학생들의 성적을 처리하는 프로그램을 완성하라.
 
 - `struct Student`(이름·점수) 배열이 `main` 에 이미 준비돼 있다.

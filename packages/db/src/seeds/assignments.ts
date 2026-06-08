@@ -1206,7 +1206,7 @@ int main(void)
   {
     code: "A10_printf_table",
     version: 2,
-    title: "구조체 배열과 함수로 성적 처리",
+    title: "종합문제",
     template:
       "구조체 배열과 함수로 학생들의 성적을 처리하는 프로그램을 완성하라.\n\n- `struct Student`(이름·점수) 배열이 `main` 에 이미 준비돼 있다.\n- 전체 학생 출력 · 평균 계산 · 평균 이상 학생 출력, 세 함수를 완성한다.\n\n함수 원형(prototype)은 starter 에 주어져 있다. starter 의 TODO 1~3 을 각 함수 본문에 채워라. 평균은 실수(double)로 계산한다. 입력은 없다.\n\n## 예상 출력\n\n```\n전체 학생 정보\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n이름: Park, 점수: 70\n\n평균 점수: 80.00\n\n평균 이상 학생\n이름: Kim, 점수: 90\n이름: Lee, 점수: 80\n```",
     kcTags: ["structs-basic", "functions-params", "control-flow-loop"],
