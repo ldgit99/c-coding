@@ -85,6 +85,7 @@ const KC_OBJECTIVES: Record<string, string> = {
   "structs-basic": "구조체를 정의하고 멤버에 점(.) 연산자로 접근한다",
   "structs-nested": "구조체 안에 구조체를 중첩하고 중첩 멤버에 접근한다",
   "structs-pointer": "구조체 포인터를 함수에 넘기고 화살표(->) 연산자로 멤버에 접근한다",
+  "file-io": "fopen·fprintf·fgets·fclose 로 파일에 문자열을 쓰고 다시 읽는다",
 };
 
 export function getLearningObjectives(kcTags: string[], max = 2): string[] {
@@ -1097,51 +1098,104 @@ int main(void)
   },
   {
     code: "A09_factorial_rec",
-    version: 1,
-    title: "재귀로 팩토리얼",
+    version: 2,
+    title: "파일 입출력",
     template:
-      "같은 팩토리얼을 이번엔 재귀 함수 `long factorial_rec(int n)`로 작성하라. 기저 조건을 반드시 명시.",
-    kcTags: ["recursion", "functions-params"],
-    difficulty: 4,
+      "파일에 문자열을 저장한 뒤 다시 읽어 화면에 출력하는 프로그램을 완성하라.\n\n- `hello.txt` 파일에 주어진 문자열(`message`)을 쓴다.\n- 같은 파일을 다시 열어 내용을 읽어 화면에 출력한다.\n- 파일 열기에 실패하면 `\"파일을 열 수 없습니다.\"` 를 출력하고 종료한다.\n\n`main` 에는 저장할 문자열과 읽어 올 버퍼가 이미 준비돼 있다. starter 의 TODO 1~7(쓰기 모드 열기 → 실패 검사 → 쓰기 → 읽기 모드 열기 → 실패 검사 → 읽기 → 출력)을 채워라. 입력은 없다.\n\n## 예상 출력\n\n```\n파일에서 읽은 문자열: Let's wrap it up here.\n```",
+    kcTags: ["file-io", "io-formatting"],
+    difficulty: 3,
     rubric: DEFAULT_RUBRIC,
     constraints: DEFAULT_CONSTRAINTS,
     starterCode: `#include <stdio.h>
 
-long factorial_rec(int n) {
-    // TODO: 재귀 호출로 n! 을 계산해보세요.
-    return 1;
-}
+int main(void)
+{
+    FILE *fp;
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    printf("%ld\\n", factorial_rec(n));
+    char message[] = "Let's wrap it up here.";
+    char readMessage[100];
+
+    // TODO 1. hello.txt 파일을 쓰기 모드("w")로 연다.
+
+
+    // TODO 2. 파일 열기에 실패하면(fp == NULL) "파일을 열 수 없습니다." 를
+    //         출력하고 return 1; 로 종료한다.
+
+
+    // TODO 3. message 문자열을 파일에 저장한다.
+
+
+    fclose(fp);
+
+    // TODO 4. hello.txt 파일을 읽기 모드("r")로 연다.
+
+
+    // TODO 5. 파일 열기에 실패하면 "파일을 열 수 없습니다." 를 출력하고 종료한다.
+
+
+    // TODO 6. fgets 함수로 파일에서 문자열을 readMessage 에 읽어 온다.
+
+
+    // TODO 7. 읽은 문자열을 화면에 출력한다.
+
+
+    fclose(fp);
+
     return 0;
 }
 `,
     visibleTests: [
-      { input: "5", expected: "120\n" },
-      { input: "1", expected: "1\n" },
-      { input: "7", expected: "5040\n" },
+      {
+        input: "",
+        expected: "파일에서 읽은 문자열: Let's wrap it up here.",
+        note: "입력 없음 — 파일에 쓴 문자열을 다시 읽어 그대로 출력",
+      },
     ],
     hiddenTests: [
-      { id: 1, input: "1", expected: "1\n" },
-      { id: 2, input: "3", expected: "6\n" },
-      { id: 3, input: "5", expected: "120\n" },
-      { id: 4, input: "7", expected: "5040\n" },
-      { id: 5, input: "10", expected: "3628800\n" },
+      { id: 1, input: "", expected: "파일에서 읽은 문자열: Let's wrap it up here." },
+      { id: 2, input: "", expected: "파일에서 읽은 문자열: Let's wrap it up here." },
+      { id: 3, input: "", expected: "파일에서 읽은 문자열: Let's wrap it up here." },
     ],
     referenceSolution: `#include <stdio.h>
 
-long factorial_rec(int n) {
-    if (n <= 1) return 1;
-    return n * factorial_rec(n - 1);
-}
+int main(void)
+{
+    FILE *fp;
 
-int main(void) {
-    int n;
-    if (scanf("%d", &n) != 1) return 1;
-    printf("%ld\\n", factorial_rec(n));
+    char message[] = "Let's wrap it up here.";
+    char readMessage[100];
+
+    // hello.txt 파일을 쓰기 모드로 연다.
+    fp = fopen("hello.txt", "w");
+
+    // 파일 열기 실패 검사
+    if (fp == NULL) {
+        printf("파일을 열 수 없습니다.\\n");
+        return 1;
+    }
+
+    // message 문자열을 파일에 저장한다.
+    fprintf(fp, message);
+
+    fclose(fp);
+
+    // hello.txt 파일을 읽기 모드로 연다.
+    fp = fopen("hello.txt", "r");
+
+    // 파일 열기 실패 검사
+    if (fp == NULL) {
+        printf("파일을 열 수 없습니다.\\n");
+        return 1;
+    }
+
+    // fgets 함수를 사용하여 파일에서 문자열을 읽는다.
+    fgets(readMessage, 100, fp);
+
+    // 읽은 문자열을 화면에 출력한다.
+    printf("파일에서 읽은 문자열: %s", readMessage);
+
+    fclose(fp);
+
     return 0;
 }
 `,

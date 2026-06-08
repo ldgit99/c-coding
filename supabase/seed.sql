@@ -673,28 +673,64 @@ $$,
 
 insert into public.assignments (code, version, title, template, kc_tags, difficulty, rubric, constraints, starter_code, visible_tests, reflection_prompts, cohort_id, active, created_by) values (
   'A09_factorial_rec',
-  1,
-  $$재귀로 팩토리얼$$,
-  $$같은 팩토리얼을 이번엔 재귀 함수 `long factorial_rec(int n)`로 작성하라. 기저 조건을 반드시 명시.$$,
-  $$["recursion","functions-params"]$$::jsonb,
-  4,
+  2,
+  $$파일 입출력$$,
+  $$파일에 문자열을 저장한 뒤 다시 읽어 화면에 출력하는 프로그램을 완성하라.
+
+- `hello.txt` 파일에 주어진 문자열(`message`)을 쓴다.
+- 같은 파일을 다시 열어 내용을 읽어 화면에 출력한다.
+- 파일 열기에 실패하면 `"파일을 열 수 없습니다."` 를 출력하고 종료한다.
+
+`main` 에는 저장할 문자열과 읽어 올 버퍼가 이미 준비돼 있다. starter 의 TODO 1~7(쓰기 모드 열기 → 실패 검사 → 쓰기 → 읽기 모드 열기 → 실패 검사 → 읽기 → 출력)을 채워라. 입력은 없다.
+
+## 예상 출력
+
+```
+파일에서 읽은 문자열: Let's wrap it up here.
+```$$,
+  $$["file-io","io-formatting"]$$::jsonb,
+  3,
   $${"correctness":0.5,"style":0.15,"memory_safety":0.2,"reflection":0.15}$$::jsonb,
   $${"timeLimitMs":2000,"memLimitMb":64,"allowedHeaders":["stdio.h","stdlib.h","string.h"]}$$::jsonb,
   $$#include <stdio.h>
 
-long factorial_rec(int n) {
-    // TODO: 재귀 호출로 n! 을 계산해보세요.
-    return 1;
-}
+int main(void)
+{
+    FILE *fp;
 
-int main(void) {
-    int n;
-    scanf("%d", &n);
-    printf("%ld\n", factorial_rec(n));
+    char message[] = "Let's wrap it up here.";
+    char readMessage[100];
+
+    // TODO 1. hello.txt 파일을 쓰기 모드("w")로 연다.
+
+
+    // TODO 2. 파일 열기에 실패하면(fp == NULL) "파일을 열 수 없습니다." 를
+    //         출력하고 return 1; 로 종료한다.
+
+
+    // TODO 3. message 문자열을 파일에 저장한다.
+
+
+    fclose(fp);
+
+    // TODO 4. hello.txt 파일을 읽기 모드("r")로 연다.
+
+
+    // TODO 5. 파일 열기에 실패하면 "파일을 열 수 없습니다." 를 출력하고 종료한다.
+
+
+    // TODO 6. fgets 함수로 파일에서 문자열을 readMessage 에 읽어 온다.
+
+
+    // TODO 7. 읽은 문자열을 화면에 출력한다.
+
+
+    fclose(fp);
+
     return 0;
 }
 $$,
-  $$[{"input":"5","expected":"120\n"},{"input":"1","expected":"1\n"},{"input":"7","expected":"5040\n"}]$$::jsonb,
+  $$[{"input":"","expected":"파일에서 읽은 문자열: Let's wrap it up here.","note":"입력 없음 — 파일에 쓴 문자열을 다시 읽어 그대로 출력"}]$$::jsonb,
   $$["이 과제에서 가장 어려웠던 부분은 무엇이고, 어떻게 해결했나요?","다른 방법으로도 풀 수 있었나요? 그중 왜 이 방식을 택했는지 한 문장으로 적어봐요.","비슷한 문제를 다시 만나면 무엇을 다르게 하겠나요?"]$$::jsonb,
   '00000000-0000-4000-8000-000000000010',
   true,

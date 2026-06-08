@@ -29,7 +29,7 @@ describe("ASSIGNMENTS — 카탈로그 무결성", () => {
       "pointer-arithmetic",
       "memory-allocation",
       "functions-params",
-      "recursion",
+      "file-io",
       "io-formatting",
     ];
     const covered = new Set(ASSIGNMENTS.flatMap((a) => a.kcTags));
