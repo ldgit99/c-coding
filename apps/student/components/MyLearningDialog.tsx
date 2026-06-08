@@ -52,15 +52,6 @@ export function MyLearningDialog({ submissions, source, referenceSolutions, onCl
     });
     return p.passed;
   }).length;
-  const bestScores = Array.from(byAssignment.entries())
-    .map(([code, rows]) => {
-      const best = rows.reduce(
-        (a, b) => ((b.finalScore ?? 0) > (a.finalScore ?? 0) ? b : a),
-        rows[0]!,
-      );
-      return { code, title: best.assignmentTitle, best };
-    })
-    .sort((a, b) => a.code.localeCompare(b.code));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-text-primary/40 p-4 backdrop-blur-sm">
@@ -99,56 +90,6 @@ export function MyLearningDialog({ submissions, source, referenceSolutions, onCl
               sub="최소 1회 시도"
             />
           </div>
-
-          <section className="mt-6">
-            <div className="mb-3 text-[10px] font-medium uppercase tracking-wider text-neutral">
-              과제별 최고 수준
-            </div>
-            {bestScores.length === 0 ? (
-              <p className="text-[13px] text-text-secondary">
-                아직 제출한 과제가 없어요. 첫 제출부터 여기에 쌓여요.
-              </p>
-            ) : (
-              <ul className="divide-y divide-border-soft rounded-lg border border-border-soft">
-                {bestScores.map(({ code, title, best }) => {
-                  const prof = best.rubricScores
-                    ? computeProficiency({
-                        correctness: best.rubricScores.correctness ?? null,
-                        style: best.rubricScores.style ?? null,
-                        memory_safety: best.rubricScores.memory_safety ?? null,
-                        reflection: best.rubricScores.reflection ?? null,
-                      })
-                    : null;
-                  const attempts = byAssignment.get(code)?.length ?? 0;
-                  return (
-                    <li key={code} className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-baseline gap-3">
-                        <span className="font-mono text-[11px] text-neutral">{code}</span>
-                        <span className="text-text-primary">{title ?? code}</span>
-                        {attempts > 1 && (
-                          <span className="rounded border border-border-soft px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">
-                            {attempts}회 시도
-                          </span>
-                        )}
-                      </div>
-                      {prof ? (
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${prof.badgeClass}`}
-                        >
-                          <span>{prof.icon}</span>
-                          <span>{prof.label}</span>
-                        </span>
-                      ) : (
-                        <span className="rounded-full border border-border-soft px-2.5 py-1 text-[11px] text-text-secondary">
-                          기록 없음
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
 
           <section className="mt-6">
             <div className="mb-3 text-[10px] font-medium uppercase tracking-wider text-neutral">
