@@ -1,4 +1,4 @@
-# CVibe — Collaborative Vibe Coding Agent for C
+# C언어 학습을 도와주는 AI 에이전트
 
 > 대학교 1학년 C언어 입문 학습자를 위한 학생–AI 짝프로그래밍 플랫폼
 
